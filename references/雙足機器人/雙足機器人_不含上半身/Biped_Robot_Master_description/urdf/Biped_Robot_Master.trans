@@ -1,0 +1,92 @@
+<?xml version="1.0" ?>
+<robot name="Biped_Robot_Master" xmlns:xacro="http://www.ros.org/wiki/xacro" >
+
+<transmission name="J01_Left_Hip_Roll_Y_tran">
+  <type>transmission_interface/SimpleTransmission</type>
+  <joint name="J01_Left_Hip_Roll_Y">
+    <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+  </joint>
+  <actuator name="J01_Left_Hip_Roll_Y_actr">
+    <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+    <mechanicalReduction>1</mechanicalReduction>
+  </actuator>
+</transmission>
+
+<transmission name="J02_Left_Hip_Pitch_X_tran">
+  <type>transmission_interface/SimpleTransmission</type>
+  <joint name="J02_Left_Hip_Pitch_X">
+    <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+  </joint>
+  <actuator name="J02_Left_Hip_Pitch_X_actr">
+    <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+    <mechanicalReduction>1</mechanicalReduction>
+  </actuator>
+</transmission>
+
+<transmission name="J03_Left_Knee_Pitch_X_tran">
+  <type>transmission_interface/SimpleTransmission</type>
+  <joint name="J03_Left_Knee_Pitch_X">
+    <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+  </joint>
+  <actuator name="J03_Left_Knee_Pitch_X_actr">
+    <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+    <mechanicalReduction>1</mechanicalReduction>
+  </actuator>
+</transmission>
+
+<transmission name="J04_Left_Ankle_Pitch_X_tran">
+  <type>transmission_interface/SimpleTransmission</type>
+  <joint name="J04_Left_Ankle_Pitch_X">
+    <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+  </joint>
+  <actuator name="J04_Left_Ankle_Pitch_X_actr">
+    <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+    <mechanicalReduction>1</mechanicalReduction>
+  </actuator>
+</transmission>
+
+<transmission name="J05_Right_Hip_Roll_Y_tran">
+  <type>transmission_interface/SimpleTransmission</type>
+  <joint name="J05_Right_Hip_Roll_Y">
+    <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+  </joint>
+  <actuator name="J05_Right_Hip_Roll_Y_actr">
+    <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+    <mechanicalReduction>1</mechanicalReduction>
+  </actuator>
+</transmission>
+
+<transmission name="J06_Right_Hip_Pitch_X_tran">
+  <type>transmission_interface/SimpleTransmission</type>
+  <joint name="J06_Right_Hip_Pitch_X">
+    <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+  </joint>
+  <actuator name="J06_Right_Hip_Pitch_X_actr">
+    <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+    <mechanicalReduction>1</mechanicalReduction>
+  </actuator>
+</transmission>
+
+<transmission name="J07_Right_Knee_Pitch_X_tran">
+  <type>transmission_interface/SimpleTransmission</type>
+  <joint name="J07_Right_Knee_Pitch_X">
+    <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+  </joint>
+  <actuator name="J07_Right_Knee_Pitch_X_actr">
+    <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+    <mechanicalReduction>1</mechanicalReduction>
+  </actuator>
+</transmission>
+
+<transmission name="J08_Right_Ankle_Pitch_X_tran">
+  <type>transmission_interface/SimpleTransmission</type>
+  <joint name="J08_Right_Ankle_Pitch_X">
+    <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+  </joint>
+  <actuator name="J08_Right_Ankle_Pitch_X_actr">
+    <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+    <mechanicalReduction>1</mechanicalReduction>
+  </actuator>
+</transmission>
+
+</robot>

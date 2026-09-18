@@ -1,0 +1,9 @@
+<launch>
+
+<rosparam file="$(find Biped_Robot_Master_description)/launch/controller.yaml" command="load"/>
+<node args="J01_Left_Hip_Roll_Y_position_controller J02_Left_Hip_Pitch_X_position_controller J03_Left_Knee_Pitch_X_position_controller J04_Left_Ankle_Pitch_X_position_controller J05_Right_Hip_Roll_Y_position_controller J06_Right_Hip_Pitch_X_position_controller J07_Right_Knee_Pitch_X_position_controller J08_Right_Ankle_Pitch_X_position_controller joint_state_controller " name="controller_spawner" ns="Biped_Robot_Master" output="screen" pkg="controller_manager" respawn="false" type="spawner"/>
+<node name="robot_state_publisher" output="screen" pkg="robot_state_publisher" respawn="false" type="robot_state_publisher">
+  <remap from="/joint_states" to="/Biped_Robot_Master/joint_states"/>
+</node>
+
+</launch>

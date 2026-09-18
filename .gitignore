@@ -1,0 +1,27 @@
+# Large generated artifacts: datasets, checkpoints, logs, videos
+outputs/
+*.h5
+*.hdf5
+*.npz
+*.pt
+*.pth
+*.onnx
+*.mp4
+events.out.tfevents.*
+
+# Reference CAD / meshes (kept locally, not versioned; exp1 needs them on disk)
+references/**/*.f3d
+references/**/*.stl
+*.STL
+
+# Generated USD (rebuild from URDF)
+01_robot_construction/model/usd/
+**/shared/robots/usd/
+
+# Python / tooling
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+.vscode/
+.claude/settings.local.json

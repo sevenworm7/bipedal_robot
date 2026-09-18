@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tools/isaacpy.cmd:*)",
+      "PowerShell(tools\\isaacpy.cmd:*)",
+      "Bash(nvidia-smi:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "mcp__context7__*"
+    ],
+    "deny": [
+      "Edit(references/**)",
+      "Write(references/**)"
+    ]
+  }
+}
