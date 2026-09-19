@@ -43,6 +43,7 @@ tools\isaacpy.cmd tools\urdf_inspect.py 01_robot_construction\model\urdf\biped.u
 ## 4. 接到 Isaac Lab
 - 在 `<實驗根目錄>/shared/robots/<robot>.py` 中建立 `ArticulationCfg`，包含 init_state（站姿關節角、base 高度，實驗一還要加上旋轉）和 actuators（`ImplicitActuatorCfg` 或 `DCMotorCfg`；實驗二的數值取自 params.yaml，實驗一需和使用者確認）。
 - 同一個檔案中也定義這台機器人的關節順序、站姿與觀測／動作的維度，rule-based 和訓練程式都從這裡 import。
+- 管線用到的欄位清單（`LEG_JOINT_LAYOUT`、`JOINT_AXIS_SIGN`、`LEG_JOINT_LIMITS`、腿長等）見 `00_test/shared/robots/README.md`；新機器人必須提供同樣的欄位，管線程式才能不經修改直接使用。
 - 可參考 `C:\isaaclab\source\isaaclab_assets\isaaclab_assets\robots\cassie.py` 與 `unitree.py`。
 
 ## 5. 模擬中的健全性檢查（每次修改模型後）

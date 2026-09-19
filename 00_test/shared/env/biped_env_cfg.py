@@ -56,7 +56,7 @@ class BipedWalkEnvCfg(DirectRLEnvCfg):
     decimation: int = itf.DECIMATION
     episode_length_s: float = 20.0
     action_space: int = 8
-    observation_space: int = 37
+    observation_space: int = 38
     state_space: int = 0
 
     sim: SimulationCfg = SimulationCfg(dt=itf.SIM_DT, render_interval=itf.DECIMATION)
@@ -112,6 +112,9 @@ class BipedWalkEnvCfg(DirectRLEnvCfg):
     """Start the gait clock at a random phase instead of 0."""
     settle_time: float = 0.1
     """Touchdowns during the first ``settle_time`` seconds (initial landing) are not counted as steps [s]."""
+    min_step_air_time: float = 0.03
+    """A touchdown counts as a step only after at least this long in the air [s] (>= 2 control steps);
+    filters contact chatter of a sole rocking on its edge."""
 
     # -- termination --
     fall_com_height: float = 0.22

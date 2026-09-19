@@ -8,8 +8,8 @@
 | 階段 | 內容 | 狀態 |
 |---|---|---|
 | A. 機器人接入模擬器 | URDF → USD、方向/高度修正、80 N·m 致動器、站立測試 | ✅ 完成（2026-09-18） |
-| B. 共用介面 | 觀測/動作定義、Isaac Lab 環境（機器人並排成列、朝同一方向）、步數/距離指標、影片 HUD | ✅ 完成（2026-09-18），定義已經使用者確認 |
-| C. Rule-based 控制器 | `rule_based/` | 尚未開始 |
+| B. 共用介面 | 觀測/動作定義、Isaac Lab 環境（機器人並排成列、朝同一方向）、步數/距離指標、影片 HUD | ✅ 完成（2026-09-18），定義已經使用者確認；2026-09-19 觀測加入 `gait_freq`（38 維）、修正步數計數 |
+| C. Rule-based 控制器 | `rule_based/` | ✅ 完成（2026-09-19），成功率 95%、跌倒 0%，使用者已確認 |
 | D. 訓練管線 | `training_pipeline/` | 尚未開始 |
 
 ## 資料夾
@@ -31,12 +31,13 @@ tools\isaacpy.cmd 00_test\scripts\check_ref_biped.py --enable_cameras        # 2
 tools\isaacpy.cmd 00_test\scripts\smoke_env.py --num_envs 1024               # 3. 環境煙霧測試
 tools\isaacpy.cmd 00_test\scripts\smoke_env.py --num_envs 4 --video --enable_cameras   # 4. 影片 HUD 測試
 ```
+rule-based 的評估與錄影指令見 `rule_based/README.md`。
 
 ## 階段 A、B 的驗證結果
 
 - 站立測試（微蹲姿勢，5 秒）：base 高度變化 0.1 mm、最大傾斜 1.65°、最大扭矩 3.5 N·m → 通過
 - 關節正方向（+0.3 rad）：髖 pitch 腳往後、膝蓋小腿往後（和人類一樣）、髖 roll 腳往右、踝 pitch 腳尖往下
-- 環境：觀測 37 維、動作 8 維、無 NaN；腳掌接觸力總和 / 體重 = 1.00；站立不動時跌倒率 0%
+- 環境：觀測 38 維（2026-09-19 加入 gait_freq，原為 37 維）、動作 8 維、無 NaN；腳掌接觸力總和 / 體重 = 1.00；站立不動時跌倒率 0%
 - 吞吐量（RTX 5080 Laptop，headless）：256 個環境約 9,100 env-steps/s；4096 個環境約 95,600 env-steps/s
 - 影片：1280×720、30 fps，HUD 每一幀都會更新，相機跟隨機器人
 
@@ -48,3 +49,4 @@ tools\isaacpy.cmd 00_test\scripts\smoke_env.py --num_envs 4 --video --enable_cam
    - `activate_contact_sensors` 只作用在最外層的剛體 → 在 env 中逐一補上 contact report API
    - 同一個 regex 感測器只抓得到一隻腳 → 改成每隻腳各一個感測器
 3. 內建 viewer 的跟隨模式取景不準 → 改用獨立的 Camera 感測器錄影。
+4. `ContactSensor` 是延遲更新的，`compute_first_contact` 會漏掉大部分著地 → 環境自行追蹤離地→著地轉換（2026-09-19，見 `shared/env/README.md`）。

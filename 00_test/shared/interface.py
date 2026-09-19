@@ -19,14 +19,19 @@ running normalisation, identically in BC and PPO):
     3     base_ang_vel           3     base angular velocity, canonical frame [rad/s]
     6     projected_gravity      3     unit gravity vector in canonical frame [-]
     9     cmd_vx                 1     commanded forward speed [m/s]
-    10    heading_error          1     wrap(target_heading - current_heading) [rad]
-    11    joint_pos_rel          J     leg joint position minus default pose [rad]
-    11+J  joint_vel              J     leg joint velocity [rad/s]
-    11+2J last_action            J     previous action (normalised, see below) [-]
-    11+3J gait_phase             2     (sin, cos) of the gait clock phase [-]
+    10    gait_freq              1     commanded gait cycle frequency [Hz] (one cycle = two steps)
+    11    heading_error          1     wrap(target_heading - current_heading) [rad]
+    12    joint_pos_rel          J     leg joint position minus default pose [rad]
+    12+J  joint_vel              J     leg joint velocity [rad/s]
+    12+2J last_action            J     previous action (normalised, see below) [-]
+    12+3J gait_phase             2     (sin, cos) of the gait clock phase [-]
     ====  =====================  ====  ============================================
 
-    J = number of leg joints (8 for ``ref_biped``) -> total 13 + 3J = 37.
+    J = number of leg joints (8 for ``ref_biped``) -> total 14 + 3J = 38.
+
+    ``cmd_vx`` and ``gait_freq`` together are the command: step length = cmd_vx / (2 gait_freq).
+    ``gait_freq`` was added on 2026-09-19 (user decision): without it a memoryless policy sees only the
+    clock position, not its rate, and cannot tell which step length the teacher would take.
 
 Action vector (float32, J): normalised joint position offsets, clipped to ``[-ACTION_CLIP, ACTION_CLIP]``:
 
@@ -63,7 +68,7 @@ class ObsLayout:
 
     @property
     def dim(self) -> int:
-        return 13 + 3 * self.num_joints
+        return 14 + 3 * self.num_joints
 
     def slices(self) -> dict[str, slice]:
         j = self.num_joints
@@ -72,11 +77,12 @@ class ObsLayout:
             "base_ang_vel": slice(3, 6),
             "projected_gravity": slice(6, 9),
             "cmd_vx": slice(9, 10),
-            "heading_error": slice(10, 11),
-            "joint_pos_rel": slice(11, 11 + j),
-            "joint_vel": slice(11 + j, 11 + 2 * j),
-            "last_action": slice(11 + 2 * j, 11 + 3 * j),
-            "gait_phase": slice(11 + 3 * j, 13 + 3 * j),
+            "gait_freq": slice(10, 11),
+            "heading_error": slice(11, 12),
+            "joint_pos_rel": slice(12, 12 + j),
+            "joint_vel": slice(12 + j, 12 + 2 * j),
+            "last_action": slice(12 + 2 * j, 12 + 3 * j),
+            "gait_phase": slice(12 + 3 * j, 14 + 3 * j),
         }
 
     def split(self, obs: torch.Tensor) -> dict[str, torch.Tensor]:
@@ -101,6 +107,7 @@ def build_observation(
     base_ang_vel: torch.Tensor,
     projected_gravity: torch.Tensor,
     cmd_vx: torch.Tensor,
+    gait_freq: torch.Tensor,
     heading_error: torch.Tensor,
     joint_pos_rel: torch.Tensor,
     joint_vel: torch.Tensor,
@@ -114,6 +121,7 @@ def build_observation(
         base_ang_vel: canonical-frame base angular velocity [rad/s], shape [N, 3].
         projected_gravity: canonical-frame unit gravity, shape [N, 3].
         cmd_vx: commanded forward speed [m/s], shape [N].
+        gait_freq: commanded gait cycle frequency [Hz], shape [N].
         heading_error: target minus current heading [rad], shape [N].
         joint_pos_rel: leg joint positions minus default [rad], shape [N, J].
         joint_vel: leg joint velocities [rad/s], shape [N, J].
@@ -127,6 +135,7 @@ def build_observation(
             base_ang_vel,
             projected_gravity,
             cmd_vx.unsqueeze(-1),
+            gait_freq.unsqueeze(-1),
             heading_error.unsqueeze(-1),
             joint_pos_rel,
             joint_vel,

@@ -52,6 +52,25 @@ LEG_JOINT_NAMES: tuple[str, ...] = (
 )
 """Actuated leg joints, in the canonical order used by observations and actions."""
 
+LEG_JOINT_LAYOUT: tuple[tuple[str, str], ...] = (
+    ("left", "hip_roll"), ("left", "hip_pitch"), ("left", "knee"), ("left", "ankle_pitch"),
+    ("right", "hip_roll"), ("right", "hip_pitch"), ("right", "knee"), ("right", "ankle_pitch"),
+)
+"""(side, role) of each entry of :data:`LEG_JOINT_NAMES`; lets controllers find joints without hard-coded indices."""
+
+JOINT_AXIS_SIGN: dict[str, float] = {"hip_roll": -1.0, "hip_pitch": 1.0, "knee": 1.0, "ankle_pitch": 1.0}
+"""Joint angle = sign x canonical angle, where the canonical angle is a right-handed rotation about the
+canonical base axis (roll: +x forward, pitch: +y left). Canonical meaning: roll + moves the foot left;
+pitch joints + rotate backward (hip: leg back, knee: shin back, ankle: toes down)."""
+
+LEG_JOINT_LIMITS: dict[str, tuple[float, float]] = {
+    "hip_roll": (-0.349066, 0.349066),
+    "hip_pitch": (-0.785398, 0.785398),
+    "knee": (-0.785398, 0.785398),
+    "ankle_pitch": (-0.349066, 0.349066),
+}
+"""Joint position limits [rad] from the URDF (same for both legs, in joint coordinates)."""
+
 TORSO_JOINT_NAMES: tuple[str, ...] = ("Torso_Yaw_Joint", "Torso_Pitch_Joint")
 """Torso joints: held at 0 by a stiff PD, excluded from observations and actions."""
 
@@ -101,6 +120,10 @@ FOOT_LENGTH_FWD = 0.055
 FOOT_LENGTH_BACK = 0.125
 """Sole extent in front of / behind the ankle axis along +Y (from the foot mesh)."""
 FOOT_WIDTH = 0.120
+FOOT_MASS = 6.034
+"""[kg] each; the feet carry 42 % of the total mass, which matters for swing dynamics."""
+TOTAL_MASS = 28.4
+"""[kg]"""
 
 _HIP_PITCH, _KNEE, _ANKLE = -0.25, 0.50, -0.25
 DEFAULT_JOINT_POS: dict[str, float] = {name: 0.0 for name in LEG_JOINT_NAMES + TORSO_JOINT_NAMES}

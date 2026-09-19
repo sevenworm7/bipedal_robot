@@ -22,7 +22,8 @@
 
 ## 指標（`shared/metrics.py`）
 
-- 步數：腳掌由離地變為著地的次數，前 0.1 s 的初始落地不計入
+- 步數：腳掌由離地變為著地的次數，前 0.1 s 的初始落地不計入；騰空時間需 ≥ 0.03 s（`min_step_air_time`，至少 2 個控制步），用來濾掉腳掌在邊緣上翻滾造成的接觸抖動
+  - 著地由環境自己追蹤「上一步離地、這一步著地」的轉換，不使用 `ContactSensor.compute_first_contact`（原因見下方「實作注意事項」）
 - 前進距離：沿目標方向的位移
 - 側向偏移：垂直於目標方向的位移
 - 其他：方向誤差、扭矩飽和比例、各關節扭矩的平均值與最大值
@@ -43,3 +44,6 @@
 - 關節一律用 `LEG_JOINT_NAMES` 的順序（`self.leg_ids`）存取；模擬器內部的關節順序不同。
 - 每隻腳各有一個接觸感測器（`foot_sensors`），並在 cloning 之前補上 contact report API（原因見 `00_test/README.md`）。
 - 步態相位由 episode 時間計算，不另外保存狀態：`phase = (phase0 + f × t) mod 1`。
+- 接觸感測器（`update_period=0`）是**延遲更新**的：只有讀取 `.data` 時才取樣接觸狀態並累加時間，所以每個控制步只取樣一次。
+  `compute_first_contact(dt)` 直接讀內部計時器（不會觸發更新），而且判斷條件 `0 < contact_time < dt` 剛好落在 float32 的邊界上，
+  實測會漏掉大部分著地（2026-09-19 修正前，原地踏步 5 秒只記到 1 步）。因此改由 `_update_touchdowns()` 自行判斷。

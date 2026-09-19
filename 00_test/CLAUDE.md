@@ -9,11 +9,12 @@
 
 ## 進度（詳見 `README.md`）
 - 階段 A（機器人接入模擬器）、階段 B（介面／環境／指標／影片）：已完成，2026-09-18
-- 階段 C（rule-based）：**下一步，所有前置問題都已確認（2026-09-18），可以直接開始**。做法與開發步驟見 `rule_based/CLAUDE.md` 的「實作計畫」
+- 階段 C（rule-based）：**完成，使用者已確認（2026-09-19）**。採用參數 `rule_based/params/cem2_best.json`：100 episode 成功率 95%、跌倒 0%、側向偏移中位數 0.136 m、方向誤差中位數 7.2°、速度比中位數 1.02；推擠測試 88%。數據、影片與已知限制見 `rule_based/README.md`
+- 階段 D（訓練管線）：**下一步**。開始前先完整讀 `training_pipeline/PROMPT.md`；教師策略與注意事項見 `training_pipeline/CLAUDE.md`
 - 修改 `shared/` 或 `robots/` 後，必須重新執行 `scripts/check_ref_biped.py` 與 `scripts/smoke_env.py`
 
 ## 實作重點
-- 介面契約在 `shared/interface.py`（觀測 37 維、動作 8 維、50 Hz）；環境為 `shared/env`（gym id `Biped-Test-Walk-v0`）。
+- 介面契約在 `shared/interface.py`（觀測 38 維、動作 8 維、50 Hz；2026-09-19 使用者同意加入 `gait_freq`，原本 37 維）；環境為 `shared/env`（gym id `Biped-Test-Walk-v0`）。
 - 關節一律用 `LEG_JOINT_NAMES` 的順序存取（env 的 `leg_ids`），模擬器內部的關節順序不同。
 - rule-based 的成功判定使用 `shared/metrics.py` 的 `rule_based_success`；評估時設定 `cfg.record_episodes=True`，從 `env.completed_episodes` 讀取每個 episode 的摘要。
 - 錄影：設定 `cfg.eval_camera=True` 並加上 `--enable_cameras`，再用 `env.capture_frame()` 與 `shared/video_overlay.py`；不要使用 `env.render()`，因為 viewer 的取景不準。
@@ -45,6 +46,7 @@ outputs/             # rule_based/<run>/、training/<run>/、summary.md（不進
 
 ## rule-based 驗收標準
 - 每個 episode 的成功條件：未跌倒、至少走 10 步（步數以腳掌著地次數計算，見 `/eval-video`），且前進距離 ≥ 距離下限。
+- 步數定義補充（2026-09-19 使用者確認）：騰空 ≥ 0.03 s（`min_step_air_time`，2 個控制步）才算一步，濾掉腳掌邊緣翻滾造成的接觸抖動；著地由環境自行追蹤離地→著地轉換（`compute_first_contact` 有漏算 bug，見 `shared/env/README.md`）。
 - 距離下限：`0.8 × 實際步數 × 指令步長`；預設步長 0.10 m 時，10 步至少 0.8 m。使用**實際步數**計算，原地踏步無法通過。
 - 100 個評估 episode 中，成功率 ≥ 70%（相當於 PROMPT 的跌倒率 < 30%），才能進入訓練階段。
 - **推擠測試**：另外做一組推擠評估，只作為參考指標，不納入 70% 門檻。
@@ -61,6 +63,7 @@ outputs/             # rule_based/<run>/、training/<run>/、summary.md（不進
 2. **排名**：通過硬性門檻的 episode，依指令分組（例如慢、中、快），各組分別取 reward 前 50%，避免資料集中在簡單的指令。
 3. **標記方式**：rollout 時保留少量探索雜訊，但標籤使用 policy 的平均動作；每輪混入約 20% 上一輪的資料。
 4. **逐輪收緊**：側向偏移門檻第 1 輪為 0.15 m，第 3 輪收緊到 0.08 m。
+5. **側向偏移的背景（2026-09-19）**：rule-based 的搖擺步態本身就會左右偏移（最大側向偏移中位數 0.136 m、p90 0.228 m），約一半的教師 episode 超過 0.15 m。使用者的看法：這是步態特性，交給 PPO 訓練時慢慢改善即可。篩選前的「只統計」分析要特別列出這一項的分布。
 
 **篩選後必須先檢查再繼續**：
 - `filter_report.json` 要列出每個門檻各自淘汰的比例、各指令分組的保留量，以及總保留的 episode 數與 step 數。

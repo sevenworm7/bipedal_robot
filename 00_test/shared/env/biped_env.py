@@ -69,6 +69,10 @@ class BipedWalkEnv(DirectRLEnv):
         self.target_heading = torch.zeros(n, device=dev)
         self.fell = torch.zeros(n, dtype=torch.bool, device=dev)
         self.tracker = WalkTracker(n, self.num_legs, dev)
+        n_feet = len(self.foot_sensors)
+        self.first_contact = torch.zeros(n, n_feet, dtype=torch.bool, device=dev)
+        self._prev_contact = torch.ones(n, n_feet, dtype=torch.bool, device=dev)
+        self._air_time = torch.zeros(n, n_feet, device=dev)
         self.completed_episodes: list[dict[str, torch.Tensor]] = []
         self._episode_sums = {k: torch.zeros(n, device=dev) for k in self.cfg.rewards.to_dict()}
         self._compute_state()
@@ -112,9 +116,20 @@ class BipedWalkEnv(DirectRLEnv):
         """Nominal step length implied by the command [m] (two steps per gait cycle)."""
         return self.cmd_vx / (2.0 * self.gait_freq)
 
-    def foot_first_contact(self) -> torch.Tensor:
-        """Feet that touched down during the last control step, shape [N, F] (bool)."""
-        return torch.cat([s.compute_first_contact(self.step_dt).torch[:, :1] for s in self.foot_sensors], dim=-1)
+    def _update_touchdowns(self) -> torch.Tensor:
+        """Detect foot touchdowns during the last control step, shape [N, F] (bool). Call once per step.
+
+        A touchdown is an air -> contact transition of the foot after at least ``cfg.min_step_air_time``
+        in the air (filters contact chatter when the sole rocks on an edge). Tracked here instead of
+        ``ContactSensor.compute_first_contact``: the sensor samples contact lazily (once per control
+        step) and its ``contact_time < dt`` test sits exactly on the float32 boundary, so it misses
+        most touchdowns.
+        """
+        contact = self.foot_in_contact()
+        touchdown = contact & ~self._prev_contact & (self._air_time >= self.cfg.min_step_air_time - 1e-6)
+        self._air_time = torch.where(contact, torch.zeros_like(self._air_time), self._air_time + self.step_dt)
+        self._prev_contact = contact
+        return touchdown
 
     def foot_last_air_time(self) -> torch.Tensor:
         """Duration of the last swing of each foot [s], shape [N, F]."""
@@ -178,6 +193,7 @@ class BipedWalkEnv(DirectRLEnv):
             base_ang_vel=self.base_ang_vel,
             projected_gravity=self.projected_gravity,
             cmd_vx=self.cmd_vx,
+            gait_freq=self.gait_freq,
             heading_error=self.heading_error,
             joint_pos_rel=self.leg_pos - self.default_leg_pos,
             joint_vel=self.leg_vel,
@@ -192,7 +208,7 @@ class BipedWalkEnv(DirectRLEnv):
         self.fell = (self.com_pos[:, 2] < self.cfg.fall_com_height) | (self.projected_gravity[:, 2] > tilt_limit)
         time_out = self.episode_length_buf >= self.max_episode_length - 1
 
-        self.first_contact = self.foot_first_contact()
+        self.first_contact = self._update_touchdowns()
         # the initial landing after spawn (soles start a few mm above ground) is not a step
         settled = (self.episode_length_buf.float() * self.step_dt > self.cfg.settle_time).float()
         torque_abs = self.leg_torque.abs()
@@ -282,6 +298,8 @@ class BipedWalkEnv(DirectRLEnv):
         self.prev_actions[env_ids] = 0.0
         self.q_target[env_ids] = self.default_leg_pos[env_ids]
         self.fell[env_ids] = False
+        self._prev_contact[env_ids] = False  # the initial landing is masked by cfg.settle_time
+        self._air_time[env_ids] = 0.0
 
         root_pose = self.robot.data.default_root_pose.torch[env_ids].clone()
         root_pose[:, :3] += self.spawn_origins[env_ids]

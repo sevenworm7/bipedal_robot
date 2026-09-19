@@ -56,6 +56,7 @@ tools\isaacpy.cmd C:\isaaclab\scripts\reinforcement_learning\play.py  --rl_libra
   - `activate_contact_sensors` 只作用在最外層的剛體 → 需要自己遍歷所有剛體並補上 API（見 `00_test/shared/env/biped_env.py`）
   - 用一個 regex 的 ContactSensor 橫跨左右腳時，只抓得到第一隻 → 每隻腳各建一個感測器
 - 原始檔的路徑含中文時，先複製到 ASCII 路徑再轉檔。
+- `ContactSensor` 是延遲更新的：讀取 `.data` 才會取樣接觸狀態（每個控制步一次）。`compute_first_contact(dt)` 不會觸發更新，且 `contact_time < dt` 的判斷卡在 float32 邊界，會漏掉大部分著地 → 用 `foot_in_contact()` 自己追蹤「離地 → 著地」轉換（見 `00_test/shared/env/biped_env.py` 的 `_update_touchdowns`）。
 - 錄影時用獨立的 `Camera` 感測器搭配 `set_world_poses_from_view`；viewer 的 `asset_root` 跟隨模式取景不準。
 - 最終以本機原始碼 `C:\isaaclab\docs\source\migration\migrating_to_isaaclab_3-0.rst` 為準。
 

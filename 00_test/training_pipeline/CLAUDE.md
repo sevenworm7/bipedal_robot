@@ -8,6 +8,8 @@
 - 實驗一的目的是驗證管線是否可行：遇到問題時，要記錄是管線本身的問題，還是參考模型的限制（例如腳掌太重、缺少自由度），以便實驗二參考。
 
 1. **資料收集**：執行同一個實驗的 rule-based 控制器，把 (state, action) 存成 HDF5，並記錄 episode 邊界與情境參數。
+   - 實驗一的教師：`rule_based.RuleBasedBipedController`，參數 `rule_based/params/cem2_best.json`（載入方式見 `rule_based/evaluate.py`）；可用 `RuleBasedCfg.param_ranges` 讓參數每個 episode 隨機，增加資料多樣性。
+   - 教師有兩個學生看不到的內部狀態：reset 後的時間（前 1.5 個週期漸進啟動）與積分的側向速度。影響應該很小，但 BC 在 episode 開頭的誤差較大時，先檢查這裡。
 2. **BC**：用 MLP 監督式學習（MSE／NLL），**依 episode 切分** train/val（不可依 step 切分，否則會資料洩漏）。
 3. **PPO**：以 BC 權重初始化 actor（rsl_rl 5.0.1），獎勵項與權重要寫在 config 中並列出。
    - BC 的 MLP 架構、激活函數、觀測正規化方式必須與 rsl_rl actor 完全一致，才能直接載入權重。
