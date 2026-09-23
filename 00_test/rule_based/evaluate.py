@@ -14,7 +14,6 @@ Usage:
 
 import argparse
 import json
-import math
 import sys
 import time
 from pathlib import Path
@@ -39,7 +38,7 @@ app = AppLauncher(args_cli).app
 import torch  # noqa: E402
 
 from rule_based import RuleBasedBipedController, RuleBasedCfg  # noqa: E402
-from rule_based.rollout import aggregate, run_first_episodes, torque_stats  # noqa: E402
+from shared.rollout import aggregate, binned, make_push, run_first_episodes, torque_stats  # noqa: E402
 from shared.env import BipedWalkEnv, BipedWalkEnvCfg  # noqa: E402
 
 
@@ -49,31 +48,6 @@ def load_cfg() -> RuleBasedCfg:
         for k, v in json.loads(Path(args_cli.params).read_text(encoding="utf-8")).items():
             setattr(cfg.gait, k, float(v))
     return cfg
-
-
-def make_push(push_speed: float, times: list[float]):
-    def push(env, step):
-        t = step * env.step_dt
-        if not any(abs(t - pt) < 0.5 * env.step_dt for pt in times):
-            return
-        vel = env.robot.data.root_vel_w.torch.clone()
-        ang = torch.rand(env.num_envs, device=env.device) * 2 * math.pi
-        vel[:, 0] += push_speed * torch.cos(ang)
-        vel[:, 1] += push_speed * torch.sin(ang)
-        ids = torch.arange(env.num_envs, device=env.device)
-        env.robot.write_root_velocity_to_sim_index(root_velocity=vel, env_ids=ids)
-
-    return push
-
-
-def binned(ep: dict, key: str, edges: list[float]) -> dict:
-    out = {}
-    for lo, hi in zip(edges[:-1], edges[1:]):
-        m = (ep[key] >= lo) & (ep[key] <= hi)
-        a = aggregate(ep, m)
-        out[f"{lo:.2f}-{hi:.2f}"] = {k: a.get(k) for k in ("episodes", "success_rate", "fall_rate", "mean_distance_m", "mean_vx",
-                                                         "mean_cmd_vx", "mean_max_abs_lateral_m")}
-    return out
 
 
 def main():

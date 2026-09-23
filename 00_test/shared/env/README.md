@@ -31,8 +31,16 @@
 
 ## 獎勵（初始權重，在 PPO 階段調整）
 
-速度追蹤、方向追蹤、側向速度、側向偏移、姿態、base 高度、存活、跌倒懲罰、扭矩、動作變化率、關節極限、腳掌騰空時間、接觸力。
+速度追蹤、方向追蹤、側向速度、側向偏移、姿態、base 高度、存活、跌倒懲罰、扭矩、動作變化率、關節極限、腳掌騰空時間、接觸力、步態時鐘接觸（`gait_contact`，2026-09-22 加入：時鐘相位在 `gait_swing_start` 起 `gait_swing_frac` 長的擺動區間內應離地，其餘時間應著地；右腳相差半個週期）。權重與說明見 `training_pipeline/README.md`。
 每一項會分開記錄到 `extras["log"]`，可以在 TensorBoard 上看到。
+
+## 推擠（訓練用）
+
+`cfg.push_interval_s = (4, 8)` 時，每台機器人每隔 4–8 秒（隨機）受到一次水平方向隨機、大小 `cfg.push_speed` 的速度推擠。預設關閉；PPO 訓練時開啟（0.2 m/s）。評估時的推擠測試在 `shared/rollout.py` 的 `make_push`。
+
+## episode 摘要
+
+`cfg.record_episodes = True` 時，每個結束的 episode 摘要（`env.completed_episodes`）包含指標（步數、距離、側向偏移…）、`cmd_vx`、`gait_freq`，以及各獎勵分項的累積值 `rew_<term>`。
 
 ## 錄影
 

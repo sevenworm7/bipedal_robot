@@ -20,3 +20,11 @@
 - 跨輪流程依 `/pipeline-iteration` skill 執行。每輪的 checkpoint、log、config、影片放在 `<產出根目錄>/training/iter<N>_<stage>_<date>/`（實驗一：`00_test/outputs/`；實驗二：`outputs/`）。
 - TensorBoard 至少要記錄：reward 各分項、episode length、跌倒率。
 - 最終交付：三輪之間的指標比較（跌倒率、行走距離、直線度、步態品質）。
+
+## 實作重點（2026-09-22）
+- 程式與執行順序見同資料夾的 `README.md`；所有超參數在 `config.py`，每個 run 都存 `config.yaml`。
+- BC 直接訓練 rsl_rl 的 `MLPModel`（`policy.make_actor`），和 PPO actor 同一個類別與參數；`ppo.py` 載入後會比對輸出，不一致就報錯。
+- PPO：actor 的觀測正規化器凍結；前 `critic_warmup_iters` 個 iteration 凍結 actor 只訓練 critic，之後重設學習率（adaptive schedule 在 KL = 0 時會把學習率一路調高）。
+- 評估一律用 `evaluation.py` 的固定集（100 episode、seed 42），`stats.json` 格式和 rule-based 相同；Isaac Lab 一個行程只能建一個環境，所以 PPO 訓練後的評估、錄影、rollout 收集都是獨立的指令。
+- `filter.py` 是純 Python（不啟動模擬器）。停止規則的「保留率」以**通過全部硬性門檻的比例**計算（排名只取前 50%，若用最終保留量判斷會永遠低於 50%）。
+- 老師資料預查（2026-09-22）：通過全部硬性門檻只有 23.8%，側向偏移 < 0.12 m 只有 3%。第一次篩選前的「只統計」分析結果要先給使用者看。

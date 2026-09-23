@@ -39,7 +39,7 @@ app = AppLauncher(args_cli).app
 import torch  # noqa: E402
 
 from rule_based import RuleBasedBipedController, RuleBasedCfg  # noqa: E402
-from rule_based.rollout import aggregate, parse_sweep, run_first_episodes, torque_stats  # noqa: E402
+from shared.rollout import aggregate, parse_sweep, run_first_episodes, torque_stats  # noqa: E402
 from shared.env import BipedWalkEnv, BipedWalkEnvCfg  # noqa: E402
 
 

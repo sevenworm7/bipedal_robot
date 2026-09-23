@@ -8,6 +8,8 @@ rule-based 控制器與訓練管線都**只能**從這裡取得介面定義，�
 | `interface.py` | **介面契約**：觀測向量（38 維，含步頻 `gait_freq`）、動作向量（8 維）、控制頻率、動作縮放、canonical 座標系 |
 | `metrics.py` | 每個 episode 的指標（步數、前進距離、側向偏移、扭矩飽和比例…），以及 rule-based 的成功判定 |
 | `video_overlay.py` | 評估影片的 HUD 疊加與錄影（格式依 `/eval-video` skill） |
+| `rollout.py` | 平行 rollout 與統計（每個環境跑一個 episode、`aggregate`、分組統計、扭矩百分位、推擠測試），rule-based 與訓練管線共用（2026-09-22 從 `rule_based/` 移來） |
+| `eval_videos.py` | 評估影片：多台並排、每台一個跟拍鏡頭，保留慢／中／快＋失敗案例（rule-based 與訓練管線共用） |
 | `env/` | Isaac Lab 直線行走環境 `BipedWalkEnv`（gym id：`Biped-Test-Walk-v0`） |
 | `robots/` | 機器人設定（`ref_biped.py`）與轉換出的 USD |
 

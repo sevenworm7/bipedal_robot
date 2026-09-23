@@ -73,6 +73,8 @@ class BipedWalkEnv(DirectRLEnv):
         self.first_contact = torch.zeros(n, n_feet, dtype=torch.bool, device=dev)
         self._prev_contact = torch.ones(n, n_feet, dtype=torch.bool, device=dev)
         self._air_time = torch.zeros(n, n_feet, device=dev)
+        self._last_air_time = torch.zeros(n, n_feet, device=dev)
+        self._next_push = torch.full((n,), float("inf"), device=dev)
         self.completed_episodes: list[dict[str, torch.Tensor]] = []
         self._episode_sums = {k: torch.zeros(n, device=dev) for k in self.cfg.rewards.to_dict()}
         self._compute_state()
@@ -126,14 +128,17 @@ class BipedWalkEnv(DirectRLEnv):
         most touchdowns.
         """
         contact = self.foot_in_contact()
-        touchdown = contact & ~self._prev_contact & (self._air_time >= self.cfg.min_step_air_time - 1e-6)
+        landing = contact & ~self._prev_contact
+        touchdown = landing & (self._air_time >= self.cfg.min_step_air_time - 1e-6)
+        self._last_air_time = torch.where(landing, self._air_time, self._last_air_time)
         self._air_time = torch.where(contact, torch.zeros_like(self._air_time), self._air_time + self.step_dt)
         self._prev_contact = contact
         return touchdown
 
     def foot_last_air_time(self) -> torch.Tensor:
-        """Duration of the last swing of each foot [s], shape [N, F]."""
-        return torch.cat([s.data.last_air_time.torch[:, :1] for s in self.foot_sensors], dim=-1)
+        """Duration of the last swing of each foot [s], shape [N, F] (same contact tracking as the step count,
+        sampled once per control step)."""
+        return self._last_air_time
 
     def foot_in_contact(self) -> torch.Tensor:
         """Current contact state of each foot, shape [N, F] (bool)."""
@@ -178,7 +183,24 @@ class BipedWalkEnv(DirectRLEnv):
         self.leg_torque = d.applied_torque.torch[:, self.leg_ids]
 
     # ------------------------------------------------------------------ step
+    def _apply_pushes(self):
+        """Random horizontal velocity kicks every ``cfg.push_interval_s`` seconds (training only)."""
+        if self.cfg.push_interval_s is None:
+            return
+        t = self.episode_length_buf.float() * self.step_dt
+        due = t >= self._next_push
+        if not bool(due.any()):
+            return
+        ids = due.nonzero().flatten()
+        vel = self.robot.data.root_vel_w.torch[ids].clone()
+        ang = torch.rand(len(ids), device=self.device) * 2 * math.pi
+        vel[:, 0] += self.cfg.push_speed * torch.cos(ang)
+        vel[:, 1] += self.cfg.push_speed * torch.sin(ang)
+        self.robot.write_root_velocity_to_sim_index(root_velocity=vel, env_ids=ids)
+        self._next_push[ids] = t[ids] + torch.empty(len(ids), device=self.device).uniform_(*self.cfg.push_interval_s)
+
     def _pre_physics_step(self, actions: torch.Tensor):
+        self._apply_pushes()
         self.prev_actions[:] = self.actions
         self.actions[:] = actions.clamp(-itf.ACTION_CLIP, itf.ACTION_CLIP)
         self.q_target[:] = itf.action_to_joint_targets(self.actions, self.default_leg_pos)
@@ -221,6 +243,12 @@ class BipedWalkEnv(DirectRLEnv):
         )
         return self.fell, time_out
 
+    def _gait_contact_match(self) -> torch.Tensor:
+        """Fraction of feet whose contact state matches the gait-clock schedule, shape [N]."""
+        phase = self.gait_phase.unsqueeze(1) + torch.tensor([0.0, 0.5], device=self.device)
+        in_swing = torch.remainder(phase - self.cfg.gait_swing_start, 1.0) < self.cfg.gait_swing_frac
+        return (in_swing != self.foot_in_contact()).float().mean(-1)
+
     def _get_rewards(self) -> torch.Tensor:
         c, w = self.cfg, self.cfg.rewards
         v = self.base_lin_vel
@@ -240,6 +268,7 @@ class BipedWalkEnv(DirectRLEnv):
             "joint_limits": ((self.soft_lower - self.leg_pos).clamp_min(0) + (self.leg_pos - self.soft_upper).clamp_min(0)).sum(-1),
             "feet_air_time": ((air - c.target_air_time) * self.first_contact.float()).sum(-1),
             "contact_force": (forces - c.contact_force_limit).clamp_min(0).sum(-1),
+            "gait_contact": self._gait_contact_match(),
         }
         reward = torch.zeros_like(self.cmd_vx)
         for k, val in terms.items():
@@ -267,6 +296,8 @@ class BipedWalkEnv(DirectRLEnv):
             if self.cfg.record_episodes:
                 summary["env_ids"] = done_ids.clone()
                 summary["gait_freq"] = self.gait_freq[done_ids].clone()
+                for k, v in self._episode_sums.items():  # per-term reward sums of the episode
+                    summary[f"rew_{k}"] = v[done_ids].clone()
                 self.completed_episodes.append(summary)
             log = {f"Episode_Reward/{k}": (v[done_ids].mean() / self.max_episode_length_s).item()
                    for k, v in self._episode_sums.items()}
@@ -300,6 +331,9 @@ class BipedWalkEnv(DirectRLEnv):
         self.fell[env_ids] = False
         self._prev_contact[env_ids] = False  # the initial landing is masked by cfg.settle_time
         self._air_time[env_ids] = 0.0
+        self._last_air_time[env_ids] = 0.0
+        if self.cfg.push_interval_s is not None:
+            self._next_push[env_ids] = torch.empty(n, device=dev).uniform_(*self.cfg.push_interval_s)
 
         root_pose = self.robot.data.default_root_pose.torch[env_ids].clone()
         root_pose[:, :3] += self.spawn_origins[env_ids]

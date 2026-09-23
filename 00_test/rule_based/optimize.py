@@ -54,7 +54,7 @@ app = AppLauncher(args_cli).app
 import torch  # noqa: E402
 
 from rule_based import RuleBasedBipedController, RuleBasedCfg  # noqa: E402
-from rule_based.rollout import aggregate, run_first_episodes  # noqa: E402
+from shared.rollout import aggregate, run_first_episodes  # noqa: E402
 from shared.env import BipedWalkEnv, BipedWalkEnvCfg  # noqa: E402
 
 BOUNDS = {

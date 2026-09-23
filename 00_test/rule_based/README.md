@@ -15,13 +15,12 @@
 | `config.py` | `GaitParams`（所有可調參數與預設值）、`RuleBasedCfg`（每個 episode 隨機取值的範圍、IK 邊界） |
 | `leg_kinematics.py` | 平面兩連桿 IK/FK（`SagittalLegIK`），腿長與關節極限從 robot 模組讀取 |
 | `controller.py` | `RuleBasedBipedController`：`reset(env_ids)`、`compute_action(obs) -> action`，批次處理 N 個環境 |
-| `rollout.py` | 平行 rollout 工具：每個環境跑一個 episode、統計、扭矩百分位 |
 | `check_ik.py` | 步驟 1：離線檢查 IK 與關節目標（不需要模擬器） |
 | `sweep.py` | 步驟 2–4：平行執行並掃描參數（格點） |
 | `diagnose.py` | 少量環境的時序診斷圖（腳高、接觸、姿態、關節目標與實際值）與影片 |
 | `optimize.py` | 步驟 4：CEM 參數搜尋（指令、步頻全範圍隨機） |
 | `evaluate.py` | 步驟 5：正式評估（100 episode）＋推擠測試，輸出 `stats.json` |
-| `record_videos.py` | 步驟 6：評估影片（慢／中／快＋失敗案例），HUD 格式依 `/eval-video` |
+| `record_videos.py` | 步驟 6：評估影片（慢／中／快＋失敗案例），HUD 格式依 `/eval-video`；錄影邏輯在 `shared/eval_videos.py` |
 | `params/` | CEM 找到的參數（`cem1_best.json` 第一輪、`cem2_best.json` 第二輪＝採用版本） |
 
 ## 控制器做法

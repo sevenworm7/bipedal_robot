@@ -1,4 +1,5 @@
-"""Batched rollout helpers for the rule-based controller (no simulator imports; works with any env
+"""Batched rollout helpers for any agent with ``reset(env_ids)`` / ``compute_action(obs)`` (rule-based
+teacher or learned policy). No simulator imports; works with any env
 that follows ``shared/env/biped_env.py``).
 
 ``run_first_episodes`` runs every environment until its first episode ends and returns one summary
@@ -137,4 +138,33 @@ def torque_stats(ep: dict[str, torch.Tensor], joint_names) -> dict:
         if samples is not None and samples.numel():
             row["p95"] = round(float(torch.quantile(samples[:, j].float()[:100000], 0.95)), 2)
         out[name] = row
+    return out
+
+
+def make_push(push_speed: float, times: list[float]):
+    """Push callback for :func:`run_first_episodes`: at each time in ``times`` [s] every robot gets a
+    horizontal velocity kick of ``push_speed`` [m/s] in a random direction (push test, reference only)."""
+
+    def push(env, step):
+        t = step * env.step_dt
+        if not any(abs(t - pt) < 0.5 * env.step_dt for pt in times):
+            return
+        vel = env.robot.data.root_vel_w.torch.clone()
+        ang = torch.rand(env.num_envs, device=env.device) * 2 * math.pi
+        vel[:, 0] += push_speed * torch.cos(ang)
+        vel[:, 1] += push_speed * torch.sin(ang)
+        ids = torch.arange(env.num_envs, device=env.device)
+        env.robot.write_root_velocity_to_sim_index(root_velocity=vel, env_ids=ids)
+
+    return push
+
+
+def binned(ep: dict, key: str, edges: list[float]) -> dict:
+    """:func:`aggregate` per bin of ``ep[key]`` (e.g. command speed or gait frequency)."""
+    out = {}
+    for lo, hi in zip(edges[:-1], edges[1:]):
+        m = (ep[key] >= lo) & (ep[key] <= hi)
+        a = aggregate(ep, m)
+        out[f"{lo:.2f}-{hi:.2f}"] = {k: a.get(k) for k in ("episodes", "success_rate", "fall_rate", "mean_distance_m", "mean_vx",
+                                                         "mean_cmd_vx", "mean_max_abs_lateral_m")}
     return out

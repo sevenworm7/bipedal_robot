@@ -25,8 +25,9 @@ class RewardWeightsCfg:
     """exp(-(heading_error / sigma_heading)^2)"""
     lateral_vel: float = -1.0
     """v_lateral^2 [m^2/s^2]"""
-    lateral_deviation: float = -10.0
-    """lateral offset from the straight line^2 [m^2]"""
+    lateral_deviation: float = -40.0
+    """lateral offset from the straight line^2 [m^2]; -10 -> -40 on 2026-09-23 (user decision): with -10 the
+    iteration-2 PPO let slow commands drift sideways (median max offset 0.30 m, only ~2.5 reward lost per episode)."""
     orientation: float = -2.0
     """|projected_gravity_xy|^2"""
     base_height: float = -20.0
@@ -44,6 +45,11 @@ class RewardWeightsCfg:
     """sum over touchdowns of (air_time - target_air_time) [s]"""
     contact_force: float = -1.0e-3
     """sum max(|F_foot| - contact_force_limit, 0) [N]"""
+    gait_contact: float = 2.0
+    """mean over feet of [contact state == clock schedule] (in the air inside the foot's swing window of the
+    gait clock, on the ground outside it); added 2026-09-22 (user decision) because PPO drifted away from
+    the clock (0.5-1.8 touchdowns per clock step). Teacher 19.0 / 20 per 20 s episode, old PPO 17.2 (it gained
+    +11.5 on track_vx), hence weight 2."""
 
 
 @configclass
@@ -116,6 +122,12 @@ class BipedWalkEnvCfg(DirectRLEnvCfg):
     """A touchdown counts as a step only after at least this long in the air [s] (>= 2 control steps);
     filters contact chatter of a sole rocking on its edge."""
 
+    # -- disturbances (training only; evaluation uses the push test in shared/rollout.py) --
+    push_interval_s: tuple[float, float] | None = None
+    """Time between random pushes [s], sampled per push; None disables pushes (default)."""
+    push_speed: float = 0.2
+    """Horizontal velocity kick of a push [m/s], random direction (user decision 2026-09-22: light pushes in PPO)."""
+
     # -- termination --
     fall_com_height: float = 0.22
     """Episode ends when the base CoM drops below this height [m]."""
@@ -127,6 +139,11 @@ class BipedWalkEnvCfg(DirectRLEnvCfg):
     sigma_vx: float = 0.1
     sigma_heading: float = 0.2
     target_air_time: float = 0.3
+    gait_swing_start: float = 0.075
+    """Clock phase at which the left foot is expected to leave the ground (right foot: + 0.5) [cycles].
+    Measured on the rule-based teacher (P(air) > 0.5 for phases 0.08-0.28), 2026-09-22."""
+    gait_swing_frac: float = 0.2
+    """Length of the expected swing window [cycles]."""
     contact_force_limit: float = 400.0
 
     # -- bookkeeping --
