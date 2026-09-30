@@ -1,6 +1,6 @@
 # 01_robot_construction/model：實驗二的參數化機器人模型
 
-**狀態：尚未開始**（實驗一完成後才會進行）。
+**狀態：尚未開始**（第一版將是 `v1/`，以 `../design_refs/architecture_v0_1.md` 為起點）。每個版本一個子資料夾 `v<N>/`，保留所有版本，規則見根目錄 `CLAUDE.md`「版本控制」。
 
 預計內容（流程見 `/robot-model` skill）：
 

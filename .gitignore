@@ -25,3 +25,13 @@ __pycache__/
 .ipynb_checkpoints/
 .vscode/
 .claude/settings.local.json
+
+# Third-party servo CAD / vendor files (downloaded locally; licences CC BY-NC-SA etc., re-download from links in the README)
+01_robot_construction/design_refs/hd1910/cad/
+*.xlsx
+01_robot_construction/design_refs/hd1910/vendor/fddebug/
+
+# CAD Python environment (uv + build123d), kept inside the project but not versioned
+tools/bin/
+.uv/
+.venv_cad/
