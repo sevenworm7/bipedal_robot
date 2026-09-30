@@ -1,0 +1,2 @@
+robot-v1 frozen on 2026-09-30 (user decision). Generator scripts refuse to rebuild this version.
+Any model change goes into v2; collect issues in ../v2_backlog.md.

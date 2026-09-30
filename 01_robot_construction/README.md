@@ -1,6 +1,6 @@
 # 01_robot_construction：實驗二的機器人模型設計
 
-**狀態：模型 v1 建模、複查與檢查完成（2026-09-30）；打 tag `robot-v1` 的時機由使用者決定（建議試印一組零件之後）。** 內容與檢查結果見 [`model/v1/README.md`](model/v1/README.md)，相對 v0.1 規劃稿的修改見 `model/v1/CHANGELOG.md`；互動 3D 圖：本機開 `model/v1/viewer.html`，或 https://claude.ai/artifact/KMshhxBa9vifvMSXP5GH9q（私人連結）。
+**狀態：模型 v1 建模、複查與檢查完成（2026-09-30）；已凍結為 tag `robot-v1`（之後的問題記在 `model/v2_backlog.md`）。** 內容與檢查結果見 [`model/v1/README.md`](model/v1/README.md)，相對 v0.1 規劃稿的修改見 `model/v1/CHANGELOG.md`；互動 3D 圖：本機開 `model/v1/viewer.html`，或 https://claude.ai/artifact/KMshhxBa9vifvMSXP5GH9q（私人連結）。
 
 實驗二要自行設計一台雙足機器人，用程式參數化的方式產生 URDF → USD → Isaac Lab 可用的 `ArticulationCfg`，
 之後由 `02_rule_based/` 與 `03_training_pipeline/` 接手。
