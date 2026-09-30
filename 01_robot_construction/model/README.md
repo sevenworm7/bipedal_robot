@@ -1,14 +1,15 @@
 # 01_robot_construction/model：實驗二的參數化機器人模型
 
-**狀態：尚未開始**（第一版將是 `v1/`，以 `../design_refs/architecture_v0_1.md` 為起點）。每個版本一個子資料夾 `v<N>/`，保留所有版本，規則見根目錄 `CLAUDE.md`「版本控制」。
+每個版本一個子資料夾 `v<N>/`，**所有版本都保留**（規則見根目錄 `CLAUDE.md`「版本控制」）；產生程式在 `generator/`，各版共用。
 
-預計內容（流程見 `/robot-model` skill）：
+| 版本 | 狀態 | 重點 |
+|---|---|---|
+| [`v1/`](v1/README.md) | 建模完成（2026-09-30），待使用者確認後打 tag `robot-v1` | 第一個實際建模的版本：每腿 4 DOF＋2 DOF 尾巴、10 顆 HD-1910、0.69 kg |
 
-| 檔案 | 用途 |
+| 資料夾 | 內容 |
 |---|---|
-| `params.yaml` | 唯一的參數來源：尺寸、質量、自由度、關節範圍、致動器 |
-| `build_urdf.py` | 由參數產生 URDF（基本形狀碰撞體，慣量由形狀和質量計算） |
-| `urdf/biped.urdf` | 產出檔，禁止手動修改 |
-| `usd/` | 轉換出的 USD，不進 git |
+| `generator/` | params.yaml → 零件（build123d）→ URDF → USD → 檢查，執行方式見 [`generator/README.md`](generator/README.md) |
+| `v<N>/` | 該版的 `params.yaml`（唯一參數來源）、`CHANGELOG.md`、`ASSEMBLY.md`、列印檔、URDF、檢查報告 |
 
-設計時參考實驗一的結論（`00_test/outputs/summary.md`），以及參考模型的已知問題（根目錄 `CLAUDE.md`）。
+新增版本：複製上一版的 `params.yaml` 到 `v<N+1>/`，把 `robot.version` 改成 N+1、修改參數、寫 CHANGELOG，再跑 generator 的 1–6 步。
+USD 轉檔結果放在 `shared/robots/usd/custom_biped_v<N>/`（不進 git），下游用 `CUSTOM_BIPED_VERSION` 環境變數選版本（預設見 `shared/robots/custom_biped.py`）。

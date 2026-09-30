@@ -1,7 +1,7 @@
 # 機構架構 v0.1（規劃稿，2026-09-29）
 
 實驗二機器人的機構配置：馬達型號、每顆馬達的擺放方向、連桿尺寸、尾巴結構、組裝方式。
-**這是規劃稿，還沒有建模**；使用者確認後，數字會搬進 `../model/params.yaml`，之後以 params.yaml 為準。
+**這是規劃稿。2026-09-30 已建模為 v1，之後以 `../model/v1/params.yaml` 為準**；v1 和本文件不同的地方見 `../model/v1/CHANGELOG.md`。
 互動 3D 圖與三視圖：`architecture_sketch_v0_1.html`，已發佈為 Artifact：https://claude.ai/artifact/WVU1mxA1tLG44yR1iQK6HJ（私人連結）。
 
 ## 1. 馬達：Feetech HD-1910-C001 × 10（2026-09-30 使用者確定）

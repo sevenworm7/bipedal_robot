@@ -35,3 +35,7 @@ __pycache__/
 tools/bin/
 .uv/
 .venv_cad/
+
+# Robot model versions keep their print files and visual meshes (a few MB, needed to rebuild a tagged version)
+!01_robot_construction/model/v*/parts/stl/*.stl
+!01_robot_construction/model/v*/meshes/*.stl

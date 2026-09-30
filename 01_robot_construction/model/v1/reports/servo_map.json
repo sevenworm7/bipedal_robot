@@ -1,0 +1,172 @@
+[
+ {
+  "id": 1,
+  "joint": "left_hip_roll",
+  "bus": "left",
+  "servo": "servo_left_hip_roll",
+  "horn_dir": [
+   1,
+   0,
+   0
+  ],
+  "body_dir": [
+   0,
+   0,
+   1
+  ],
+  "direction": 1
+ },
+ {
+  "id": 2,
+  "joint": "left_hip_pitch",
+  "bus": "left",
+  "servo": "servo_left_hip_pitch",
+  "horn_dir": [
+   0,
+   1,
+   0
+  ],
+  "body_dir": [
+   0,
+   0,
+   -1
+  ],
+  "direction": 1
+ },
+ {
+  "id": 3,
+  "joint": "left_knee",
+  "bus": "left",
+  "servo": "servo_left_knee",
+  "horn_dir": [
+   0,
+   1,
+   0
+  ],
+  "body_dir": [
+   0,
+   0,
+   1
+  ],
+  "direction": 1
+ },
+ {
+  "id": 4,
+  "joint": "left_ankle_pitch",
+  "bus": "left",
+  "servo": "servo_left_ankle",
+  "horn_dir": [
+   0,
+   1,
+   0
+  ],
+  "body_dir": [
+   0,
+   0,
+   1
+  ],
+  "direction": 1
+ },
+ {
+  "id": 5,
+  "joint": "right_hip_roll",
+  "bus": "right",
+  "servo": "servo_right_hip_roll",
+  "horn_dir": [
+   1,
+   0,
+   0
+  ],
+  "body_dir": [
+   0,
+   0,
+   1
+  ],
+  "direction": 1
+ },
+ {
+  "id": 6,
+  "joint": "right_hip_pitch",
+  "bus": "right",
+  "servo": "servo_right_hip_pitch",
+  "horn_dir": [
+   0,
+   -1,
+   0
+  ],
+  "body_dir": [
+   0,
+   0,
+   -1
+  ],
+  "direction": -1
+ },
+ {
+  "id": 7,
+  "joint": "right_knee",
+  "bus": "right",
+  "servo": "servo_right_knee",
+  "horn_dir": [
+   0,
+   -1,
+   0
+  ],
+  "body_dir": [
+   0,
+   0,
+   1
+  ],
+  "direction": -1
+ },
+ {
+  "id": 8,
+  "joint": "right_ankle_pitch",
+  "bus": "right",
+  "servo": "servo_right_ankle",
+  "horn_dir": [
+   0,
+   -1,
+   0
+  ],
+  "body_dir": [
+   0,
+   0,
+   1
+  ],
+  "direction": -1
+ },
+ {
+  "id": 9,
+  "joint": "tail_yaw",
+  "bus": "tail",
+  "servo": "servo_tail_yaw",
+  "horn_dir": [
+   0,
+   0,
+   -1
+  ],
+  "body_dir": [
+   1,
+   0,
+   0
+  ],
+  "direction": -1
+ },
+ {
+  "id": 10,
+  "joint": "tail_pitch",
+  "bus": "tail",
+  "servo": "servo_tail_pitch",
+  "horn_dir": [
+   0,
+   1,
+   0
+  ],
+  "body_dir": [
+   1,
+   0,
+   0
+  ],
+  "direction": 1
+ }
+]

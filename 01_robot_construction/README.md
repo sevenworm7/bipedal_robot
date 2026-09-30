@@ -1,6 +1,6 @@
 # 01_robot_construction：實驗二的機器人模型設計
 
-**狀態：規劃完成（2026-09-30），下一步開始 v1**：建立 CAD 環境（uv＋build123d，位置見根目錄 `CLAUDE.md`）→ `model/v1/params.yaml` → 零件與 URDF → 離線 IK／扭矩檢查 → USD → Isaac Sim 健全性檢查 → 讀 params 的互動圖。
+**狀態：模型 v1 建模、複查與檢查完成（2026-09-30）；打 tag `robot-v1` 的時機由使用者決定（建議試印一組零件之後）。** 內容與檢查結果見 [`model/v1/README.md`](model/v1/README.md)，相對 v0.1 規劃稿的修改見 `model/v1/CHANGELOG.md`；互動 3D 圖：本機開 `model/v1/viewer.html`，或 https://claude.ai/artifact/KMshhxBa9vifvMSXP5GH9q（私人連結）。
 
 實驗二要自行設計一台雙足機器人，用程式參數化的方式產生 URDF → USD → Isaac Lab 可用的 `ArticulationCfg`，
 之後由 `02_rule_based/` 與 `03_training_pipeline/` 接手。
@@ -9,7 +9,7 @@
 |---|---|
 | `CLAUDE.md` | 設計要求（來自實驗一的實測結果）與建模後的檢查清單 |
 | `design_refs/` | 原始概念圖、尾巴平衡與腿部設計的分析、機構架構 v0.1（含互動 3D 圖） |
-| `model/` | 參數檔、URDF 產生程式與產出（**尚未建立**） |
+| `model/` | `generator/`（各版共用的產生程式）與 `v<N>/`（每版的參數、列印檔、URDF、報告） |
 
 ## 設計概念：帶主動尾巴的小型雙足機器人
 

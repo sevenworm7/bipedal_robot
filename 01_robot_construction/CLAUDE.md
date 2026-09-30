@@ -1,7 +1,7 @@
 # 01 機器人模型設計（實驗二）
 
 參數化 URDF → USD，流程見 `/robot-model` skill，產出放在 `model/`（見 `model/README.md`）。
-座標慣例：+X 前、+Y 左、+Z 上；碰撞體用基本形狀；單一參數檔（`model/params.yaml`）是唯一的尺寸來源。
+座標慣例：+X 前、+Y 左、+Z 上；碰撞體用基本形狀；每個版本的 `model/v<N>/params.yaml` 是該版唯一的尺寸來源，產生與檢查步驟見 `model/generator/README.md`。
 
 ## 設計要求（來自實驗一的實測結果，`00_test/outputs/summary.md`）
 
@@ -77,7 +77,8 @@
 
 ### 機構架構 v0.1（2026-09-29，待使用者確認）
 - 機構配置的唯一文件是 `design_refs/architecture_v0_1.md`（馬達擺放、尺寸、質量、組裝）；互動 3D 圖為 `design_refs/architecture_sketch_v0_1.html`。
-  建 `params.yaml` 時以它為起點，確認後改以 params.yaml 為準，兩者不一致時更新 architecture 文件的註記。
+  **v1 已建模（2026-09-30），之後以 `model/v1/params.yaml` 為準**；和 v0.1 不同的地方（十字 hip 件＋hip_pitch 馬達裝在大腿、擺臂滑槽、hip_roll 軸 239 mm、hip_pitch −55°～+45°、軀幹倒扣殼體、尾巴座後移等）見 `model/v1/CHANGELOG.md`。
+- **馬達實物資訊（官方 STEP 量得）**：擺臂螺孔在 0°／90°（沿本體長邊、寬邊）；**連接器插座在兩個長側面、靠副擺臂的那一半**（離軸 3.5–15 mm），設計時要留插頭空間；干涉檢查已納入螺絲頭與插頭保留空間。
 - **馬達 Feetech HD-1910-C001**（34 × 20 × 23 mm），**輸出軸距 34 mm 長邊一端 9.5 mm**、居寬度中央（2026-09-30 由 `design_refs/hd1910/cad/HD-1910-c001-dan.stp` 量得；固定孔 4 × Ø1.5、孔距 30 × 16 mm，見 architecture 第 1 節）。官方 STEP 與規格書 PDF 未公開。正式規格書：堵轉 1.18 N·m @ 6 V／1.47 N·m @ 7.4 V、額定 0.294／0.363 N·m、減速比 320:1、出廠 ID 1、出廠模式 4（純位置 PD）。模擬先用 6 V 數字＋`DCMotorCfg`；HD-1910 的 3D 模型（SLDPRT）、BAM 致動器參數、飛特暫存器表都在 `design_refs/hd1910/`（見其 README）。
 - **機器人會 3D 列印成實體**：每個關節都要「擺臂＋對側被動軸」雙邊支撐；組裝時馬達先轉到中位 2048 再鎖擺臂，這個姿態等於 URDF 零位；右腿馬達鏡像安裝，正方向用 `JOINT_AXIS_SIGN` 統一。出廠 ID 都是 1，要逐顆改 ID；過流、過壓保護出廠關閉，要打開。
 - **尾巴的正確理解**（初版分析有誤，已修正）：側向平衡靠尾巴**左右擺**造成的重心與 ZMP 移動，水平尾巴效果最大，不要往下垂。見 `design_refs/tail_balance_research.md` 第 1 節。

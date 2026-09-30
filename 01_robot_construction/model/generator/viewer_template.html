@@ -1,0 +1,343 @@
+<title>Tail Biped v{{VERSION}}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: workbench — 3D view with the joint console beside it, report sheets below. */
+:root {
+  --bg: #eef0f1; --panel: #f9fafa; --ink: #1d2226; --muted: #5d676e; --line: #cfd5d9;
+  --accent: #2257c9; --print: #d9cfb8; --servo: #33383d; --tpu: #3f7a5a; --rod: #4a4f55;
+  --ok: #2f8a4f; --warn: #b8741a; --bad: #c0392b; --com: #e0661b; --grid: #c3cacf;
+  --f-display: "Barlow Semi Condensed", "Noto Sans TC", system-ui, sans-serif;
+  --f-body: "Noto Sans TC", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #15191c; --panel: #1d2226; --ink: #e4e8ea; --muted: #97a2a9; --line: #333b41;
+  --accent: #7ea6ff; --print: #cbbf9f; --servo: #505861; --tpu: #5aa57c; --rod: #6f767d;
+  --ok: #5cc27f; --warn: #e0a24e; --bad: #ef6f5f; --com: #ff8a3d; --grid: #2d353a; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #15191c; --panel: #1d2226; --ink: #e4e8ea; --muted: #97a2a9; --line: #333b41;
+  --accent: #7ea6ff; --print: #cbbf9f; --servo: #505861; --tpu: #5aa57c; --rod: #6f767d;
+  --ok: #5cc27f; --warn: #e0a24e; --bad: #ef6f5f; --com: #ff8a3d; --grid: #2d353a; color-scheme: dark }
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 14px; line-height: 1.55 }
+.wrap { max-width: 1280px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 48px; display: grid; gap: 20px }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 20px }
+h1 { font-family: var(--f-display); font-weight: 700; font-size: 30px; letter-spacing: .01em; margin: 0; text-wrap: balance }
+h2 { font-family: var(--f-display); font-weight: 600; font-size: 19px; margin: 0 0 10px; letter-spacing: .02em }
+.meta { color: var(--muted); font-family: var(--f-mono); font-size: 12px }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; width: 100% }
+.chip { font-family: var(--f-mono); font-size: 12.5px; padding: 3px 9px; border: 1px solid var(--line); border-radius: 3px; background: var(--panel) }
+.chip b { font-weight: 600 }
+.bench { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 16px; align-items: start }
+@media (max-width: 860px) { .bench { grid-template-columns: minmax(0, 1fr) } }
+#view { position: relative; aspect-ratio: 4 / 3; max-width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; overflow: hidden }
+#view canvas { display: block; width: 100%; height: 100% }
+.hud { position: absolute; left: 10px; bottom: 10px; font-family: var(--f-mono); font-size: 12px; background: color-mix(in srgb, var(--panel) 88%, transparent); padding: 6px 9px; border-radius: 3px; border: 1px solid var(--line); display: grid; gap: 2px }
+.hud .st { font-weight: 600 }
+.legend { position: absolute; right: 10px; top: 10px; display: grid; gap: 3px; font-size: 12px; background: color-mix(in srgb, var(--panel) 88%, transparent); padding: 6px 9px; border-radius: 3px; border: 1px solid var(--line) }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px }
+#loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted) }
+.console { background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 14px; display: grid; gap: 14px; min-width: 0 }
+.presets { display: flex; flex-wrap: wrap; gap: 6px }
+button { font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 3px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer }
+button:hover { border-color: var(--accent) }
+button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--panel) }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+.jgroup { display: grid; gap: 6px }
+.jgroup h3 { margin: 0; font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; font-family: var(--f-mono) }
+.jrow { display: grid; grid-template-columns: 88px minmax(0, 1fr) 46px; gap: 8px; align-items: center; font-size: 12.5px }
+.jrow label { font-family: var(--f-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.jrow output { font-family: var(--f-mono); text-align: right; font-variant-numeric: tabular-nums }
+input[type=range] { width: 100%; accent-color: var(--accent) }
+.toggles { display: flex; flex-wrap: wrap; gap: 12px; font-size: 13px }
+.sheets { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px }
+.sheet { background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 14px; min-width: 0 }
+.tbl { overflow-x: auto }
+table { border-collapse: collapse; width: 100%; font-size: 12.5px }
+th, td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--line); vertical-align: top }
+th { color: var(--muted); font-weight: 500; font-size: 11.5px; letter-spacing: .04em }
+td.n { font-family: var(--f-mono); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap }
+.bar { height: 6px; background: var(--line); border-radius: 3px; position: relative; min-width: 60px }
+.bar span { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px }
+.note { color: var(--muted); font-size: 12.5px; max-width: 70ch }
+ul.tight { margin: 0; padding-left: 18px; display: grid; gap: 4px }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Tail Biped <span id="ver">v1</span></h1>
+    <span class="meta" id="gen"></span>
+    <div class="chips" id="chips"></div>
+  </header>
+
+  <section class="bench">
+    <div id="view" aria-label="機器人 3D 模型，可拖曳旋轉">
+      <div id="loading">載入零件中…</div>
+      <div class="legend">
+        <span><i style="background:var(--print)"></i>列印件（PETG）</span>
+        <span><i style="background:var(--servo)"></i>HD-1910 馬達</span>
+        <span><i style="background:var(--tpu)"></i>TPU 腳墊</span>
+        <span><i style="background:var(--com)"></i>全身重心／投影</span>
+      </div>
+      <div class="hud" id="hud"></div>
+    </div>
+    <div class="console">
+      <div class="presets" id="presets" role="group" aria-label="姿勢"></div>
+      <div id="sliders" class="jgroup-list" style="display:grid;gap:12px"></div>
+      <div class="toggles">
+        <label><input type="checkbox" id="tgElec" checked> 電子部件</label>
+        <label><input type="checkbox" id="tgGhost"> 外殼半透明</label>
+        <label><input type="checkbox" id="tgAxes"> 關節軸</label>
+      </div>
+    </div>
+  </section>
+
+  <section class="sheets">
+    <div class="sheet"><h2>靜態扭矩（6 V）</h2><div class="tbl"><table id="tTorque"></table></div>
+      <p class="note">長條以堵轉 1.18 N·m 為滿格；顏色依額定 0.294 N·m 的比例：綠 &lt; 50%、橘 50–100%、紅 &gt; 100%。</p></div>
+    <div class="sheet"><h2>單腳支撐與尾巴</h2><div class="tbl"><table id="tSingle"></table></div>
+      <p class="note">左腳支撐、右腳抬起。沒有 ankle roll，所以靠 hip_roll 讓軀幹往支撐側傾；重心要落在腳掌內緣以內 10 mm。</p></div>
+    <div class="sheet"><h2>連桿質量</h2><div class="tbl"><table id="tMass"></table></div></div>
+    <div class="sheet"><h2>可達範圍與站姿</h2><ul class="tight" id="reach"></ul></div>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(async function () {
+  const $ = (s) => document.querySelector(s);
+  const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const DEG = Math.PI / 180;
+  let R;
+  try { R = window.__ROBOT__ || await (await fetch("robot.json")).json(); }
+  catch (e) { $("#loading").textContent = "robot.json 載入失敗：" + e.message; return; }
+
+  $("#ver").textContent = "v" + R.version;
+  $("#gen").textContent = `${R.name} · git ${R.git} · ${R.generated}`;
+  const st = R.static.stance;
+  const chips = [
+    ["總重", (R.total_mass_g / 1000).toFixed(3) + " kg"],
+    ["站姿髖高", st.base_height_mm.toFixed(0) + " mm"],
+    ["重心高", st.com_mm[2].toFixed(0) + " mm"],
+    ["自由度", "4 + 4 + 尾巴 2"],
+    ["馬達", "HD-1910 × 10"],
+    ["T_c", R.static.Tc_s.toFixed(3) + " s"],
+  ];
+  $("#chips").innerHTML = chips.map(([k, v]) => `<span class="chip">${k} <b>${v}</b></span>`).join("");
+
+  // ---------------- scene
+  const view = $("#view");
+  let renderer;
+  try { renderer = new THREE.WebGLRenderer({ antialias: true }); }
+  catch (e) { $("#loading").textContent = "這個瀏覽器無法使用 WebGL。下方的報表仍然有效。"; return; }
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  view.prepend(renderer.domElement);
+  const scene = new THREE.Scene();
+  const cam = new THREE.PerspectiveCamera(32, 4 / 3, 5, 6000);
+  cam.up.set(0, 0, 1);
+  cam.position.set(520, -620, 380);
+  const controls = new THREE.OrbitControls(cam, renderer.domElement);
+  controls.target.set(-60, 0, 130);
+  controls.enableDamping = true;
+  controls.update();
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x8a9296, 0.8));
+  const d1 = new THREE.DirectionalLight(0xffffff, 0.7); d1.position.set(300, -300, 700); scene.add(d1);
+  const d2 = new THREE.DirectionalLight(0xffffff, 0.25); d2.position.set(-400, 300, 200); scene.add(d2);
+  let grid;
+
+  const mats = {};
+  function makeMats() {
+    const mk = (tok, extra) => new THREE.MeshStandardMaterial(Object.assign({ color: new THREE.Color(css(tok)), roughness: 0.75, metalness: 0.05 }, extra || {}));
+    mats.print = mk("--print"); mats.servo = mk("--servo", { roughness: 0.5 }); mats.tpu = mk("--tpu");
+    mats.rod = mk("--rod", { roughness: 0.4 }); mats.elec = mk("--accent", { transparent: true, opacity: 0.35 });
+    mats.com = new THREE.MeshBasicMaterial({ color: new THREE.Color(css("--com")) });
+    scene.background = new THREE.Color(css("--panel"));
+    if (grid) scene.remove(grid);
+    grid = new THREE.GridHelper(1200, 24, new THREE.Color(css("--grid")), new THREE.Color(css("--grid")));
+    grid.rotation.x = Math.PI / 2; grid.position.set(-80, 0, -0.4); scene.add(grid);
+  }
+  makeMats();
+
+  // ---------------- kinematic tree
+  const root = new THREE.Group(); scene.add(root);
+  const L = {}; const O = {};
+  for (const [k, v] of Object.entries(R.links)) O[k] = new THREE.Vector3(...v.origin);
+  L.base = new THREE.Group(); L.base.position.copy(O.base); root.add(L.base);
+  const J = {};
+  for (const j of R.joints) {
+    const g = new THREE.Group();
+    g.position.copy(O[j.child]).sub(O[j.parent]);
+    L[j.parent].add(g); L[j.child] = g;
+    const ax = new THREE.ArrowHelper(new THREE.Vector3(...j.axis), new THREE.Vector3(...j.axis).multiplyScalar(-35), 70, new THREE.Color(css("--accent")).getHex(), 10, 6);
+    ax.visible = false; g.add(ax);
+    J[j.name] = { g, axis: new THREE.Vector3(...j.axis), j, ax };
+  }
+  const loader = new THREE.STLLoader();
+  const meshObjs = [];
+  let packed = {};
+  try { packed = window.__MESHES__ || await (await fetch("meshes.json")).json(); }
+  catch (e) { $("#loading").textContent = "meshes.json 載入失敗：" + e.message; }
+  const b64 = (s) => { const bin = atob(s), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u.buffer; };
+  await Promise.all(R.meshes.filter(m => packed[m.file]).map(async (m) => {
+    const buf = b64(packed[m.file]);
+    const geo = loader.parse(buf); geo.computeVertexNormals();
+    const mesh = new THREE.Mesh(geo, mats[m.kind] || mats.print);
+    mesh.userData.kind = m.kind; mesh.userData.link = m.link;
+    L[m.link].add(mesh); meshObjs.push(mesh);
+  })).catch(e => { $("#loading").textContent = "零件載入失敗：" + e.message; });
+  $("#loading").hidden = true;
+
+  const elecGroup = new THREE.Group(); L.base.add(elecGroup);
+  for (const [k, e] of Object.entries(R.electronics)) {
+    const b = new THREE.Mesh(new THREE.BoxGeometry(...e.size), mats.elec);
+    b.position.set(...e.center).sub(O.base); elecGroup.add(b);
+  }
+  const comBall = new THREE.Mesh(new THREE.SphereGeometry(6, 20, 14), mats.com); scene.add(comBall);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(7, 10, 32), mats.com); scene.add(ring);
+  const supGeo = new THREE.BufferGeometry();
+  const sup = new THREE.LineLoop(supGeo, new THREE.LineBasicMaterial({ color: new THREE.Color(css("--ok")) }));
+  sup.frustumCulled = false; scene.add(sup);
+
+  // ---------------- pose
+  const pose = {}; R.joints.forEach(j => pose[j.name] = 0);
+  const FL = R.foot.length / 2, FW = R.foot.width / 2, AH = R.foot.ankle_height;
+  const corners = [[-FL, -FW], [FL, -FW], [FL, FW], [-FL, FW]].map(([x, y]) => new THREE.Vector3(x, y, -AH));
+
+  function hull(P) {
+    if (P.length < 3) return P.slice();
+    P = P.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    const lo = [], up = [];
+    for (const p of P) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], p) <= 1e-9) lo.pop(); lo.push(p); }
+    for (let i = P.length - 1; i >= 0; i--) { const p = P[i]; while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], p) <= 1e-9) up.pop(); up.push(p); }
+    up.pop(); lo.pop(); return lo.concat(up);
+  }
+  function inside(pt, poly) {
+    if (poly.length < 3) return -Infinity;
+    let d = Infinity, ins = false;
+    for (let i = 0, k = poly.length - 1; i < poly.length; k = i++) {
+      const [xi, yi] = poly[i], [xk, yk] = poly[k];
+      if ((yi > pt[1]) !== (yk > pt[1]) && pt[0] < (xk - xi) * (pt[1] - yi) / (yk - yi) + xi) ins = !ins;
+      const dx = xk - xi, dy = yk - yi, t = Math.max(0, Math.min(1, ((pt[0] - xi) * dx + (pt[1] - yi) * dy) / (dx * dx + dy * dy || 1)));
+      d = Math.min(d, Math.hypot(pt[0] - xi - t * dx, pt[1] - yi - t * dy));
+    }
+    return ins ? d : -d;
+  }
+
+  function update() {
+    for (const k in J) J[k].g.quaternion.setFromAxisAngle(J[k].axis, pose[k] * DEG);
+    root.position.set(0, 0, 0); root.updateMatrixWorld(true);
+    const w = new THREE.Vector3(); let minZ = Infinity; const feet = [];
+    for (const f of ["left_foot", "right_foot"]) for (const c of corners) { w.copy(c); L[f].localToWorld(w); feet.push([w.x, w.y, w.z]); minZ = Math.min(minZ, w.z); }
+    root.position.z = -minZ; root.updateMatrixWorld(true);
+    const pts = feet.filter(p => p[2] - minZ < 1.5).map(p => [p[0], p[1]]);
+    const poly = hull(pts);
+    supGeo.setFromPoints(poly.map(p => new THREE.Vector3(p[0], p[1], 0.6)));
+    let m = 0; const c = new THREE.Vector3();
+    for (const [k, v] of Object.entries(R.links)) { w.set(...v.com); L[k].localToWorld(w); c.addScaledVector(w, v.mass_g); m += v.mass_g; }
+    c.divideScalar(m);
+    comBall.position.copy(c); ring.position.set(c.x, c.y, 0.7);
+    const margin = inside([c.x, c.y], poly);
+    const ok = margin >= 10, edge = margin >= 0;
+    const col = css(ok ? "--ok" : edge ? "--warn" : "--bad");
+    sup.material.color.set(col);
+    $("#hud").innerHTML =
+      `<span>重心 x ${c.x.toFixed(1)}　y ${c.y.toFixed(1)}　z ${c.z.toFixed(1)} mm</span>` +
+      `<span class="st" style="color:${col}">${poly.length < 3 ? "沒有支撐面" : ok ? "穩定" : edge ? "在支撐面內，但離邊緣 < 10 mm" : "重心在支撐面外"}` +
+      `${poly.length >= 3 ? `（距邊緣 ${margin.toFixed(1)} mm）` : ""}</span>`;
+  }
+
+  // ---------------- console
+  const groups = [["左腿", "left_"], ["右腿", "right_"], ["尾巴", "tail_"]];
+  const sl = {};
+  $("#sliders").innerHTML = groups.map(([t, pre]) => `<div class="jgroup"><h3>${t}</h3>` +
+    R.joints.filter(j => j.name.startsWith(pre)).map(j =>
+      `<div class="jrow"><label for="s_${j.name}">${j.name.replace(pre, "").replace("_pitch", " pitch").replace("_roll", " roll").replace("_yaw", " yaw")}</label>` +
+      `<input type="range" id="s_${j.name}" min="${j.lower}" max="${j.upper}" step="1" value="0"><output id="o_${j.name}">0°</output></div>`).join("") + "</div>").join("");
+  for (const j of R.joints) {
+    const s = $("#s_" + j.name); sl[j.name] = s;
+    s.addEventListener("input", () => { stopGait(); pose[j.name] = +s.value; $("#o_" + j.name).textContent = s.value + "°"; setPressed(null); update(); });
+  }
+  function setPose(p) {
+    for (const j of R.joints) { pose[j.name] = p[j.name] || 0; sl[j.name].value = pose[j.name]; $("#o_" + j.name).textContent = Math.round(pose[j.name]) + "°"; }
+    update();
+  }
+  const S = R.stance;
+  const stand = { left_hip_pitch: S.hip_pitch, left_knee: S.knee, left_ankle_pitch: S.ankle_pitch,
+                  right_hip_pitch: S.hip_pitch, right_knee: S.knee, right_ankle_pitch: S.ankle_pitch };
+  const lift = Object.assign({}, stand, { right_hip_pitch: S.hip_pitch - 25, right_knee: S.knee + 50, right_ankle_pitch: -(S.hip_pitch + S.knee + 25) });
+  const PRESETS = {
+    "零位": {}, "站姿": stand,
+    "單腳（尾巴置中）": lift,
+    "單腳（尾巴擺 −45°）": Object.assign({}, lift, { tail_yaw: -45 }),
+    "蹲低": { left_hip_pitch: -40, left_knee: 80, left_ankle_pitch: -40, right_hip_pitch: -40, right_knee: 80, right_ankle_pitch: -40, tail_pitch: 10 },
+    "步態動畫": null,
+  };
+  $("#presets").innerHTML = Object.keys(PRESETS).map(k => `<button type="button" data-p="${k}" aria-pressed="false">${k}</button>`).join("");
+  function setPressed(k) { document.querySelectorAll("#presets button").forEach(b => b.setAttribute("aria-pressed", b.dataset.p === k ? "true" : "false")); }
+  let gait = null;
+  function stopGait() { if (gait) { cancelAnimationFrame(gait); gait = null; } }
+  function runGait() {
+    const t0 = performance.now(), f = 1.5;
+    const tick = (now) => {
+      const ph = ((now - t0) / 1000) * f * 2 * Math.PI;
+      const p = {};
+      for (const [side, off] of [["left", 0], ["right", Math.PI]]) {
+        const s = Math.sin(ph + off), sw = Math.max(0, Math.sin(ph + off + Math.PI / 2));
+        const hp = S.hip_pitch - 14 * s, kn = S.knee + 40 * sw;
+        p[side + "_hip_pitch"] = hp - 12 * sw; p[side + "_knee"] = kn; p[side + "_ankle_pitch"] = -(hp - 12 * sw + kn);
+      }
+      p.tail_yaw = -35 * Math.sin(ph + Math.PI / 2);
+      setPose(p);
+      gait = requestAnimationFrame(tick);
+    };
+    gait = requestAnimationFrame(tick);
+  }
+  $("#presets").addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    stopGait(); setPressed(b.dataset.p);
+    const p = PRESETS[b.dataset.p];
+    if (p === null) { if (!matchMedia("(prefers-reduced-motion: reduce)").matches) runGait(); else setPose(stand); }
+    else setPose(p);
+  });
+  $("#tgElec").addEventListener("change", (e) => { elecGroup.visible = e.target.checked; });
+  $("#tgGhost").addEventListener("change", (e) => {
+    mats.print.transparent = e.target.checked; mats.print.opacity = e.target.checked ? 0.35 : 1; mats.print.depthWrite = !e.target.checked; mats.print.needsUpdate = true;
+  });
+  $("#tgAxes").addEventListener("change", (e) => { for (const k in J) J[k].ax.visible = e.target.checked; });
+
+  // ---------------- report sheets
+  const sv = R.servo;
+  const pctColor = (t) => css(t / sv.rated < 0.5 ? "--ok" : t / sv.rated <= 1 ? "--warn" : "--bad");
+  $("#tTorque").innerHTML = "<tr><th>情境</th><th>關節</th><th>N·m</th><th>堵轉</th><th></th></tr>" +
+    R.static.torques.map(r => `<tr><td>${r.case}</td><td>${r.joint}</td><td class="n">${r.Nm.toFixed(3)}</td><td class="n">${(100 * r.pct_stall).toFixed(0)}%</td>` +
+      `<td style="width:30%"><div class="bar"><span style="width:${Math.min(100, 100 * r.pct_stall)}%;background:${pctColor(r.Nm)}"></span></div></td></tr>`).join("");
+  $("#tSingle").innerHTML = "<tr><th>tail_yaw</th><th>不傾斜時重心在內緣內側</th><th>需要的軀幹側傾</th><th>hip_roll N·m</th></tr>" +
+    Object.entries(R.static.single_support).sort((a, b) => b[0] - a[0]).map(([ty, v]) =>
+      `<tr><td class="n">${(+ty > 0 ? "+" : "") + ty}°</td><td class="n">${v.com_inside_inner_edge_mm_no_roll.toFixed(1)} mm</td>` +
+      `<td class="n">${v.torso_roll_deg === null ? "&gt; 25°（做不到）" : v.torso_roll_deg.toFixed(1) + "°"}</td><td class="n">${v.tau.hip_roll.toFixed(3)}</td></tr>`).join("");
+  $("#tMass").innerHTML = "<tr><th>連桿</th><th>g</th><th>佔全身</th></tr>" +
+    Object.entries(R.links).map(([k, v]) => `<tr><td>${k}</td><td class="n">${v.mass_g.toFixed(1)}</td><td class="n">${(100 * v.mass_g / R.total_mass_g).toFixed(1)}%</td></tr>`).join("") +
+    `<tr><td><b>合計</b></td><td class="n"><b>${R.total_mass_g.toFixed(1)}</b></td><td></td></tr>`;
+  const rc = R.static.reach;
+  $("#reach").innerHTML = [
+    `站姿：hip_pitch ${st.hip_pitch.toFixed(1)}°、knee ${st.knee.toFixed(0)}°、ankle_pitch ${st.ankle_pitch.toFixed(1)}°；腳踝在髖關節後方 ${(-st.ankle_x_mm).toFixed(1)} mm（尾巴把重心往後拉）。`,
+    `腳掌保持水平時，前後可各伸 <b>±${rc.max_step_mm.toFixed(0)} mm</b>，原地抬腳最高 <b>${rc.max_lift_mm.toFixed(0)} mm</b>。`,
+    ...Object.entries(rc.needed_step_mm).map(([k, v]) => `${k} 需要單步 ${v.toFixed(0)} mm ${v <= rc.max_step_mm ? "✓" : "✗"}`),
+    `尾巴往一側擺 30° / 60°，全身重心側移 ${R.static.tail_static_shift_mm["30"].toFixed(1)} / ${R.static.tail_static_shift_mm["60"].toFixed(1)} mm。`,
+  ].map(s => `<li>${s}</li>`).join("");
+
+  // ---------------- render loop
+  function resize() { const w = view.clientWidth, h = view.clientHeight; renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
+  new ResizeObserver(resize).observe(view); resize();
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { makeMats(); meshObjs.forEach(m => m.material = mats[m.userData.kind] || mats.print); update(); });
+  new MutationObserver(() => { makeMats(); meshObjs.forEach(m => m.material = mats[m.userData.kind] || mats.print); update(); })
+    .observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  setPressed("站姿"); setPose(stand);
+  (function loop() { controls.update(); renderer.render(scene, cam); requestAnimationFrame(loop); })();
+})();
+</script>
