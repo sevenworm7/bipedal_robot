@@ -96,11 +96,11 @@ torso:
 # size [x, y, z]; center [x, y, z_rel]: x, y in the world frame, z relative to the hip_roll axis; reserve = space kept free.
 electronics:
   battery: {model: "2S LiPo 1000 mAh (placeholder)", size: [70, 35, 16], mass: 60, center: [56, 0, -1], reserve: [72, 40, 20]}
-  board:   {model: "Raspberry Pi Zero 2 W (placeholder)", size: [65, 30, 13], mass: 13, center: [56, 0, 34], reserve: [70, 35, 14],
+  board:   {model: "Raspberry Pi Zero 2 W (placeholder)", size: [65, 30, 13], mass: 13, center: [56, 0, 32], reserve: [70, 35, 14],
             holes: [58, 23], hole_d: 2.75}
   ttl:     {model: "half-duplex TTL adapter (placeholder)", size: [35, 25, 10], mass: 6, center: [40, -26, 14]}
   bec:     {model: "2S -> 5 V 3 A buck (placeholder)", size: [25, 15, 8], mass: 5, center: [78, 28, 14]}
-  imu:     {model: "6-axis IMU module (placeholder)", size: [25, 18, 4], mass: 3, center: [-10, 0, 38]}
+  imu:     {model: "6-axis IMU module (placeholder)", size: [25, 18, 4], mass: 3, center: [-10, 0, 36], holes: 20}   # hole spacing VERIFY
   misc:    {model: "switch, fuse, XT30, wiring", mass: 35, center: [30, 0, 10]}
 
 # ---------------------------------------------------------------- actuators in simulation (SI)

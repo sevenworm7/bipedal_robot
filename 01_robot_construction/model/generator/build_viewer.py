@@ -9,7 +9,7 @@ Output (not in git, rebuild any time): outputs/robot_v<N>/viewer/
     meshes/<link>_<kind>.stl   printed parts and servos per link, link frame, mm
     meshes.json           the same STL files base64-encoded (what the page loads)
 Also writes model/v<N>/viewer.html: a standalone copy with robot.json and the meshes inlined, for opening from disk
-(VS Code / browser); it only needs internet for three.js.
+(VS Code / browser), fully offline: robot.json, the meshes and three.js r128 are all inlined.
 The page is published as a claude.ai Artifact with the meshes and robot.json as supporting files.
 """
 from __future__ import annotations
@@ -19,6 +19,7 @@ import base64
 import json
 import shutil
 import sys
+import urllib.request
 from pathlib import Path
 
 from build123d import Pos, export_stl
@@ -28,6 +29,20 @@ import params as P  # noqa: E402
 from parts import Builder  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
+LIBS = ("https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js",
+        "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js",
+        "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js")
+LIB_CACHE = P.PROJECT_ROOT / "outputs" / "_cache" / "three-r128"
+
+
+def lib_source(url: str) -> str:
+    """Library source for the standalone page, downloaded once into outputs/_cache (not in git)."""
+    path = LIB_CACHE / url.rsplit("/", 1)[1]
+    if not path.exists():
+        LIB_CACHE.mkdir(parents=True, exist_ok=True)
+        with urllib.request.urlopen(url, timeout=60) as r:
+            path.write_bytes(r.read())
+    return path.read_text(encoding="utf-8").replace("</script", "<\\/script")
 
 
 def main():
@@ -84,9 +99,14 @@ def main():
     # standalone copy for opening from disk (file:// cannot fetch the JSON files): data inlined
     embed = (f"<script>window.__ROBOT__ = {json.dumps(data, default=float)};\n"
              f"window.__MESHES__ = {json.dumps(packed)};</script>\n")
-    marker = '<script src="https://cdnjs.cloudflare.com'
+    # the libraries are inlined too: editor previews (VS Code) may block CDN scripts
+    for url in LIBS:
+        tag = f'<script src="{url}"></script>'
+        assert tag in html, url
+        html = html.replace(tag, "<script>\n" + lib_source(url) + "\n</script>", 1)
+    first = html.index("<script>")
     head = '<!doctype html>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n'
-    standalone = head + html.replace(marker, embed + marker, 1)
+    standalone = head + html[:first] + embed + html[first:]
     (vdir / "viewer.html").write_text(standalone, encoding="utf-8")
     print(f"viewer written to {out} ({len(meshes)} meshes)")
 

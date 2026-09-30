@@ -21,6 +21,7 @@
   --accent: #7ea6ff; --print: #cbbf9f; --servo: #505861; --tpu: #5aa57c; --rod: #6f767d;
   --ok: #5cc27f; --warn: #e0a24e; --bad: #ef6f5f; --com: #ff8a3d; --grid: #2d353a; color-scheme: dark }
 * { box-sizing: border-box }
+[hidden] { display: none !important }
 body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 14px; line-height: 1.55 }
 .wrap { max-width: 1280px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 48px; display: grid; gap: 20px }
 header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 20px }
@@ -108,6 +109,15 @@ ul.tight { margin: 0; padding-left: 18px; display: grid; gap: 4px }
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script>
+function showViewerError(msg) {
+  const el = document.getElementById("loading");
+  if (el) { el.hidden = false; el.textContent = "3D 模型無法顯示：" + msg; }
+}
+window.addEventListener("error", (e) => showViewerError(e.message || String(e)));
+window.addEventListener("unhandledrejection", (e) => showViewerError((e.reason && e.reason.message) || String(e.reason)));
+if (typeof THREE === "undefined" || !THREE.STLLoader || !THREE.OrbitControls) {
+  showViewerError("three.js 函式庫沒有載入（可能被瀏覽器或預覽視窗擋住）。");
+}
 (async function () {
   const $ = (s) => document.querySelector(s);
   const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();

@@ -15,6 +15,7 @@ A version with a FROZEN file (written when it is tagged) is never rebuilt.
 from __future__ import annotations
 
 import argparse
+import copy
 import itertools
 import math
 import json
@@ -24,7 +25,7 @@ import time
 from pathlib import Path
 
 import numpy as np
-from build123d import Location, Pos, Rot, export_step, export_stl
+from build123d import Compound, Location, Pos, Rot, export_step, export_stl
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import params as P  # noqa: E402
@@ -227,6 +228,110 @@ def check_interference(lay, model) -> tuple[str, int]:
     return "\n".join(lines) + "\n", n_bad
 
 
+# ---------------------------------------------------------------- fasteners
+def along(p, d, r, length, back=False) -> "Part":
+    """Cylinder of radius r starting at p and extending `length` along d (or against d with back=True)."""
+    from build123d import Align, Cylinder, Plane
+    z = tuple(-c for c in d) if back else d
+    return Plane(origin=p, z_dir=z) * Cylinder(r, length, align=(Align.CENTER, Align.CENTER, Align.MIN))
+
+
+def context_links(lay, link):
+    """Links present when a screw of `link` is driven (assembly order in ASSEMBLY.md)."""
+    for side in ("left", "right"):
+        leg = [f"{side}_hip", f"{side}_thigh", f"{side}_shin", f"{side}_foot"]
+        if link in leg:
+            return leg, {f"servo_{side}_hip_roll"}          # leg modules are built before they go into the torso
+    if link.startswith("tail"):
+        return ["tail_yaw_link", "tail_pitch_link", "base"], set()
+    return ["base", "left_hip", "right_hip", "left_thigh", "right_thigh"], set()
+
+
+def check_fasteners(lay, model) -> tuple[str, int]:
+    """Every screw: clear hole through the printed parts, thread engagement, head seat, straight tool access.
+    Every heat-set insert: wall thickness around it."""
+    zero = link_locations(lay, {})
+    prints = [s for s in model.parts if s.kind in ("print", "tpu")]
+    servos = [s for s in model.parts if s.kind == "servo"]
+    rod = next(s for s in model.parts if s.name == "tail_rod")
+    pcbs = [PartSpec(n, "base", box(c[0] - sz[0] / 2, c[0] + sz[0] / 2, c[1] - sz[1] / 2, c[1] + sz[1] / 2,
+                                    c[2] - sz[2] / 2, c[2] + sz[2] / 2), "bought")
+            for n, _, sz, c, _ in model.boxes if n in ("board", "imu")]      # the screw heads sit on these PCBs
+    area = math.pi * 0.9 ** 2
+    by_name = {i.name: i for i in model.inserts}
+    rows, n_bad = [], 0
+    groups: dict[str, list] = {}
+    for f in model.fasteners:
+        shank = along(f.p, f.d, 0.9, f.length)
+        blocked = sum((shank & s.solid).volume for s in prints if bb_overlap(shank, s.solid))
+        if f.target == "servo":
+            eng = sum((shank & s.solid).volume for s in servos if bb_overlap(shank, s.solid)) / area
+            ok_eng = 1.5 <= eng <= 6.0
+        elif f.target == "insert":
+            ins = by_name[f.name]
+            eng = (shank & along(ins.p, ins.d, 1.6, 3.0)).volume / area
+            ok_eng = eng >= 2.0
+        else:
+            eng = (shank & rod.solid).volume / area
+            ok_eng = eng > 0.02
+        seat = along(f.p, f.d, 2.0, 0.3)
+        seated = sum((seat & s.solid).volume for s in prints + servos + pcbs if bb_overlap(seat, s.solid)) > 0.5
+        links, extra = context_links(lay, f.link)
+        above_head = tuple(p - 1.7 * d for p, d in zip(f.p, f.d))
+        tool = along(above_head, f.d, 2.0, 60.0, back=True)
+        hit, hit_by = 0.0, ""
+        for s in model.parts:
+            if s.kind in ("head", "keepout", "bought"):
+                continue
+            if not (s.link in links or s.name in extra):
+                continue
+            if s.name == "torso_floor" and not f.name.startswith("floor"):
+                continue                                          # the floor plate goes on last
+            sol = zero[s.link] * s.solid
+            if bb_overlap(tool, sol):
+                v = (tool & sol).volume
+                if v > hit:
+                    hit, hit_by = v, s.name
+        ok = blocked < 0.3 and ok_eng and seated and hit < 0.5
+        n_bad += not ok
+        groups.setdefault(f.joint, []).append((f, blocked, eng, seated, hit, hit_by, ok))
+    lines = ["# 螺絲與熱熔螺母檢查（自動產生）", "",
+             "對每一顆螺絲檢查：(1) 螺桿（Ø1.8）穿過列印件的路徑是空的（孔有開、沒被其他幾何填回）；"
+             "(2) 咬合長度：螺桿進入馬達／熱熔螺母／碳管的長度；(3) 螺絲頭底下有零件表面可以壓；"
+             "(4) 起子（Ø4、長 60 mm）沿螺絲軸線伸進來的路徑，在該步驟的組裝狀態下沒有被擋住。", "",
+             "| 接合 | 數量 | 規格 | 孔是通的 | 咬合長度 (mm) | 頭有座面 | 起子可達 | 結果 |", "|---|---|---|---|---|---|---|---|"]
+    for joint, items in groups.items():
+        engs = [e for _, _, e, _, _, _, _ in items]
+        bad = [x for x in items if not x[6]]
+        spec = ", ".join(sorted({f.spec for f, *_ in items}))
+        lines.append(f"| {joint} | {len(items)} | {spec} | {'✓' if all(b < 0.3 for _, b, *_ in items) else '✗'} | "
+                     f"{min(engs):.1f}–{max(engs):.1f} | {'✓' if all(x[3] for x in items) else '✗'} | "
+                     f"{'✓' if all(x[4] < 0.5 for x in items) else '✗ ' + ', '.join(sorted({x[5] for x in items if x[4] >= 0.5}))} | "
+                     f"{'**' + str(len(bad)) + ' 顆有問題**' if bad else 'OK'} |")
+    bad_all = [x for its in groups.values() for x in its if not x[6]]
+    if bad_all:
+        lines += ["", "## 有問題的螺絲", "", "| 螺絲 | 連桿 | 孔內阻擋 (mm³) | 咬合 (mm) | 座面 | 起子被擋 |", "|---|---|---|---|---|---|"]
+        for f, b, e, se, h, hb, _ in bad_all:
+            lines.append(f"| {f.name} | {f.link} | {b:.1f} | {e:.1f} | {'✓' if se else '✗'} | {hb + f' ({h:.0f} mm³)' if h >= 0.5 else '—'} |")
+    lines += ["", "## 熱熔螺母周圍的壁厚", "", "檢查每個螺母（長 3 mm）外圍 1.2 mm 的環是否都是實心材料（熱熔時才不會把壁撐破）。", "",
+              "| 螺母 | 連桿 | 外圍實心比例 | 結果 |", "|---|---|---|---|"]
+    for ins in model.inserts:
+        ring = along(ins.p, ins.d, 1.6 + 1.2, 3.0) - along(ins.p, ins.d, 1.6, 3.0)     # around the 3 mm insert
+        frac = sum((ring & s.solid).volume for s in prints if bb_overlap(ring, s.solid)) / ring.volume
+        ok = frac >= 0.85
+        n_bad += not ok
+        lines.append(f"| {ins.name} | {ins.link} | {frac:.0%} | {'OK' if ok else '**壁太薄**'} |")
+    lines += ["", "## 沒有螺絲的接合（刻意設計）", "",
+              "| 接合 | 方式 |", "|---|---|",
+              "| TPU 腳墊 → 腳底 | 瞬間膠，腳底有 0.5 mm 定位凹槽 |",
+              "| 碳管 → pitch 支架插座、尾端配重座 | AB 膠＋止付螺絲（上表） |",
+              "| 鋼配重 → 尾端配重座 | 放進後端孔，AB 膠封口 |",
+              "| 電池 → 底板 | 魔鬼氈束帶穿過底板的 4 個槽 |",
+              "| TTL 轉接板、5 V 降壓板 → 殼體側壁 | 雙面膠（型號未定，沒有做螺絲柱） |",
+              "| 擺臂 → 馬達輸出軸 | 馬達原廠的中心螺絲（手臂中央 Ø6 孔可伸入起子） |"]
+    return "\n".join(lines) + "\n", n_bad
+
+
 # ---------------------------------------------------------------- servo direction table
 def servo_name(joint: str) -> str:
     return "servo_" + joint.replace("ankle_pitch", "ankle")
@@ -293,6 +398,16 @@ def main():
             export_step(local, str(vdir / "parts/step" / f"{fname}.step"))
             export_stl(local, str(vdir / "parts/stl" / f"{fname}.stl"), tolerance=0.02, angular_tolerance=0.2)
 
+    # whole robot at the zero pose, one named body per part (for inspection in Fusion 360 etc.)
+    bodies = []
+    for s in real:
+        b = copy.copy(s.solid)
+        b.label = s.name
+        bodies.append(b)
+    asm = Compound(children=bodies)
+    asm.label = f"{lay.p['robot']['name']}_v{args.version}_zero_pose"
+    export_step(asm, str(vdir / "parts" / f"assembly_v{args.version}.step"))
+
     # visual meshes + mass properties per link
     links = ["base"] + [j.child for j in lay.joints]
     props = {}
@@ -344,6 +459,11 @@ def main():
     for k, v in props.items():
         print(f"  {k:16s} {v['mass_g']:7.1f} g  com {np.round(v['com_mm'], 1)}")
     print(md)
+
+    ftxt, f_bad = check_fasteners(lay, model)
+    (vdir / "reports/fasteners.md").write_text(ftxt, encoding="utf-8")
+    print(ftxt)
+    print(f"fasteners: {len(model.fasteners)} screws, {len(model.inserts)} inserts, {f_bad} problem(s)")
 
     if not args.skip_interference:
         txt, n_bad = check_interference(lay, model)

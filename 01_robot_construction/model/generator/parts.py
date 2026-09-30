@@ -18,7 +18,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 
-from build123d import Align, Box, Cylinder, Part, Plane, Pos, Rot, mirror
+from build123d import Align, Box, Cylinder, Part, Plane, Pos, Rot, Vector, mirror
 
 from params import Layout
 
@@ -66,11 +66,38 @@ class PartSpec:
 
 
 @dataclass
+class Fastener:
+    """One screw: head seat point p (world, zero pose), unit direction d into the parts, length (mm).
+    target: 'servo' (threads into a servo horn or body hole), 'insert' (into a heat-set insert),
+    'rod' (set screw pressing on the carbon tube)."""
+    name: str
+    link: str
+    p: tuple
+    d: tuple
+    length: float
+    spec: str
+    target: str
+    joint: str = ""      # what it connects, for the report
+
+
+@dataclass
+class Insert:
+    """Heat-set insert hole: mouth point p, unit direction d into the part, hole depth."""
+    name: str
+    link: str
+    p: tuple
+    d: tuple
+    depth: float
+
+
+@dataclass
 class Model:
     lay: Layout
     parts: list[PartSpec] = field(default_factory=list)
     boxes: list[tuple] = field(default_factory=list)   # electronics: name, link, size, center, mass
     servo_frames: dict = field(default_factory=dict)   # servo name -> (axis_pt, horn_dir, body_dir)
+    fasteners: list[Fastener] = field(default_factory=list)
+    inserts: list[Insert] = field(default_factory=list)
 
 
 class Builder:
@@ -100,11 +127,26 @@ class Builder:
         self.clear = lay.p["legs"]["link_bottom_clear"]
         self.parts: list[PartSpec] = []
         self.frames: dict = {}
+        self.fasteners: list[Fastener] = []
+        self.inserts: list[Insert] = []
 
     # ------------------------------------------------------------ helpers
     @staticmethod
     def sframe(axis_pt, horn_dir, body_dir) -> Plane:
         return Plane(origin=axis_pt, x_dir=body_dir, z_dir=horn_dir)
+
+    @staticmethod
+    def to_world(pl: Plane, p_local, d_local):
+        p = pl.from_local_coords(Vector(*p_local))
+        q = pl.from_local_coords(Vector(*p_local) + Vector(*d_local))
+        return tuple(p), tuple(q - p)
+
+    def screw(self, name, link, pl, p_local, d_local, length, spec, target, joint=""):
+        p, d = self.to_world(pl, p_local, d_local)
+        self.fasteners.append(Fastener(name, link, p, d, length, spec, target, joint))
+
+    def insert(self, name, link, p, d):
+        self.inserts.append(Insert(name, link, tuple(p), tuple(d), self.ins_h))
 
     def head(self, name, link, solid):
         self.parts.append(PartSpec(name, link, solid, "head", 0.0))
@@ -146,6 +188,11 @@ class Builder:
             z = scale(horn_dir, sgn)
             pl = Plane(origin=add(axis_pt, scale(z, self.arm_in)), x_dir=arm_dir, z_dir=z)
             out.append(pl * slab)
+            for kk in range(self.hn["screw_count"]):
+                a = math.radians(self.hn["screw_angle0"] + 360 * kk / self.hn["screw_count"])
+                c = (self.hn["screw_radius"] * math.cos(a), self.hn["screw_radius"] * math.sin(a), t)
+                self.screw(f"{name}_horn{'p' if sgn > 0 else 's'}{kk}", link, pl, c, (0, 0, -1), 5.0, "M2×5 盤頭",
+                           "servo", "手臂 → 擺臂")
             self.head(f"{name}_hornscrews_{'p' if sgn > 0 else 's'}", link, pl * union(heads))
         return out[0] + out[1]
 
@@ -170,6 +217,11 @@ class Builder:
                 z_head = (zo - cb) if sgn > 0 else -(zo - cb) - self.head_h
                 heads.append(Pos(self.mount_x, yy, z_head) * Cylinder(self.head_r, self.head_h, align=(C, C, Align.MIN)))
         pl = self.sframe(axis_pt, horn_dir, body_dir)
+        for yy in (-self.mount_y, self.mount_y):
+            for sgn in (1, -1):
+                self.screw(f"{name}_body{'+' if sgn > 0 else '-'}{'+' if yy > 0 else '-'}", link, pl,
+                           (self.mount_x, yy, sgn * (zo - cb)), (0, 0, -sgn), 6.0, "M2×6 自攻盤頭", "servo",
+                           "固定牆 → 馬達本體")
         self.head(f"{name}_bodyscrews", link, pl * union(heads))
         return pl * h
 
@@ -187,6 +239,12 @@ class Builder:
             spec.link = spec.link.replace("SIDE", "left")
             self.parts.append(spec)
             self.parts.append(r)
+        left_f, self.fasteners = self.fasteners, []
+        for f in left_f:                                        # mirrored fasteners
+            r = Fastener(f.name.replace("left", "right"), f.link.replace("SIDE", "right"), (f.p[0], -f.p[1], f.p[2]),
+                         (f.d[0], -f.d[1], f.d[2]), f.length, f.spec, f.target, f.joint)
+            f.link = f.link.replace("SIDE", "left")
+            self.fasteners += [f, r]
         for n, (a, hd, bd) in list(self.frames.items()):     # mirrored servo frames (direction table)
             if "left" in n:
                 self.frames[n.replace("left", "right")] = ((a[0], -a[1], a[2]), (hd[0], -hd[1], hd[2]), (bd[0], -bd[1], bd[2]))
@@ -194,6 +252,8 @@ class Builder:
         self._tail()
         m.parts = self.parts
         m.servo_frames = self.frames
+        m.fasteners = self.fasteners
+        m.inserts = self.inserts
         for name, e in lay.p["electronics"].items():
             c = e["center"]
             m.boxes.append((name, "base", tuple(e.get("size", (10, 10, 10))), (c[0], c[1], lay.hip_roll_z + c[2]), e["mass"]))
@@ -311,6 +371,9 @@ class Builder:
         for bxc, byc in bosses:
             sh += box(bxc - 3, bxc + 3, byc - 3, byc + 3, z0 + 2.5, z0 + 9.5)          # floor plate sits below
             sh -= cyl(self.ins_r, 2 * self.ins_h, (bxc, byc, z0 + 2.5), "z")
+            self.insert(f"floor_{bxc:.0f}_{byc:.0f}", "base", (bxc, byc, z0 + 2.5), (0, 0, 1))
+            self.fasteners.append(Fastener(f"floor_{bxc:.0f}_{byc:.0f}", "base", (bxc, byc, z0 + self.head_h),
+                                           (0, 0, 1), 5.0, "M2×5 盤頭", "insert", "底板 → 殼體"))
         bd = el["board"]
         bc = (bd["center"][0], bd["center"][1], z_hr + bd["center"][2])
         btop = bc[2] + bd["size"][2] / 2
@@ -318,12 +381,18 @@ class Builder:
             for dy in (-bd["holes"][1] / 2, bd["holes"][1] / 2):
                 sh += cyl(3.0, top_in - btop + 0.5, (bc[0] + dx, bc[1] + dy, (btop + top_in + 0.5) / 2), "z")
                 sh -= cyl(self.ins_r, 2 * self.ins_h, (bc[0] + dx, bc[1] + dy, btop), "z")
+                self.insert(f"board_{dx:+.0f}_{dy:+.0f}", "base", (bc[0] + dx, bc[1] + dy, btop), (0, 0, 1))
+                self.fasteners.append(Fastener(f"board_{dx:+.0f}_{dy:+.0f}", "base", (bc[0] + dx, bc[1] + dy, btop - 1.6),
+                                               (0, 0, 1), 5.0, "M2×5 盤頭", "insert", "開發板（PCB 1.6 mm）→ 殼體"))
         im = el["imu"]
         ic = (im["center"][0], im["center"][1], z_hr + im["center"][2])
         itop = ic[2] + im["size"][2] / 2
-        for dy in (-10, 10):
+        for dy in (-im["holes"] / 2, im["holes"] / 2):
             sh += cyl(3.0, top_in - itop + 0.5, (ic[0], dy, (itop + top_in + 0.5) / 2), "z")
             sh -= cyl(self.ins_r, 2 * self.ins_h, (ic[0], dy, itop), "z")
+            self.insert(f"imu_{dy:+.0f}", "base", (ic[0], dy, itop), (0, 0, 1))
+            self.fasteners.append(Fastener(f"imu_{dy:+.0f}", "base", (ic[0], dy, itop - 1.6), (0, 0, 1), 5.0,
+                                           "M2×5 盤頭", "insert", "IMU（PCB 1.6 mm）→ 殼體"))
         sh -= box(bc[0] - 18, bc[0] + 18, y0 - 1, y0 + w + 1, bc[2] - 5, bc[2] + 5)          # board USB
         sh -= box(x1 - w - 1, x1 + 1, -8, 8, bc[2] - 3, bc[2] + 3)                           # SD card
         zt = z_hr + p["tail"]["z_rel"]
@@ -366,6 +435,10 @@ class Builder:
         for dy in (-14, 14):
             for dz in (-11, 11):
                 tm -= cyl(self.ins_r, 2 * self.ins_h, (x0, dy, zt + dz), "x")
+                self.insert(f"tail_mount_{dy:+.0f}_{dz:+.0f}", "base", (x0, dy, zt + dz), (-1, 0, 0))
+                w = p["torso"]["wall"]
+                self.fasteners.append(Fastener(f"tail_mount_{dy:+.0f}_{dz:+.0f}", "base", (x0 + w, dy, zt + dz), (-1, 0, 0),
+                                               6.0, "M2×6 盤頭", "insert", "尾巴座 → 殼體後牆（從殼體內側鎖）"))
         tm -= cyl(3.5, 30, (x0, 0, zt + 18.5), "x")                                          # tail cable
         self.parts.append(PartSpec("tail_mount", "base", tm, screws=8, qty_note="x1",
                                    print_note="背板貼床列印（上下夾板朝上長出）"))
@@ -385,7 +458,12 @@ class Builder:
         pb += box(blk1 - 6.0, blk1, -ao, ao, zt - 10.5, zt + 10.5)
         pb += cyl(rod["diameter"] / 2 + 3.5, blk1 - 6.0 - blk0, ((blk0 + blk1 - 6.0) / 2, 0, zt), "x")
         pb -= cyl(rod["diameter"] / 2 + 0.15, 2 * rod["insert_depth"], (blk0, 0, zt), "x")
-        pb -= cyl(self.ins_r, 20, (blk0 + rod["insert_depth"] / 2, 0, zt + rod["diameter"] / 2 + 3.5), "z")
+        xs = blk0 + rod["insert_depth"] / 2
+        top = zt + rod["diameter"] / 2 + 3.5
+        pb -= cyl(self.ins_r, 20, (xs, 0, top), "z")          # insert hole, continues into the rod bore
+        self.insert("rod_socket", "tail_pitch_link", (xs, 0, top), (0, 0, -1))
+        self.fasteners.append(Fastener("rod_socket", "tail_pitch_link", (xs, 0, top), (0, 0, -1), 4.0,
+                                       "M2×4 止付螺絲", "rod", "碳管 → pitch 支架（另加 AB 膠）"))
         self.parts.append(PartSpec("tail_pitch_bracket", "tail_pitch_link", pb, screws=9, qty_note="x1",
                                    print_note="側立列印；碳管用 AB 膠固定，M2 止付螺絲（熱熔螺母）輔助"))
 
@@ -406,7 +484,15 @@ class Builder:
         bal_len = tip["length"] - sk - 2.0
         bal_c = tx1 - tip["length"] + bal_len / 2 - 0.5
         th -= cyl(bal_r, bal_len + 1, (bal_c, 0, zt), "x")
-        th -= cyl(self.ins_r, 20, (tx1 - sk / 2, 0, zt + tip["diameter"] / 2), "z")
+        # set screw: an access counterbore down to an insert seated just above the rod socket
+        xs = tx1 - sk / 2
+        r_ins = r_o + 0.15 + 4.0                              # insert top, 4 mm above the rod surface
+        r_tip = tip["diameter"] / 2
+        th -= cyl(2.5, r_tip - r_ins + 1, (xs, 0, zt + (r_tip + r_ins) / 2 + 0.5), "z")
+        th -= cyl(self.ins_r, r_ins - r_o + 0.5, (xs, 0, zt + (r_ins + r_o) / 2 - 0.25), "z")
+        self.insert("tail_tip", "tail_pitch_link", (xs, 0, zt + r_ins), (0, 0, -1))
+        self.fasteners.append(Fastener("tail_tip", "tail_pitch_link", (xs, 0, zt + r_ins), (0, 0, -1), 5.0,
+                                       "M2×5 止付螺絲", "rod", "尾端配重座 → 碳管（另加 AB 膠）"))
         self.parts.append(PartSpec("tail_tip", "tail_pitch_link", th, screws=1, qty_note="x1",
                                    print_note="圓柱軸向立著列印；後端 Ø20 × 20 mm 孔放鋼配重，AB 膠封口"))
         self.parts.append(PartSpec("tail_ballast", "tail_pitch_link", cyl(bal_r - 0.1, bal_len, (bal_c + 0.5, 0, zt), "x"),

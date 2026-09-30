@@ -3,7 +3,8 @@
 第一個實際建模的版本。起點是規劃稿 `../../design_refs/architecture_v0_1.md`，相對它的修改與原因見 [`CHANGELOG.md`](CHANGELOG.md)。
 **狀態：建模、複查與模擬檢查完成。** 打 tag `robot-v1` 並放 `FROZEN` 檔（凍結，不再重新產生）的時機由使用者決定，建議在試印一組零件之後。
 
-互動 3D 圖：直接開啟 [`viewer.html`](viewer.html)（資料已內嵌，只需要網路載入 three.js；VS Code 可用 Live Preview／Simple Browser 開啟）。
+互動 3D 圖：直接開啟 [`viewer.html`](viewer.html)（資料與 three.js 都已內嵌，完全離線；瀏覽器或 VS Code 的預覽都可以開）。
+整機組裝檔：[`parts/assembly_v1.step`](parts/assembly_v1.step)（零位、每個零件與馬達各是一個具名 body，可在 Fusion 360 拆開檢查）。
 
 ## 規格摘要
 
@@ -25,11 +26,13 @@
 | `CHANGELOG.md` | 相對 v0.1 規劃稿的修改與原因 |
 | `ASSEMBLY.md` | 關節做法、列印清單、外購件、馬達設定、組裝順序、關節範圍與已知限制 |
 | `viewer.html` | 互動 3D 圖（本機版） |
-| `parts/stl/`、`parts/step/` | 列印零件，每種一個檔案（左側幾何，右側共用） |
+| `parts/stl/`、`parts/step/` | 列印零件，每種一個檔案（左側幾何，右側共用；座標是所屬連桿的座標系） |
+| `parts/assembly_v1.step` | 整機（零位、世界座標），列印件、馬達、碳管、配重各是一個具名 body |
 | `meshes/` | 每個連桿的外觀 mesh（URDF 使用） |
 | `urdf/custom_biped_v1.urdf` | 產生檔，不要手動修改 |
 | `reports/parts_bom.md` | 零件體積、質量、各連桿質量與質心 |
 | `reports/interference.md` | 關節掃描、同一連桿內、不相鄰連桿、左右腿互撞、電子部件 |
+| `reports/fasteners.md` | 136 顆螺絲、16 個熱熔螺母：孔是否打通、咬合長度、座面、起子可達、螺母壁厚 |
 | `reports/servo_map.md` | 馬達 ID、匯流排、擺臂朝向、位置值與關節角的方向 |
 | `reports/static_check.md` | 站姿、靜態扭矩、可達範圍、尾巴效果 |
 
@@ -42,6 +45,7 @@
   - 12 組關節掃描、同一連桿內、不相鄰連桿、電子部件全部 0 重疊。
   - 只剩一個組合極限：hip_pitch +45° 加 knee 120° 加 ankle 60° 同時到底，腳會碰到尾巴馬達，步態不會用到。
 - **組裝**：每個關節都能用「推進固定牆＋沿滑槽套上擺臂」的順序組起來，順序寫在 `ASSEMBLY.md`。
+  所有接合的做法列在 `ASSEMBLY.md` 第 2 節；136 顆螺絲全部通過孔徑、咬合（擺臂 1.9–2.1 mm、馬達本體 3.2 mm、熱熔螺母 3.0 mm）、座面與起子可達的檢查。
 - **URDF 檢查**：0 warning；11 個 link、10 個致動關節。
 - **靜態扭矩**（6 V 堵轉 1.18 N·m）：
   - 雙腳站立時最大的是 knee，0.11 N·m（堵轉的 9%）。

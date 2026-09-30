@@ -8,7 +8,7 @@
 
 | 步驟 | 指令 | 環境 | 產出 |
 |---|---|---|---|
-| 1. 零件 | `.venv_cad\Scripts\python.exe 01_robot_construction\model\generator\build_parts.py --version 1` | CAD（build123d） | `parts/step`、`parts/stl`、`meshes/`、`reports/mass_properties.json`、`parts_bom.md`、`interference.md`、`servo_map.md` |
+| 1. 零件 | `.venv_cad\Scripts\python.exe 01_robot_construction\model\generator\build_parts.py --version 1` | CAD（build123d） | `parts/step`、`parts/stl`、`parts/assembly_v<N>.step`（整機）、`meshes/`、`reports/mass_properties.json`、`parts_bom.md`、`interference.md`、`fasteners.md`、`servo_map.md` |
 | 2. URDF | `.venv_cad\Scripts\python.exe 01_robot_construction\model\generator\build_urdf.py --version 1` | CAD | `urdf/custom_biped_v1.urdf` |
 | 3. 靜態檢查 | `.venv_cad\Scripts\python.exe 01_robot_construction\model\generator\check_static.py --version 1` | CAD | `reports/static_check.md`、`.json`（站姿、扭矩、可達範圍、尾巴） |
 | 4. URDF 檢查 | `tools\isaacpy.cmd tools\urdf_inspect.py 01_robot_construction\model\v1\urdf\custom_biped_v1.urdf` | Isaac | 終端輸出（要求 0 warning） |
