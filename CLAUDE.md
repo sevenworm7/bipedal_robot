@@ -76,14 +76,15 @@ references/             # 參考資料（唯讀）：雙足機器人/ 為舊模�
   rule_based/           #   規則式控制器（規格：同資料夾的 PROMPT.md 複本）
   training_pipeline/    #   訓練管線（規格：同資料夾的 PROMPT.md 複本）
   outputs/              #   實驗一的產出（不進 git）
-01_robot_construction/  # 實驗二：model/ 放參數化模型與產出的 urdf/usd
-02_rule_based/          # 實驗二
+01_robot_construction/  # 實驗二：model/v<N>/ 每版的參數、零件、URDF；model/generator/ 產生程式；model/v2_backlog.md
+02_rule_based/          # 實驗二：rule_based/ 為控制器套件與腳本（從 00_test/rule_based 移植），params/ 為採用的參數檔
 03_training_pipeline/   # 實驗二
-shared/                 # 實驗二的共用模組（robots/custom_biped.py）
+shared/                 # 實驗二的共用模組（從 00_test/shared 移植）：介面、env/、指標、rollout、影片；robots/custom_biped.py
 tools/                  # 開發工具（urdf_inspect.py、isaacpy.cmd），兩次實驗共用
 outputs/                # 實驗二的產出（不進 git）
 ```
 
+- **刻意保留的複本**：實驗一的程式（`00_test/shared/`、`00_test/rule_based/`）凍結不動，實驗二移植時複製一份再修改，所以有些檔案目前兩邊內容相同（`rollout.py`、`video_overlay.py`、`eval_videos.py`、`leg_kinematics.py`）。這是為了讓兩次實驗各自可重現，實驗二只改實驗二的複本，不回頭改 `00_test/`。`PROMPT.md` 的複本也是同樣道理。
 - 大型產出一律放在 `<產出根目錄>/<stage>/<run_name>/`：實驗一的產出根目錄是 `00_test/outputs/`，實驗二是 `outputs/`。`<stage>` 為 `rule_based` 或 `training`，run 名稱包含日期，例如 `00_test/outputs/training/iter1_ppo_20260918/`。
 - 所有超參數放在 config 檔（dataclass 或 YAML），不要寫死在程式中。每次訓練或評估都保存當下使用的 config。
 

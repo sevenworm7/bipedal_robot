@@ -10,8 +10,10 @@ of the two hip_roll axes. Joint signs follow the pipeline's canonical convention
 roll + = foot moves left, pitch joints + = rotate backward (hip: leg back, knee: flex, ankle: toes down),
 tail_yaw + = tail tip moves right (-Y), tail_pitch + = tail tip moves up.
 
-Fields required by the pipeline are listed in ``00_test/shared/robots/README.md``; the tail adds
-:data:`TAIL_JOINT_NAMES`, :data:`TAIL_JOINT_LIMITS` and :data:`ACTUATED_JOINT_NAMES` (legs then tail).
+Fields required by the pipeline are listed in ``shared/robots/README.md``. Compared with experiment 1 the
+pipeline reads :data:`ACTION_JOINT_NAMES` (legs then tail) instead of ``LEG_JOINT_NAMES`` for the
+observation / action order, :data:`ENV_DEFAULTS` for the robot-scale environment settings and the
+``STANCE_*`` / ``MAX_*`` gait geometry for the rule-based defaults.
 """
 
 from __future__ import annotations
@@ -50,7 +52,10 @@ LEG_JOINT_NAMES: tuple[str, ...] = tuple(f"{s}_{r}" for s in ("left", "right") f
 LEG_JOINT_LAYOUT: tuple[tuple[str, str], ...] = tuple((s, r) for s in ("left", "right") for r in _ROLES)
 TAIL_JOINT_NAMES: tuple[str, ...] = ("tail_yaw", "tail_pitch")
 ACTUATED_JOINT_NAMES: tuple[str, ...] = LEG_JOINT_NAMES + TAIL_JOINT_NAMES
-"""Legs (8) then tail (2): the action vector order."""
+"""Legs (8) then tail (2)."""
+ACTION_JOINT_NAMES: tuple[str, ...] = ACTUATED_JOINT_NAMES
+"""Joints in the observation / action vectors, in order (user decision 2026-09-30: the tail is part of
+the interface, J = 10)."""
 
 JOINT_AXIS_SIGN: dict[str, float] = {r: 1.0 for r in _ROLES}
 """URDF axes already follow the canonical convention (roll about +x, pitch about +y)."""
@@ -106,11 +111,42 @@ NOMINAL_COM_HEIGHT = _ST["stance"]["com_mm"][2] * _MM
 """Whole-body CoM height [m] in the default pose."""
 
 # --------------------------------------------------------------------------------------
+# Gait geometry for the rule-based defaults (reports/static_check.json)
+# --------------------------------------------------------------------------------------
+_R = _ST["reach"]
+STANCE_LEG_LENGTH = _R["hip_to_ankle_mm"] * _MM
+"""Hip pitch axis -> ankle axis distance in the default pose [m]."""
+STANCE_FOOT_X = _ST["stance"]["ankle_x_mm"] * _MM
+"""Ankle x relative to the hip pitch axes in the default pose [m] (negative: the tail pulls the CoM back,
+the feet sit under it)."""
+MAX_STEP_X = _R["max_step_mm"] * _MM
+"""Largest ankle excursion from below the hip with the sole flat [m]."""
+MAX_LIFT = _R["max_lift_mm"] * _MM
+"""Largest ankle lift from the stance height [m]."""
+
+ENV_DEFAULTS: dict = {
+    "cmd_vx_range": (0.05, 0.15),  # user decision 2026-09-30
+    "gait_freq_range": (1.2, 2.0),  # user decision 2026-09-30
+    "fall_com_height": round(0.6 * NOMINAL_COM_HEIGHT, 3),
+    "lateral_spacing": 1.0,
+    "row_spacing": 5.0,
+    "follow_cam_offset": (0.3, -0.5, 0.04),
+    "follow_cam_target_drop": 0.06,
+    "viewer_eye": (0.8, -1.3, 0.5),
+    "viewer_lookat": (0.0, 0.0, 0.12),
+    "contact_force_limit": round(1.5 * TOTAL_MASS * 9.81, 1),
+    "target_air_time": 0.15,
+}
+"""Robot-scale environment settings, applied by ``BipedWalkEnvCfg.__post_init__`` to every field left at
+None (see ``shared/env/biped_env_cfg.py`` for the meaning of each)."""
+
+# --------------------------------------------------------------------------------------
 # Actuators: Feetech HD-1910-C001, conservative 6 V numbers (params.actuator)
 # --------------------------------------------------------------------------------------
 _A = _P["actuator"]
-LEG_EFFORT_LIMIT = _A["saturation_effort"]
-"""[N m] peak (stall at 6 V); DCMotorCfg clips the continuous value to ``_A['effort_limit']``."""
+LEG_EFFORT_LIMIT = _A["effort_limit"]
+"""[N m] largest torque the DCMotorCfg can apply (continuous clip); the stall value ``saturation_effort``
+only shapes the torque-speed curve. Torque saturation is detected as applied != computed torque."""
 LEG_VELOCITY_LIMIT = _A["velocity_limit"]
 LEG_STIFFNESS = _A["stiffness"]
 LEG_DAMPING = _A["damping"]
