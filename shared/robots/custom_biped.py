@@ -107,8 +107,12 @@ INIT_BASE_HEIGHT = _ST["stance"]["base_height_mm"] * _MM + 0.003
 INIT_YAW = 0.0
 INIT_ROT_XYZW = (0.0, 0.0, 0.0, 1.0)
 FORWARD_AXIS = "+x"
-NOMINAL_COM_HEIGHT = _ST["stance"]["com_mm"][2] * _MM
-"""Whole-body CoM height [m] in the default pose."""
+NOMINAL_COM_HEIGHT = (_ST["stance"]["base_height_mm"] + _MP["links"]["base"]["com_mm"][2]) * _MM
+"""Base link CoM height [m] in the default pose (0.243 m on v1). The env's ``com_pos`` / ``base_height`` reward /
+fall test use the base (root) CoM, as in experiment 1; the whole-body CoM is lower (0.183 m on v1, the tail and
+legs pull it down). Fixed 2026-10-01: it was the whole-body value, a constant 6 cm offset."""
+WHOLE_BODY_COM_HEIGHT = _ST["stance"]["com_mm"][2] * _MM
+"""Whole-body CoM height [m] in the default pose (reference only)."""
 
 # --------------------------------------------------------------------------------------
 # Gait geometry for the rule-based defaults (reports/static_check.json)
