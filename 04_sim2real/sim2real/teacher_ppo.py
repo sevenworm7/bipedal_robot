@@ -25,6 +25,7 @@ from isaaclab.app import AppLauncher  # noqa: E402
 
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
 parser.add_argument("--tag", default="")
+parser.add_argument("--scenario", default=None, help="Training scenario (default: the config's).")
 parser.add_argument("--max_iterations", type=int, default=None)
 parser.add_argument("--num_envs", type=int, default=None)
 parser.add_argument("--init", type=str, default=None, help="Teacher checkpoint to resume from (55 inputs).")
@@ -110,6 +111,8 @@ def build_teacher_init(env, pipe, t, out: Path) -> tuple[Path, float]:
 def main():
     pipe, cfg = PipelineCfg(), Sim2RealCfg()
     t = cfg.teacher
+    if args_cli.scenario:
+        t.scenario = args_cli.scenario
     total = args_cli.max_iterations or t.max_iterations
     env = make_env(pipe, t.scenario, args_cli.num_envs or t.num_envs, pipe.collect.episode_s, t.seed, record=False,
                    obs_version=2, push_interval_s=t.push_interval_s, push_speed=t.push_speed)

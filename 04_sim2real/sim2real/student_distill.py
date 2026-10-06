@@ -28,6 +28,7 @@ from isaaclab.app import AppLauncher  # noqa: E402
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
 parser.add_argument("--teacher", required=True)
 parser.add_argument("--tag", default="")
+parser.add_argument("--scenario", default=None, help="Training scenario (default: the config's).")
 parser.add_argument("--rounds", type=int, default=None)
 parser.add_argument("--num_envs", type=int, default=None)
 AppLauncher.add_app_launcher_args(parser)
@@ -48,6 +49,8 @@ from training_pipeline.policy import actor_mean, load_actor, make_actor, save_ac
 def main():
     pipe, cfg = PipelineCfg(), Sim2RealCfg()
     c = cfg.student
+    if args_cli.scenario:
+        c.scenario = args_cli.scenario
     torch.manual_seed(c.seed)
     rounds = args_cli.rounds or c.rounds
     env = make_env(pipe, c.scenario, args_cli.num_envs or c.num_envs, pipe.collect.episode_s, c.seed, record=False,

@@ -49,6 +49,8 @@ _ROUGH_TRAIN = {  # +-8 mm bumps at the hardest of 10 levels (user decision 2026
     "amplitude": 0.008, "levels": 10, "cols": 16, "tile_size": (6.0, 8.0), "robots_per_tile": 8,
     "horizontal_scale": 0.05, "init_level_max": 2, "curriculum": True,
 }
+_ROUGH_TRAIN_V2 = {**_ROUGH_TRAIN, "init_level_max": 6}
+"""Round 3 (user decision 2026-10-06): robots start on levels 0-6 so the harder levels get more samples."""
 _ROUGH_EVAL = {  # evaluation: every robot on the hardest level (+-8 mm), no curriculum
     "amplitude": 0.008, "levels": 10, "cols": 16, "tile_size": (6.0, 8.0), "robots_per_tile": 8,
     "horizontal_scale": 0.05, "fixed_level": 9,
@@ -75,6 +77,8 @@ SCENARIOS: dict[str, dict] = {
     "gait_eval_v1": {"gait_var": _GAIT_VAR},
     # training: moderate randomisation + curriculum terrain + changing commands (phases 1 + 3)
     "dr_rough_gait_train_v1": {"dr": {**_MODERATE_DR, "rough_terrain": _ROUGH_TRAIN}, "gait_var": _GAIT_VAR},
+    # training round 3: as v1, but initial terrain levels 0-6 (more samples on the harder levels)
+    "dr_rough_gait_train_v2": {"dr": {**_MODERATE_DR, "rough_terrain": _ROUGH_TRAIN_V2}, "gait_var": _GAIT_VAR},
 }
 """Scenario name -> overrides. ``dr`` / ``gait_var`` entries go to ``BipedWalkEnvCfg.dr`` / ``.gait_var``, every other
 key to the env config."""

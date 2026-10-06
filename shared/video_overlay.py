@@ -76,11 +76,15 @@ def draw_hud(frame: np.ndarray, hud: HudState) -> np.ndarray:
     overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
     pad, line_h = int(12 * scale), int(34 * scale)
+    if draw.textlength(lines[0], font=font) + 2 * pad > w:
+        # long labels (04_sim2real) would push the time off the frame: give the time its own line; labels that fit
+        # (02 / 03) keep the original single-line layout
+        lines = [hud.label, f"t = {format_time(hud.sim_time)}"] + lines[1:]
     box_w = int(max(draw.textlength(l, font=font) for l in lines)) + 2 * pad
     box_h = line_h * len(lines) + 2 * pad
     draw.rectangle((0, 0, box_w, box_h), fill=(0, 0, 0, 170))
     for i, line in enumerate(lines):
-        color = (255, 90, 90, 255) if (i == 3 and hud.status == "FALLEN") else (255, 255, 255, 255)
+        color = (255, 90, 90, 255) if (line.startswith("status") and hud.status == "FALLEN") else (255, 255, 255, 255)
         draw.text((pad, pad + i * line_h), line, font=font, fill=color)
 
     # mini-map (bottom-right): top view of the path, lateral exaggerated x5

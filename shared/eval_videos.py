@@ -25,7 +25,7 @@ CLASS_NAMES = ("slow", "medium", "fast")
 
 
 def record_class_videos(env, agent, out_dir: Path, exp: str, label: str, tag: str,
-                        speeds: list[float], freq: float) -> dict:
+                        speeds: list[float], freq: float, success_fn=None) -> dict:
     """Record and select the videos.
 
     Args:
@@ -37,6 +37,8 @@ def record_class_videos(env, agent, out_dir: Path, exp: str, label: str, tag: st
         tag: file-name tag, e.g. ``rule_based`` or ``iter2_ppo`` -> ``exp1_iter2_ppo_<class>_eval_<date>.mp4``.
         speeds: slow / medium / fast commands [m/s].
         freq: gait frequency of the class robots [Hz].
+        success_fn: ``fn(ep) -> bool tensor`` deciding which episodes count as successful (default: the rule-based
+            criterion of 02 / 03; 04_sim2real passes its own criterion that allows corrective steps).
     """
     n = env.num_envs
     per = max(1, n // (len(speeds) + 1))
@@ -105,7 +107,7 @@ def record_class_videos(env, agent, out_dir: Path, exp: str, label: str, tag: st
         if s is None:
             continue
         ep = {k: torch.tensor([v]) for k, v in s.items() if not isinstance(v, list)}
-        ok = bool(rule_based_success(ep)[0])
+        ok = bool((success_fn or rule_based_success)(ep)[0])
         report.append({"env": i, "class": names[cls[i]], "success": ok, **{k: s[k] for k in
                        ("cmd_vx", "steps", "distance", "lateral", "max_abs_lateral", "time", "fell", "mean_vx")}})
         if cls[i] >= 0 and ok and names[cls[i]] not in keep:
