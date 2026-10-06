@@ -115,6 +115,8 @@ def main():
                    obs_version=2, push_interval_s=t.push_interval_s, push_speed=t.push_speed)
     for k, v in t.reward_overrides.items():
         setattr(env.cfg.rewards, k, v)  # read every step by _get_rewards
+    for k, v in t.env_overrides.items():
+        setattr(env.cfg, k, v)
     out = run_dir(env.rb, "teacher", args_cli.tag)
     agent_cfg = handle_deprecated_rsl_rl_cfg(runner_cfg(t, pipe.actor, total), metadata.version("rsl-rl-lib"))
     if args_cli.init:
@@ -135,7 +137,7 @@ def main():
     freeze_normalizer(actor)
 
     t0 = time.time()
-    warm = 0 if args_cli.init else min(t.critic_warmup_iters, total)
+    warm = min(t.critic_warmup_iters, total)  # also when resuming: only the actor is loaded, the critic is new
     if warm > 0:
         for prm in actor.parameters():
             prm.requires_grad_(False)
@@ -148,7 +150,7 @@ def main():
             g["lr"] = t.learning_rate
         runner.current_learning_iteration += 1
     if total - warm > 0:
-        runner.learn(num_learning_iterations=total - warm, init_at_random_ep_len=warm == 0)
+        runner.learn(num_learning_iterations=total - warm, init_at_random_ep_len=False)
     ckpts = sorted(out.glob("model_*.pt"), key=lambda q: int(q.stem.split("_")[1]))
     stats = {"init": str(init_path), "teacher_init_reproduction_max_abs_diff": diff, "iterations": total,
              "wall_time_s": round(time.time() - t0, 1), "final_checkpoint": str(ckpts[-1]) if ckpts else None,

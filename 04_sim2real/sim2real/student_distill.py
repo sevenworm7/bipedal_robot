@@ -54,6 +54,8 @@ def main():
                    obs_version=2, push_interval_s=c.push_interval_s, push_speed=c.push_speed)
     for k, v in cfg.teacher.reward_overrides.items():
         setattr(env.cfg.rewards, k, v)
+    for k, v in cfg.teacher.env_overrides.items():
+        setattr(env.cfg, k, v)
     dev, n = env.device, env.num_envs
     lay = itf2.LayoutV2(env.num_legs)
     teacher = load_actor(args_cli.teacher, pipe.actor, dev)

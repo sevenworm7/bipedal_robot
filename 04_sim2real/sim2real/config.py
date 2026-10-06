@@ -45,6 +45,13 @@ class TeacherCfg:
         # swing apex vs the clearance command, per touchdown; ~3 touchdowns/s x 20 s x 0.02 s -> up to ~6 per episode
         "clearance": 5.0,
     })
+    env_overrides: dict = field(default_factory=lambda: {
+        # round 2 (user decision 2026-10-06): heading is observable through the IMU, 0.2 rad (11 deg) let bumps turn the
+        # robot by > 10 deg; 0.1 m/s on the speed reward is as wide as the whole command range (14 % overspeed on flat)
+        "sigma_heading": 0.1,
+        "sigma_vx": 0.05,
+    })
+    """Env reward settings for training (teacher v1 used the 03 values: sigma_heading 0.2, sigma_vx 0.1)."""
     seed: int = 11
 
 
@@ -54,7 +61,8 @@ class StudentCfg:
 
     scenario: str = "dr_rough_gait_train_v1"
     num_envs: int = 4096
-    rounds: int = 40
+    rounds: int = 120
+    """Round 2 (user decision 2026-10-06): 40 -> 120."""
     steps_per_round: int = 100
     """Control steps of every rollout round (2 s); the env keeps running across rounds (episodes continue)."""
     beta_rounds: int = 6
