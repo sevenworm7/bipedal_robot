@@ -57,6 +57,10 @@ ACTION_JOINT_NAMES: tuple[str, ...] = ACTUATED_JOINT_NAMES
 """Joints in the observation / action vectors, in order (user decision 2026-09-30: the tail is part of
 the interface, J = 10)."""
 
+MIRROR_SIGN: dict[str, float] = {"hip_roll": -1.0, "hip_pitch": 1.0, "knee": 1.0, "ankle_pitch": 1.0,
+                                 "tail_yaw": -1.0, "tail_pitch": 1.0}
+"""Left-right mirror (y -> -y) of a joint angle: the mirrored partner's angle = sign x angle (legs swap sides; roll and
+tail yaw change sign because they rotate about axes in the sagittal plane). Used by ``shared/symmetry.py``."""
 JOINT_AXIS_SIGN: dict[str, float] = {r: 1.0 for r in _ROLES}
 """URDF axes already follow the canonical convention (roll about +x, pitch about +y)."""
 

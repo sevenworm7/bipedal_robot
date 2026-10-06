@@ -52,6 +52,10 @@ class TeacherCfg:
         "sigma_vx": 0.05,
     })
     """Env reward settings for training (teacher v1 used the 03 values: sigma_heading 0.2, sigma_vx 0.1)."""
+    symmetry: bool = False
+    """Left-right mirror augmentation + mirror loss in PPO (``shared/symmetry.py``; user decision 2026-10-06 against the
+    step-to gait of teacher v3). Off for teachers v1-v3 (recorded runs), on from round 4 via ``--symmetry``."""
+    mirror_loss_coeff: float = 1.0
     seed: int = 11
 
 
@@ -76,6 +80,8 @@ class StudentCfg:
     val_frac: float = 0.05
     push_interval_s: tuple[float, float] = (4.0, 8.0)
     push_speed: float = 0.25
+    mirror_augment: bool = False
+    """Also store the left-right mirror of every (student observation, teacher action) pair (round 4, ``--symmetry``)."""
     seed: int = 21
 
 

@@ -26,6 +26,7 @@ from isaaclab.app import AppLauncher  # noqa: E402
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
 parser.add_argument("--tag", default="")
 parser.add_argument("--scenario", default=None, help="Training scenario (default: the config's).")
+parser.add_argument("--symmetry", action="store_true", help="Left-right mirror augmentation + mirror loss.")
 parser.add_argument("--max_iterations", type=int, default=None)
 parser.add_argument("--num_envs", type=int, default=None)
 parser.add_argument("--init", type=str, default=None, help="Teacher checkpoint to resume from (55 inputs).")
@@ -40,6 +41,7 @@ from isaaclab_rl.rsl_rl import (  # noqa: E402
     RslRlMLPModelCfg,
     RslRlOnPolicyRunnerCfg,
     RslRlPpoAlgorithmCfg,
+    RslRlSymmetryCfg,
     RslRlVecEnvWrapper,
     handle_deprecated_rsl_rl_cfg,
 )
@@ -65,7 +67,10 @@ def runner_cfg(t, a, max_iterations: int) -> RslRlOnPolicyRunnerCfg:
             value_loss_coef=t.value_loss_coef, use_clipped_value_loss=True, clip_param=t.clip_param,
             entropy_coef=t.entropy_coef, num_learning_epochs=t.num_learning_epochs, num_mini_batches=t.num_mini_batches,
             learning_rate=t.learning_rate, schedule=t.schedule, gamma=t.gamma, lam=t.lam, desired_kl=t.desired_kl,
-            max_grad_norm=t.max_grad_norm),
+            max_grad_norm=t.max_grad_norm,
+            symmetry_cfg=RslRlSymmetryCfg(use_data_augmentation=True, use_mirror_loss=True,
+                                          data_augmentation_func="sim2real.symmetry:augment",
+                                          mirror_loss_coeff=t.mirror_loss_coeff) if t.symmetry else None),
     )
 
 
@@ -113,6 +118,8 @@ def main():
     t = cfg.teacher
     if args_cli.scenario:
         t.scenario = args_cli.scenario
+    if args_cli.symmetry:
+        t.symmetry = True
     total = args_cli.max_iterations or t.max_iterations
     env = make_env(pipe, t.scenario, args_cli.num_envs or t.num_envs, pipe.collect.episode_s, t.seed, record=False,
                    obs_version=2, push_interval_s=t.push_interval_s, push_speed=t.push_speed)
