@@ -57,6 +57,44 @@ class RewardWeightsCfg:
 
 
 @configclass
+class DomainRandCfg:
+    """Sim-to-real randomisation (04_sim2real). **Every field defaults to None = off**; with all fields off the env
+    is bit-identical to the 03 environment (checked by the flat_v1 regression run). Values are set through the named
+    scenarios in ``shared/env/scenarios.py``, never edited in place once a scenario has been used."""
+
+    action_delay_phys_steps: tuple[int, int] | None = None
+    """Per-episode delay of the joint targets in physics steps (5 ms each), sampled uniformly (inclusive)."""
+    kp_scale: tuple[float, float] | None = None
+    """Per-episode scale of the actuator stiffness."""
+    kd_scale: tuple[float, float] | None = None
+    """Per-episode scale of the actuator damping."""
+    effort_scale: tuple[float, float] | None = None
+    """Per-episode scale of the actuator continuous effort limit."""
+    foot_friction: tuple[float, float] | None = None
+    """Static friction of the foot soles, sampled once per env at startup (64 buckets). When set, the ground uses
+    the ``multiply`` combine mode with friction 1.0, so the effective friction equals the foot value."""
+    mass_scale: tuple[float, float] | None = None
+    """Mass scale of every robot link, once per env at startup (printed-part masses are estimates)."""
+    base_com_offset: float | None = None
+    """Uniform offset of the base CoM along x / y / z [m], once per env at startup."""
+    obs_noise_ang_vel: float | None = None
+    """Std of Gaussian noise on the base angular velocity observation [rad/s]."""
+    obs_noise_gravity: float | None = None
+    """Std of Gaussian noise on the projected gravity observation [-]."""
+    obs_noise_joint_pos: float | None = None
+    """Std of Gaussian noise on the joint position observation [rad]."""
+    obs_noise_joint_vel: float | None = None
+    """Std of Gaussian noise on the joint velocity observation [rad/s]."""
+    heading_bias: float | None = None
+    """Per-episode constant bias of the heading-error observation, uniform in +-value [rad] (IMU yaw offset)."""
+    rough_terrain: dict | None = None
+    """Uneven ground with a curriculum (``shared/env/terrain.py``). Keys: ``amplitude`` (max bump height [m] at the
+    hardest level), ``levels``, ``cols``, ``tile_size`` ((x, y) [m]), ``robots_per_tile``, ``horizontal_scale`` [m],
+    ``init_level_max``, ``curriculum`` (bool: promote / demote robots between levels at reset). Replaces the flat plane
+    and the row layout: robots start at the back of their tile (side by side, 1 tile column = ``robots_per_tile``)."""
+
+
+@configclass
 class BipedWalkEnvCfg(DirectRLEnvCfg):
     """Straight walking on flat ground with a forward-speed command and a fixed target heading."""
 
@@ -152,6 +190,11 @@ class BipedWalkEnvCfg(DirectRLEnvCfg):
     gait_swing_frac: float = 0.2
     """Length of the expected swing window [cycles]."""
     contact_force_limit: float | None = None
+
+    # -- sim-to-real randomisation (04_sim2real; all off by default) --
+    scenario: str = "flat_v1"
+    """Name of the scenario this config was built from (``shared/env/scenarios.py``); recorded in every run config."""
+    dr: DomainRandCfg = DomainRandCfg()
 
     # -- bookkeeping --
     record_episodes: bool = False

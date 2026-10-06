@@ -42,6 +42,7 @@ def record_class_videos(env, agent, out_dir: Path, exp: str, label: str, tag: st
     per = max(1, n // (len(speeds) + 1))
     cls = [i // per if i // per < len(speeds) else -1 for i in range(n)]  # -1 = random command
     obs = env.reset()[0]["policy"]
+    env.completed_episodes.clear()  # see shared/rollout.py: drop summaries of episodes ended by this reset
     for i, c in enumerate(cls):
         if c >= 0:
             env.cmd_vx[i] = speeds[c]

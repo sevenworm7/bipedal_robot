@@ -52,8 +52,10 @@ def collect(env, agent, exec_noise_std: float = 0.0, max_steps: int | None = Non
     done_first = torch.zeros(n, dtype=torch.bool, device=dev)
     summaries: dict[str, torch.Tensor] = {}
 
-    env.completed_episodes.clear()
+    # reset first, then clear: the reset ends episodes still running from a previous call, and their partial
+    # summaries must not count as first episodes of this call (bug fixed 2026-10-06; inherited from 00_test)
     obs = env.reset()[0]["policy"]
+    env.completed_episodes.clear()
     agent.reset()
     t = 0
     while not bool(done_first.all()) and t < t_max:

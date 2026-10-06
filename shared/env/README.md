@@ -48,3 +48,29 @@
 
 與實驗一相同，見 `00_test/shared/env/README.md`：推擠預設關閉，`push_interval_s` 設定後開啟；錄影要 `cfg.eval_camera = True` 加 `--enable_cameras`；
 接觸感測器是延遲更新的，著地由 `_update_touchdowns()` 自行判斷。
+
+## Sim-to-real 隨機化與場景版本（04_sim2real，2026-10-06 新增）
+
+`BipedWalkEnvCfg.dr`（`DomainRandCfg`）的每個欄位預設都是 `None`（關閉）。全部關閉時，環境和 03 **逐位元相同**：
+03 最終模型在 `flat_v1` 的固定評估集結果和原紀錄完全一致（`04_sim2real/sim2real/evaluate.py --compare`，2026-10-06 通過）。
+
+| 欄位 | 作用 | 套用時機 |
+|---|---|---|
+| `action_delay_phys_steps` | 關節目標延遲（以 5 ms 物理步為單位） | 每個 episode |
+| `kp_scale`、`kd_scale`、`effort_scale` | 致動器剛性、阻尼、連續扭矩上限的倍率 | 每個 episode |
+| `foot_friction` | 腳底摩擦（地面改用 `multiply`，等效摩擦＝腳底值） | 啟動時，每個環境一次（64 組） |
+| `mass_scale`、`base_com_offset` | 各連桿質量倍率、base 重心偏移 | 啟動時，每個環境一次 |
+| `rough_terrain` | 不規則地形與 curriculum（`terrain.py`）；啟用時才關閉環境之間的機器人碰撞 | 啟動時建立，等級在每次 reset 更新 |
+| `obs_noise_*`、`heading_bias` | 觀測雜訊（只加在 policy 觀測，獎勵與指標用真值）、方向誤差的固定偏差（模擬 IMU yaw 偏移） | 每一步／每個 episode |
+
+**場景**（`scenarios.py`）：具名、帶版本的設定組合。**被正式 run 用過的場景不可修改，要改就新增 `_v2`**（使用者 2026-10-06 規則）。
+
+| 場景 | 內容 |
+|---|---|
+| `flat_v1` | 03 的環境（無任何修改），凍結 |
+| `dr_light_v1` | 平地，中等範圍的一半 |
+| `dr_v1` | 平地，中等範圍（延遲 0–40 ms、kp／kd ±30%、扭矩 ±20%、摩擦 0.4–1.2、質量 ±15%、重心 ±1 cm、觀測雜訊、方向偏差 ±2°） |
+| `rough_eval_v1` | 不規則地形最難一級（±8 mm），其餘理想；評估用 |
+| `dr_rough_eval_v1` | 中等隨機化＋最難地形；評估用 |
+| `dr_rough_train_v1` | 中等隨機化＋不規則地形 10 級 curriculum（初始 0–2 級）；訓練用 |
+| `probe:<欄位>` | 只開一個中等範圍的項目（診斷用，不是訓練場景） |

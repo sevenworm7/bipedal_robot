@@ -35,11 +35,66 @@ def _activate_nested_contact_reporters(robot_path: str) -> None:
             sim_utils.schemas.activate_contact_sensors(str(prim.GetPath()), 0.0, stage)
 
 
+def _configure_startup_randomisation(cfg: BipedWalkEnvCfg, rb) -> None:
+    """Translate ``cfg.dr`` startup items (friction, mass, CoM) into Isaac Lab event terms. No-op when all are off."""
+    dr = cfg.dr
+    if dr.rough_terrain is not None:
+        _configure_rough_terrain(cfg, dr.rough_terrain)
+    if dr.foot_friction is None and dr.mass_scale is None and dr.base_com_offset is None:
+        return
+    from isaaclab.envs import mdp
+    from isaaclab.managers import EventTermCfg, SceneEntityCfg
+
+    events = dict(cfg.events) if isinstance(cfg.events, dict) else {}
+    if dr.foot_friction is not None:
+        lo, hi = dr.foot_friction
+        events["dr_foot_friction"] = EventTermCfg(
+            func=mdp.randomize_rigid_body_material, mode="startup",
+            params={"asset_cfg": SceneEntityCfg("robot", body_names=list(rb.FOOT_BODY_NAMES)),
+                    "static_friction_range": (lo, hi), "dynamic_friction_range": (lo, hi),
+                    "restitution_range": (0.0, 0.0), "num_buckets": 64, "make_consistent": True})
+        # the effective friction is the product with the ground's 1.0 (multiply has the highest combine priority)
+        cfg.terrain.physics_material.friction_combine_mode = "multiply"
+    if dr.mass_scale is not None:
+        events["dr_mass"] = EventTermCfg(
+            func=mdp.randomize_rigid_body_mass, mode="startup",
+            params={"asset_cfg": SceneEntityCfg("robot", body_names=".*"), "mass_distribution_params": tuple(dr.mass_scale),
+                    "operation": "scale", "recompute_inertia": True})
+    if dr.base_com_offset is not None:
+        r = dr.base_com_offset
+        events["dr_base_com"] = EventTermCfg(
+            func=mdp.randomize_rigid_body_com, mode="startup",
+            params={"asset_cfg": SceneEntityCfg("robot", body_names=rb.BASE_BODY_NAME),
+                    "com_range": {"x": (-r, r), "y": (-r, r), "z": (-r, r)}})
+    cfg.events = events
+
+
+def _configure_rough_terrain(cfg: BipedWalkEnvCfg, rt: dict) -> None:
+    """Generated uneven ground (``shared/env/terrain.py``): ``levels`` rows of increasing bump height x ``cols``."""
+    from isaaclab.terrains import TerrainGeneratorCfg, TerrainImporterCfg
+
+    from .terrain import GradedBumpsCfg
+
+    gen = TerrainGeneratorCfg(
+        size=tuple(rt["tile_size"]), border_width=1.0, num_rows=int(rt["levels"]), num_cols=int(rt["cols"]),
+        horizontal_scale=rt["horizontal_scale"], vertical_scale=0.001, slope_threshold=None, curriculum=True,
+        use_cache=False,
+        sub_terrains={"bumps": GradedBumpsCfg(proportion=1.0, amplitude_range=(0.0, float(rt["amplitude"])),
+                                              horizontal_scale=rt["horizontal_scale"], vertical_scale=0.001)},
+    )
+    cfg.terrain = TerrainImporterCfg(
+        prim_path="/World/ground", terrain_type="generator", terrain_generator=gen,
+        max_init_terrain_level=int(rt.get("init_level_max", 0)), collision_group=-1,
+        physics_material=cfg.terrain.physics_material, debug_vis=False,
+    )
+
+
 class BipedWalkEnv(DirectRLEnv):
     cfg: BipedWalkEnvCfg
 
     def __init__(self, cfg: BipedWalkEnvCfg, render_mode: str | None = None, **kwargs):
         self.rb = get_robot(cfg.robot_name)
+        _configure_startup_randomisation(cfg, self.rb)
         super().__init__(cfg, render_mode, **kwargs)
         dev = self.device
         n = self.num_envs
@@ -47,10 +102,24 @@ class BipedWalkEnv(DirectRLEnv):
         # Robots stand side by side in rows (world Y), all walking toward +X; rows are far apart so
         # nobody walks into the next row. Replaces the cloner's square grid for placement/metrics.
         idx = torch.arange(n, device=dev)
-        per_row = min(n, self.cfg.robots_per_row)
         self.spawn_origins = torch.zeros(n, 3, device=dev)
-        self.spawn_origins[:, 0] = (idx // per_row).float() * self.cfg.row_spacing
-        self.spawn_origins[:, 1] = ((idx % per_row).float() - (per_row - 1) / 2) * self.cfg.lateral_spacing
+        rt = self.cfg.dr.rough_terrain
+        if rt is None:
+            per_row = min(n, self.cfg.robots_per_row)
+            self.spawn_origins[:, 0] = (idx // per_row).float() * self.cfg.row_spacing
+            self.spawn_origins[:, 1] = ((idx % per_row).float() - (per_row - 1) / 2) * self.cfg.lateral_spacing
+            self.terrain_level = None
+        else:
+            # tiles: one column per group of robots_per_tile robots; level = tile row (bump height)
+            per = int(rt["robots_per_tile"])
+            origins = self.terrain.terrain_origins  # [levels, cols, 3]
+            self.terrain_col = (idx // per) % origins.shape[1]
+            self.terrain_slot = idx % per
+            if "fixed_level" in rt:  # evaluation: every robot on one difficulty level, no curriculum
+                self.terrain_level = torch.full((n,), int(rt["fixed_level"]), dtype=torch.long, device=dev)
+            else:
+                self.terrain_level = torch.randint(0, int(rt.get("init_level_max", 0)) + 1, (n,), device=dev)
+            self._update_terrain_spawn(idx)
 
         self.leg_ids, _ = self.robot.find_joints(list(self.rb.ACTION_JOINT_NAMES), preserve_order=True)
         self.leg_ids_t = torch.tensor(self.leg_ids, device=dev)
@@ -78,6 +147,7 @@ class BipedWalkEnv(DirectRLEnv):
         self._last_air_time = torch.zeros(n, n_feet, device=dev)
         self._next_push = torch.full((n,), float("inf"), device=dev)
         self.completed_episodes: list[dict[str, torch.Tensor]] = []
+        self._init_runtime_randomisation()
         self._episode_sums = {k: torch.zeros(n, device=dev) for k in self.cfg.rewards.to_dict()}
         self._compute_state()
 
@@ -90,6 +160,10 @@ class BipedWalkEnv(DirectRLEnv):
         self.cfg.terrain.env_spacing = self.scene.cfg.env_spacing
         self.terrain = self.cfg.terrain.class_type(self.cfg.terrain)
         self.scene.clone_environments(copy_from_source=False)
+        if self.cfg.dr.rough_terrain is not None:
+            # several robots share a tile: disable robot-robot collisions across envs (kept off on flat_v1 for
+            # bit-identical 03 results; there the robots stand 1 m apart and never touch)
+            self.scene.filter_collisions(global_prim_paths=[self.cfg.terrain.prim_path])
         self.scene.articulations["robot"] = self.robot
         for i, sensor in enumerate(self.foot_sensors):
             self.scene.sensors[f"foot_contact_{i}"] = sensor
@@ -211,7 +285,12 @@ class BipedWalkEnv(DirectRLEnv):
         self.q_target[:] = itf.action_to_joint_targets(self.actions, self.default_leg_pos)
 
     def _apply_action(self):
-        self.robot.set_joint_position_target_index(target=self.q_target, joint_ids=self.leg_ids)
+        target = self.q_target
+        if self._delay_hist is not None:  # dr.action_delay_phys_steps: called once per physics step
+            self._delay_hist = torch.roll(self._delay_hist, 1, dims=0)
+            self._delay_hist[0] = self.q_target
+            target = self._delay_hist[self._delay, torch.arange(self.num_envs, device=self.device)]
+        self.robot.set_joint_position_target_index(target=target, joint_ids=self.leg_ids)
 
     def _get_observations(self) -> dict:
         self._compute_state()
@@ -227,6 +306,10 @@ class BipedWalkEnv(DirectRLEnv):
             last_action=self.actions,
             gait_phase=self.gait_phase,
         )
+        if self._obs_noise is not None:
+            obs = obs + self._obs_noise * torch.randn_like(obs)
+        if self._heading_bias is not None:
+            obs[:, self.layout.slices()["heading_error"]] += self._heading_bias.unsqueeze(-1)
         return {"policy": obs}
 
     def _get_dones(self) -> tuple[torch.Tensor, torch.Tensor]:
@@ -282,6 +365,57 @@ class BipedWalkEnv(DirectRLEnv):
             reward += r
         return reward
 
+    # ------------------------------------------------------------------ sim-to-real randomisation (04_sim2real)
+    def _init_runtime_randomisation(self):
+        """Buffers for the per-episode items of ``cfg.dr``; everything stays None when they are off."""
+        dr, n, dev = self.cfg.dr, self.num_envs, self.device
+        self._delay_hist = self._delay = None
+        if dr.action_delay_phys_steps is not None:
+            d_max = int(dr.action_delay_phys_steps[1])
+            self._delay_hist = self.q_target.unsqueeze(0).repeat(d_max + 1, 1, 1)
+            self._delay = torch.zeros(n, dtype=torch.long, device=dev)
+        self._actuators = list(self.robot.actuators.values())
+        self._act_defaults = [(a.stiffness.clone(), a.damping.clone(), a.effort_limit.clone()) for a in self._actuators]
+        self._obs_noise = None
+        noise = {"base_ang_vel": dr.obs_noise_ang_vel, "projected_gravity": dr.obs_noise_gravity,
+                 "joint_pos_rel": dr.obs_noise_joint_pos, "joint_vel": dr.obs_noise_joint_vel}
+        if any(v is not None for v in noise.values()):
+            self._obs_noise = torch.zeros(self.layout.dim, device=dev)
+            for k, v in noise.items():
+                if v is not None:
+                    self._obs_noise[self.layout.slices()[k]] = v
+        self._heading_bias = torch.zeros(n, device=dev) if dr.heading_bias is not None else None
+
+    def _update_terrain_spawn(self, env_ids: torch.Tensor):
+        """Spawn point of each robot on its tile: back of the tile, side by side across it, above the bumps."""
+        rt = self.cfg.dr.rough_terrain
+        sx, sy = rt["tile_size"]
+        per = int(rt["robots_per_tile"])
+        o = self.terrain.terrain_origins[self.terrain_level[env_ids], self.terrain_col[env_ids]]
+        self.spawn_origins[env_ids, 0] = o[:, 0] - sx / 2 + 0.5
+        self.spawn_origins[env_ids, 1] = o[:, 1] + (self.terrain_slot[env_ids].float() - (per - 1) / 2) * (sy / per)
+        self.spawn_origins[env_ids, 2] = o[:, 2] + float(rt["amplitude"])
+
+    def _reset_runtime_randomisation(self, env_ids: torch.Tensor):
+        dr, k, dev = self.cfg.dr, len(env_ids), self.device
+
+        def uniform(lo_hi):
+            return torch.empty(k, device=dev).uniform_(*lo_hi)
+
+        if self._delay is not None:
+            lo, hi = dr.action_delay_phys_steps
+            self._delay[env_ids] = torch.randint(int(lo), int(hi) + 1, (k,), device=dev)
+            self._delay_hist[:, env_ids] = self.q_target[env_ids].unsqueeze(0)
+        for name, scale in (("stiffness", dr.kp_scale), ("damping", dr.kd_scale), ("effort_limit", dr.effort_scale)):
+            if scale is None:
+                continue
+            s = uniform(scale).unsqueeze(-1)
+            idx = ("stiffness", "damping", "effort_limit").index(name)
+            for act, defaults in zip(self._actuators, self._act_defaults):
+                getattr(act, name)[env_ids] = defaults[idx][env_ids] * s
+        if self._heading_bias is not None:
+            self._heading_bias[env_ids] = uniform((-dr.heading_bias, dr.heading_bias))
+
     # ------------------------------------------------------------------ reset
     def _reset_idx(self, env_ids: torch.Tensor | None):
         if env_ids is None:
@@ -317,6 +451,16 @@ class BipedWalkEnv(DirectRLEnv):
         for v in self._episode_sums.values():
             v[env_ids] = 0.0
 
+        if self.terrain_level is not None and bool(ran.any()) and self.cfg.dr.rough_terrain.get("curriculum", True)                 and "fixed_level" not in self.cfg.dr.rough_terrain:
+            done_ids = env_ids[ran]
+            t = self.episode_length_buf[done_ids].float() * self.step_dt
+            walked = self.tracker.distance[done_ids] >= 0.8 * self.cmd_vx[done_ids] * t
+            full = t >= self.max_episode_length_s - 2 * self.step_dt
+            up = walked & full & ~self.fell[done_ids]
+            down = self.fell[done_ids]
+            top = self.terrain.terrain_origins.shape[0] - 1
+            self.terrain_level[done_ids] = (self.terrain_level[done_ids] + up.long() - down.long()).clamp(0, top)
+            self._update_terrain_spawn(env_ids)
         self.robot.reset(env_ids)
         super()._reset_idx(env_ids)
         n = len(env_ids)
@@ -358,3 +502,4 @@ class BipedWalkEnv(DirectRLEnv):
 
         start_xy = root_pose[:, :2] - self.spawn_origins[env_ids, :2]
         self.tracker.reset(env_ids, start_xy, self.target_heading[env_ids])
+        self._reset_runtime_randomisation(env_ids)

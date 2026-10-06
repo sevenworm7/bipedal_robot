@@ -44,8 +44,10 @@ def run_first_episodes(env, ctrl, push=None, torque_every: int = 0, frame_cb=Non
     """
     n = env.num_envs
     dev = env.device
-    env.completed_episodes.clear()
+    # reset first, then clear: the reset ends episodes still running from a previous call, and their partial
+    # summaries must not count as first episodes of this call (bug fixed 2026-10-06; inherited from 00_test)
     obs = env.reset()[0]["policy"]
+    env.completed_episodes.clear()
     ctrl.reset()
     seen = torch.zeros(n, dtype=torch.bool, device=dev)
     first: dict[str, torch.Tensor] = {}

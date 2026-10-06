@@ -4,15 +4,16 @@
 使用者以繁體中文溝通，文件與回覆一律使用繁體中文；程式碼、識別字與 commit message 使用英文。
 - **回覆語言（使用者特別強調）：主要語言一律是繁體中文。** 專業術語可以中英搭配（例如「扭矩（torque）」「強化學習（RL）」，或直接使用 PPO、URDF、`params.yaml` 這類通用英文名稱），但敘述句本身要用中文寫，不要整段或整篇使用英文。即使查到的資料、工具輸出或 skill 內容是英文，也要用中文轉述。
 
-## 三個開發流程（依序相依）
+## 開發流程（依序相依）
 
 | 資料夾 | 內容 | 詳細需求 |
 |---|---|---|
 | `01_robot_construction/` | 機器人模型設計（程式參數化 URDF → USD） | 見下方「機器人模型」 |
 | `02_rule_based/` | 規則式行走控制器，作為教師策略 | `02_rule_based/PROMPT.md` |
 | `03_training_pipeline/` | Rule-based → BC → PPO → 自我蒸餾 ×3 → 評估影片 | `03_training_pipeline/PROMPT.md` |
+| `04_sim2real/` | 實驗二新增（使用者 2026-10-06）：sim-to-real 隨機化、可部署觀測、步態多樣性、student 蒸餾 | `04_sim2real/PROMPT.md` |
 
-- 開始實作 rule-based 或訓練管線前（不論是在 `00_test/` 還是 02、03 中），**必須先完整閱讀對應的 PROMPT.md**；其中「若有不確定之處」列出的項目，不明確時要先問使用者，不可自行假設。
+- 開始實作 rule-based、訓練管線或 sim-to-real 前（不論是在 `00_test/` 還是 02、03、04 中），**必須先完整閱讀對應的 PROMPT.md**；其中「若有不確定之處」列出的項目，不明確時要先問使用者，不可自行假設。
 - 實驗二尚未決定的設計事項（尺寸、質量分配、關節範圍、尾巴參數、訓練目標）記錄在 `01_robot_construction/README.md` 的「待決定事項」。這些是阻擋性的決策，遇到時要主動詢問。
 
 ## 兩次實驗
@@ -78,14 +79,15 @@ references/             # 參考資料（唯讀）：雙足機器人/ 為舊模�
   outputs/              #   實驗一的產出（不進 git）
 01_robot_construction/  # 實驗二：model/v<N>/ 每版的參數、零件、URDF；model/generator/ 產生程式；model/v2_backlog.md
 02_rule_based/          # 實驗二：rule_based/ 為控制器套件與腳本（從 00_test/rule_based 移植），params/ 為採用的參數檔
-03_training_pipeline/   # 實驗二
+03_training_pipeline/   # 實驗二：training_pipeline/ 為管線程式（從 00_test 移植），三輪完成（2026-10-01）
+04_sim2real/            # 實驗二：sim-to-real 強健性訓練（2026-10-06 新增）
 shared/                 # 實驗二的共用模組（從 00_test/shared 移植）：介面、env/、指標、rollout、影片；robots/custom_biped.py
 tools/                  # 開發工具（urdf_inspect.py、isaacpy.cmd），兩次實驗共用
 outputs/                # 實驗二的產出（不進 git）
 ```
 
 - **刻意保留的複本**：實驗一的程式（`00_test/shared/`、`00_test/rule_based/`）凍結不動，實驗二移植時複製一份再修改，所以有些檔案目前兩邊內容相同（`rollout.py`、`video_overlay.py`、`eval_videos.py`、`leg_kinematics.py`）。這是為了讓兩次實驗各自可重現，實驗二只改實驗二的複本，不回頭改 `00_test/`。`PROMPT.md` 的複本也是同樣道理。
-- 大型產出一律放在 `<產出根目錄>/<stage>/<run_name>/`：實驗一的產出根目錄是 `00_test/outputs/`，實驗二是 `outputs/`。`<stage>` 為 `rule_based` 或 `training`，run 名稱包含日期，例如 `00_test/outputs/training/iter1_ppo_20260918/`。
+- 大型產出一律放在 `<產出根目錄>/<stage>/<run_name>/`：實驗一的產出根目錄是 `00_test/outputs/`，實驗二是 `outputs/`。`<stage>` 為 `rule_based`、`training` 或 `sim2real`，run 名稱包含日期，例如 `00_test/outputs/training/iter1_ppo_20260918/`。
 - 所有超參數放在 config 檔（dataclass 或 YAML），不要寫死在程式中。每次訓練或評估都保存當下使用的 config。
 
 ## 版本控制（實驗二，使用者 2026-09-30 要求）
