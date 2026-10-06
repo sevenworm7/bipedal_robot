@@ -14,6 +14,7 @@ from isaaclab.envs import DirectRLEnv
 from isaaclab.sensors import ContactSensor
 
 from .. import interface as itf
+from .. import interface_v2 as itf2
 from ..metrics import WalkTracker
 from ..robots import get_robot
 from .biped_env_cfg import BipedWalkEnvCfg
@@ -95,6 +96,8 @@ class BipedWalkEnv(DirectRLEnv):
     def __init__(self, cfg: BipedWalkEnvCfg, render_mode: str | None = None, **kwargs):
         self.rb = get_robot(cfg.robot_name)
         _configure_startup_randomisation(cfg, self.rb)
+        if cfg.obs_version == 2:
+            cfg.observation_space = itf2.LayoutV2(len(self.rb.ACTION_JOINT_NAMES)).teacher_dim
         super().__init__(cfg, render_mode, **kwargs)
         dev = self.device
         n = self.num_envs
@@ -147,6 +150,7 @@ class BipedWalkEnv(DirectRLEnv):
         self._last_air_time = torch.zeros(n, n_feet, device=dev)
         self._next_push = torch.full((n,), float("inf"), device=dev)
         self.completed_episodes: list[dict[str, torch.Tensor]] = []
+        self._init_gait_variation()
         self._init_runtime_randomisation()
         self._episode_sums = {k: torch.zeros(n, device=dev) for k in self.cfg.rewards.to_dict()}
         self._compute_state()
@@ -187,12 +191,14 @@ class BipedWalkEnv(DirectRLEnv):
     def gait_phase(self) -> torch.Tensor:
         """Gait clock phase in [0, 1) (stateless: derived from the episode time)."""
         t = self.episode_length_buf.float() * self.step_dt
+        if self._phase_acc is not None:  # gait_var.resample_interval_s: integrated clock (frequency may change)
+            return torch.remainder(self.phase0 + self._phase_acc, 1.0)
         return torch.remainder(self.phase0 + self.gait_freq * t, 1.0)
 
     @property
     def step_length_cmd(self) -> torch.Tensor:
         """Nominal step length implied by the command [m] (two steps per gait cycle)."""
-        return self.cmd_vx / (2.0 * self.gait_freq)
+        return self.cmd_vx / (2.0 * self.gait_freq.clamp_min(1e-3))  # standing: freq 0 -> step length 0
 
     def _update_touchdowns(self) -> torch.Tensor:
         """Detect foot touchdowns during the last control step, shape [N, F] (bool). Call once per step.
@@ -306,11 +312,37 @@ class BipedWalkEnv(DirectRLEnv):
             last_action=self.actions,
             gait_phase=self.gait_phase,
         )
+        if self.cfg.obs_version == 2:
+            return self._observations_v2(obs)
         if self._obs_noise is not None:
             obs = obs + self._obs_noise * torch.randn_like(obs)
         if self._heading_bias is not None:
             obs[:, self.layout.slices()["heading_error"]] += self._heading_bias.unsqueeze(-1)
         return {"policy": obs}
+
+    def _observations_v2(self, clean: torch.Tensor) -> dict:
+        """``shared/interface_v2.py``: privileged teacher (true state + PRIV_FIELDS) and the noisy student history."""
+        noisy = clean if self._obs_noise is None else clean + self._obs_noise * torch.randn_like(clean)
+        if self._heading_bias is not None:
+            noisy = noisy.clone()
+            noisy[:, self.layout.slices()["heading_error"]] += self._heading_bias.unsqueeze(-1)
+        frame = itf2.student_frame(noisy, self.clearance_cmd)
+        fresh = self.episode_length_buf == 0
+        self._hist = torch.roll(self._hist, 1, dims=1)
+        self._hist[:, 0] = frame
+        self._hist[fresh] = frame[fresh].unsqueeze(1)
+        n = self.num_envs
+        amp = torch.zeros(n, device=self.device)
+        if self.terrain_level is not None:
+            rt = self.cfg.dr.rough_terrain
+            amp = float(rt["amplitude"]) * self.terrain_level.float() / max(1, int(rt["levels"]) - 1)
+        delay = (self._delay.float() * self.physics_dt) if self._delay is not None else torch.zeros(n, device=self.device)
+        priv = torch.cat((self._foot_friction.unsqueeze(-1), self._mass_scale.unsqueeze(-1), self._gain_scale,
+                          delay.unsqueeze(-1), amp.unsqueeze(-1), self.com_pos[:, 2:3],
+                          self.foot_in_contact().float(), self.clearance_cmd.unsqueeze(-1)), dim=-1)
+        teacher = torch.cat((clean, priv), dim=-1)
+        self.obs_v2 = {"policy": teacher, "critic": teacher, "student": self._hist.reshape(n, -1)}
+        return self.obs_v2  # kept for agents that act on the student group (reset() does not refresh obs_buf)
 
     def _get_dones(self) -> tuple[torch.Tensor, torch.Tensor]:
         self._compute_state()
@@ -329,12 +361,16 @@ class BipedWalkEnv(DirectRLEnv):
             torque_abs=torque_abs,
             torque_saturated=self.leg_saturated.any(-1),
         )
+        if self._gait_var_on:
+            self._step_gait_variation()
         return self.fell, time_out
 
     def _gait_contact_match(self) -> torch.Tensor:
         """Fraction of feet whose contact state matches the gait-clock schedule, shape [N]."""
         phase = self.gait_phase.unsqueeze(1) + torch.tensor([0.0, 0.5], device=self.device)
         in_swing = torch.remainder(phase - self.cfg.gait_swing_start, 1.0) < self.cfg.gait_swing_frac
+        if self._gait_var_on:
+            in_swing = in_swing & (self.gait_freq > 0).unsqueeze(1)
         return (in_swing != self.foot_in_contact()).float().mean(-1)
 
     def _get_rewards(self) -> torch.Tensor:
@@ -358,12 +394,66 @@ class BipedWalkEnv(DirectRLEnv):
             "contact_force": (forces - c.contact_force_limit).clamp_min(0).sum(-1),
             "gait_contact": self._gait_contact_match(),
         }
+        if self._clearance_on:
+            terms["clearance"] = self._clearance_reward()
         reward = torch.zeros_like(self.cmd_vx)
         for k, val in terms.items():
             r = getattr(w, k) * val * self.step_dt
             self._episode_sums[k] += r
             reward += r
         return reward
+
+    # ------------------------------------------------------------------ gait diversity (04_sim2real phase 3)
+    def _init_gait_variation(self):
+        gv, n, dev = self.cfg.gait_var, self.num_envs, self.device
+        self._gait_var_on = (gv.resample_interval_s is not None or gv.zero_speed_prob > 0 or gv.stand_prob > 0
+                             or gv.clearance_range is not None)
+        self._clearance_on = gv.clearance_range is not None
+        self._phase_acc = torch.zeros(n, device=dev) if gv.resample_interval_s is not None else None
+        self._next_resample = torch.full((n,), float("inf"), device=dev)
+        self.clearance_cmd = torch.zeros(n, device=dev)
+        self._swing_apex = torch.zeros(n, 2, device=dev)
+        self._foot_body_ids = [self.robot.find_bodies(nm)[0][0] for nm in self.rb.FOOT_BODY_NAMES]
+
+    def _sample_commands(self, env_ids: torch.Tensor):
+        """Speed, gait frequency (and clearance) for ``env_ids``: uniform in the env ranges, then stepping in place
+        (speed 0) with ``zero_speed_prob`` and standing (speed 0, frequency 0) with ``stand_prob``."""
+        gv, k, dev = self.cfg.gait_var, len(env_ids), self.device
+        cmd = torch.empty(k, device=dev).uniform_(*self.cfg.cmd_vx_range)
+        freq = torch.empty(k, device=dev).uniform_(*self.cfg.gait_freq_range)
+        u = torch.rand(k, device=dev)
+        stand = u < gv.stand_prob
+        zero = (u >= gv.stand_prob) & (u < gv.stand_prob + gv.zero_speed_prob)
+        cmd = torch.where(stand | zero, torch.zeros_like(cmd), cmd)
+        freq = torch.where(stand, torch.zeros_like(freq), freq)
+        self.cmd_vx[env_ids] = cmd
+        self.gait_freq[env_ids] = freq
+        if gv.clearance_range is not None:
+            self.clearance_cmd[env_ids] = torch.empty(k, device=dev).uniform_(*gv.clearance_range)
+        if gv.resample_interval_s is not None:
+            t = self.episode_length_buf[env_ids].float() * self.step_dt
+            self._next_resample[env_ids] = t + torch.empty(k, device=dev).uniform_(*gv.resample_interval_s)
+
+    def _step_gait_variation(self):
+        """Once per control step (from ``_get_dones``): advance the clock, resample due commands, track swing apexes."""
+        if self._phase_acc is not None:
+            self._phase_acc += self.gait_freq * self.step_dt
+            t = self.episode_length_buf.float() * self.step_dt
+            due = t >= self._next_resample
+            if bool(due.any()):
+                self._sample_commands(due.nonzero().flatten())
+        if self._clearance_on:
+            z = self.robot.data.body_pos_w.torch[:, self._foot_body_ids, 2]
+            rel = z - z.flip(-1)  # each foot relative to the other one
+            air = ~self.foot_in_contact()
+            self._swing_apex = torch.where(air, torch.maximum(self._swing_apex, rel), self._swing_apex)
+
+    def _clearance_reward(self) -> torch.Tensor:
+        """Sum over touchdowns of exp(-((apex - cmd) / sigma)^2); the apex buffer restarts after each touchdown."""
+        err = (self._swing_apex - self.clearance_cmd.unsqueeze(-1)) / self.cfg.gait_var.sigma_clearance
+        r = (torch.exp(-err * err) * self.first_contact.float()).sum(-1)
+        self._swing_apex = torch.where(self.first_contact, torch.zeros_like(self._swing_apex), self._swing_apex)
+        return r
 
     # ------------------------------------------------------------------ sim-to-real randomisation (04_sim2real)
     def _init_runtime_randomisation(self):
@@ -385,6 +475,24 @@ class BipedWalkEnv(DirectRLEnv):
                 if v is not None:
                     self._obs_noise[self.layout.slices()[k]] = v
         self._heading_bias = torch.zeros(n, device=dev) if dr.heading_bias is not None else None
+        # privileged values (interface v2); scales are 1 unless randomised
+        self._gain_scale = torch.ones(n, 3, device=dev)  # kp, kd, effort
+        if self.cfg.obs_version == 2:
+            self.layout2 = itf2.LayoutV2(self.num_legs)
+            self._hist = torch.zeros(n, self.layout2.history, self.layout2.frame_dim, device=dev)
+            self._mass_scale = self.robot.data.body_mass.torch.sum(-1) / float(self.rb.TOTAL_MASS)
+            self._foot_friction = self._read_foot_friction()
+
+    def _read_foot_friction(self) -> torch.Tensor:
+        """Mean static friction of the foot shapes per env (after the startup material randomisation)."""
+        import warp as wp
+
+        view = self.robot.root_view
+        shapes = [self.robot._physics_sim_view.create_rigid_body_view(lp).max_shapes for lp in view.link_paths[0]]
+        mats = wp.to_torch(view.get_material_properties())  # [N, shapes, 3] (static, dynamic, restitution), CPU
+        foot_ids = [self.robot.find_bodies(nm)[0][0] for nm in self.rb.FOOT_BODY_NAMES]
+        vals = [mats[:, sum(shapes[:b]):sum(shapes[:b]) + shapes[b], 0] for b in foot_ids]
+        return torch.cat(vals, dim=-1).mean(-1).to(self.device)
 
     def _update_terrain_spawn(self, env_ids: torch.Tensor):
         """Spawn point of each robot on its tile: back of the tile, side by side across it, above the bumps."""
@@ -413,6 +521,7 @@ class BipedWalkEnv(DirectRLEnv):
             idx = ("stiffness", "damping", "effort_limit").index(name)
             for act, defaults in zip(self._actuators, self._act_defaults):
                 getattr(act, name)[env_ids] = defaults[idx][env_ids] * s
+            self._gain_scale[env_ids, idx] = s.squeeze(-1)
         if self._heading_bias is not None:
             self._heading_bias[env_ids] = uniform((-dr.heading_bias, dr.heading_bias))
 
@@ -469,8 +578,13 @@ class BipedWalkEnv(DirectRLEnv):
         def uniform(lo_hi):
             return torch.empty(n, device=dev).uniform_(*lo_hi)
 
-        self.cmd_vx[env_ids] = uniform(self.cfg.cmd_vx_range)
-        self.gait_freq[env_ids] = uniform(self.cfg.gait_freq_range)
+        if self._gait_var_on:
+            self._sample_commands(env_ids)
+            self._phase_acc[env_ids] = 0.0
+            self._swing_apex[env_ids] = 0.0
+        else:
+            self.cmd_vx[env_ids] = uniform(self.cfg.cmd_vx_range)
+            self.gait_freq[env_ids] = uniform(self.cfg.gait_freq_range)
         self.phase0[env_ids] = torch.rand(n, device=dev) if self.cfg.init_phase_random else 0.0
         yaw = uniform(self.cfg.init_yaw_range)
         self.target_heading[env_ids] = itf.wrap_angle(yaw + uniform(self.cfg.heading_offset_range))

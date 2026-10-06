@@ -44,13 +44,18 @@ _LIGHT_DR = {
     "heading_bias": 0.0175,  # +-1 deg
 }
 
-_ROUGH_TRAIN = {  # +-8 mm bumps at the hardest of 10 levels (user decision 2026-10-06), curriculum
-    "amplitude": 0.008, "levels": 10, "cols": 32, "tile_size": (6.0, 8.0), "robots_per_tile": 8,
+_ROUGH_TRAIN = {  # +-8 mm bumps at the hardest of 10 levels (user decision 2026-10-06), curriculum.
+    # 16 x 10 tiles at 5 cm: 32 columns (~12 M triangles) failed PhysX mesh cooking (no ground collision).
+    "amplitude": 0.008, "levels": 10, "cols": 16, "tile_size": (6.0, 8.0), "robots_per_tile": 8,
     "horizontal_scale": 0.05, "init_level_max": 2, "curriculum": True,
 }
 _ROUGH_EVAL = {  # evaluation: every robot on the hardest level (+-8 mm), no curriculum
     "amplitude": 0.008, "levels": 10, "cols": 16, "tile_size": (6.0, 8.0), "robots_per_tile": 8,
     "horizontal_scale": 0.05, "fixed_level": 9,
+}
+
+_GAIT_VAR = {  # user decision 2026-10-06: standing, stepping in place, start / stop, speed and clearance changes
+    "resample_interval_s": (3.0, 6.0), "zero_speed_prob": 0.1, "stand_prob": 0.1, "clearance_range": (0.010, 0.035),
 }
 
 SCENARIOS: dict[str, dict] = {
@@ -66,8 +71,13 @@ SCENARIOS: dict[str, dict] = {
     "dr_rough_eval_v1": {"dr": {**_MODERATE_DR, "rough_terrain": _ROUGH_EVAL}},
     # training: moderate randomisation + uneven ground with a curriculum
     "dr_rough_train_v1": {"dr": {**_MODERATE_DR, "rough_terrain": _ROUGH_TRAIN}},
+    # flat ground, ideal actuators, changing commands (stand / in place / start-stop / clearance); evaluation of diversity
+    "gait_eval_v1": {"gait_var": _GAIT_VAR},
+    # training: moderate randomisation + curriculum terrain + changing commands (phases 1 + 3)
+    "dr_rough_gait_train_v1": {"dr": {**_MODERATE_DR, "rough_terrain": _ROUGH_TRAIN}, "gait_var": _GAIT_VAR},
 }
-"""Scenario name -> overrides. ``dr`` entries go to ``BipedWalkEnvCfg.dr``, every other key to the env config."""
+"""Scenario name -> overrides. ``dr`` / ``gait_var`` entries go to ``BipedWalkEnvCfg.dr`` / ``.gait_var``, every other
+key to the env config."""
 
 SINGLE_ITEM_PROBES: dict[str, dict] = {k: {"dr": {k: v}} for k, v in _MODERATE_DR.items()}
 """One moderate-range item at a time (diagnostic only, not a training scenario): which item hurts a policy most."""
@@ -80,11 +90,12 @@ def apply_scenario(env_cfg, name: str) -> None:
     else:
         overrides = SCENARIOS[name]
     for k, v in overrides.items():
-        if k == "dr":
+        if k in ("dr", "gait_var"):
+            sub = getattr(env_cfg, k)
             for dk, dv in v.items():
-                if not hasattr(env_cfg.dr, dk):
-                    raise KeyError(f"unknown dr field {dk!r}")
-                setattr(env_cfg.dr, dk, dv)
+                if not hasattr(sub, dk):
+                    raise KeyError(f"unknown {k} field {dk!r}")
+                setattr(sub, dk, dv)
         else:
             if not hasattr(env_cfg, k):
                 raise KeyError(f"unknown env field {k!r}")

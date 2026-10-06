@@ -24,7 +24,8 @@ from isaaclab.app import AppLauncher  # noqa: E402
 
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
 parser.add_argument("--scenario", type=str, required=True, help="Scenario name or probe:<dr item>.")
-parser.add_argument("--agent", type=str, required=True, help="teacher[:params.json] or policy:<ckpt>.")
+parser.add_argument("--agent", type=str, required=True,
+                    help="teacher[:params.json], policy:<ckpt> (03 model or v2 teacher) or student:<ckpt>.")
 parser.add_argument("--tag", type=str, default="")
 parser.add_argument("--no_push", action="store_true")
 parser.add_argument("--compare", type=str, default=None, help="Reference stats.json for the regression check.")
@@ -38,17 +39,18 @@ from sim2real.common import dump_config, git_commit, make_env, run_dir  # noqa: 
 from training_pipeline.common import env_summary, write_json  # noqa: E402
 from training_pipeline.config import PipelineCfg  # noqa: E402
 from training_pipeline.evaluation import evaluate_agent, summary_line  # noqa: E402
-from training_pipeline.policy import load_agent  # noqa: E402
+from sim2real.agents import load_agent_v2, obs_version_for  # noqa: E402
 
 
 def main():
     cfg = PipelineCfg()
     e = cfg.eval
-    env = make_env(cfg, args_cli.scenario, e.episodes, e.episode_s, e.seed)
-    agent = load_agent(args_cli.agent, env, cfg.actor, env.rb.PROJECT_ROOT)
+    obs_version = obs_version_for(args_cli.agent)
+    env = make_env(cfg, args_cli.scenario, e.episodes, e.episode_s, e.seed, obs_version=obs_version)
+    agent = load_agent_v2(args_cli.agent, env, cfg.actor, env.rb.PROJECT_ROOT)
     safe = args_cli.scenario.replace(":", "-")
     out = run_dir(env.rb, f"eval_{safe}", args_cli.tag)
-    dump_config(out, {"args": vars(args_cli), "scenario": args_cli.scenario, "dr": env.cfg.dr.to_dict(),
+    dump_config(out, {"args": vars(args_cli), "scenario": args_cli.scenario, "obs_version": obs_version, "dr": env.cfg.dr.to_dict(),
                       "env": env_summary(env.cfg), "pipeline": cfg.to_dict(), "git_commit": git_commit(env.rb.PROJECT_ROOT)})
     stats, ep = evaluate_agent(env, agent, e, push=not args_cli.no_push)
     stats = {"agent": args_cli.agent, "scenario": args_cli.scenario, **stats}

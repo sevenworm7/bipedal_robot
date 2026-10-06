@@ -49,6 +49,9 @@ class RewardWeightsCfg:
     """sum over touchdowns of (air_time - target_air_time) [s]"""
     contact_force: float = -1.0e-3
     """sum max(|F_foot| - contact_force_limit, 0) [N]"""
+    clearance: float = 0.0
+    """per touchdown exp(-((swing apex - commanded clearance) / sigma)^2); used only with ``gait_var.clearance_range``
+    (04_sim2real). 0 keeps the 03 reward."""
     gait_contact: float = 2.0
     """mean over feet of [contact state == clock schedule] (in the air inside the foot's swing window of the
     gait clock, on the ground outside it); added 2026-09-22 (user decision) because PPO drifted away from
@@ -92,6 +95,24 @@ class DomainRandCfg:
     hardest level), ``levels``, ``cols``, ``tile_size`` ((x, y) [m]), ``robots_per_tile``, ``horizontal_scale`` [m],
     ``init_level_max``, ``curriculum`` (bool: promote / demote robots between levels at reset). Replaces the flat plane
     and the row layout: robots start at the back of their tile (side by side, 1 tile column = ``robots_per_tile``)."""
+
+
+@configclass
+class GaitVariationCfg:
+    """Gait diversity (04_sim2real phase 3, user decision 2026-10-06). **All off by default** (03 behaviour)."""
+
+    resample_interval_s: tuple[float, float] | None = None
+    """Resample speed and gait frequency mid-episode after this many seconds (start / stop / speed changes).
+    When set, the gait clock is integrated (phase += f dt) so that frequency changes do not make the phase jump."""
+    zero_speed_prob: float = 0.0
+    """Probability that a sampled command is 0 m/s with the clock running (stepping in place)."""
+    stand_prob: float = 0.0
+    """Probability that a sampled command is "stand": 0 m/s and gait frequency 0 (clock frozen, both feet down)."""
+    clearance_range: tuple[float, float] | None = None
+    """Commanded swing-foot apex height above the stance foot [m], sampled with each command (interface v2 only).
+    Rewarded at touchdown by the ``clearance`` reward term."""
+    sigma_clearance: float = 0.008
+    """Width of the clearance reward exp(-((apex - cmd) / sigma)^2) [m]."""
 
 
 @configclass
@@ -195,6 +216,10 @@ class BipedWalkEnvCfg(DirectRLEnvCfg):
     scenario: str = "flat_v1"
     """Name of the scenario this config was built from (``shared/env/scenarios.py``); recorded in every run config."""
     dr: DomainRandCfg = DomainRandCfg()
+    gait_var: GaitVariationCfg = GaitVariationCfg()
+    obs_version: int = 1
+    """1 = the 44-dim v1 observation (02 / 03). 2 = ``shared/interface_v2.py``: groups ``policy`` / ``critic`` =
+    privileged teacher observation, ``student`` = deployable history (04_sim2real)."""
 
     # -- bookkeeping --
     record_episodes: bool = False
