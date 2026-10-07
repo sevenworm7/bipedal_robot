@@ -29,6 +29,7 @@ parser.add_argument("--agent", type=str, required=True,
 parser.add_argument("--tag", type=str, default="")
 parser.add_argument("--no_push", action="store_true")
 parser.add_argument("--compare", type=str, default=None, help="Reference stats.json for the regression check.")
+parser.add_argument("--episodes", type=int, default=None, help="Override the fixed set size (default EvalCfg.episodes = 100).")
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 app = AppLauncher(args_cli).app
@@ -45,6 +46,8 @@ from sim2real.agents import load_agent_v2, obs_version_for  # noqa: E402
 def main():
     cfg = PipelineCfg()
     e = cfg.eval
+    if args_cli.episodes:
+        e.episodes = args_cli.episodes
     obs_version = obs_version_for(args_cli.agent)
     env = make_env(cfg, args_cli.scenario, e.episodes, e.episode_s, e.seed, obs_version=obs_version)
     agent = load_agent_v2(args_cli.agent, env, cfg.actor, env.rb.PROJECT_ROOT)

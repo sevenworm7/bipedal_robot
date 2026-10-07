@@ -52,6 +52,14 @@ class TeacherCfg:
         "sigma_vx": 0.05,
     })
     """Env reward settings for training (teacher v1 used the 03 values: sigma_heading 0.2, sigma_vx 0.1)."""
+    reward_presets: dict = field(default_factory=lambda: {
+        # round 5 (user decision 2026-10-06): drop the unobservable, accumulating lateral position penalty (the largest
+        # term, -26.7 per episode in teacher v4) and penalise the steady sideways drift the teacher can observe instead;
+        # -1000 cost ~-19 per episode in the smoke test (training pushes make large filtered sideways velocities) and would
+        # dominate like lateral_deviation did; -300 -> about -5.6 per episode in that state, -1.4 for a steady 0.015 m/s drift
+        "obs_lateral": {"lateral_deviation": 0.0, "lateral_vel_avg": -300.0},
+    })
+    """Extra reward overrides selected with ``--reward_preset`` (teachers v1-v4 used none)."""
     symmetry: bool = False
     """Left-right mirror augmentation + mirror loss in PPO (``shared/symmetry.py``; user decision 2026-10-06 against the
     step-to gait of teacher v3). Off for teachers v1-v3 (recorded runs), on from round 4 via ``--symmetry``."""

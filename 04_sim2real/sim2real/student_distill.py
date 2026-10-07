@@ -29,6 +29,7 @@ parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.R
 parser.add_argument("--teacher", required=True)
 parser.add_argument("--tag", default="")
 parser.add_argument("--scenario", default=None, help="Training scenario (default: the config's).")
+parser.add_argument("--reward_preset", default=None, help="Key of TeacherCfg.reward_presets (round 5: obs_lateral).")
 parser.add_argument("--symmetry", action="store_true", help="Also store mirrored samples.")
 parser.add_argument("--rounds", type=int, default=None)
 parser.add_argument("--num_envs", type=int, default=None)
@@ -61,6 +62,9 @@ def main():
                    obs_version=2, push_interval_s=c.push_interval_s, push_speed=c.push_speed)
     for k, v in cfg.teacher.reward_overrides.items():
         setattr(env.cfg.rewards, k, v)
+    if args_cli.reward_preset:
+        for k, v in cfg.teacher.reward_presets[args_cli.reward_preset].items():
+            setattr(env.cfg.rewards, k, v)
     for k, v in cfg.teacher.env_overrides.items():
         setattr(env.cfg, k, v)
     dev, n = env.device, env.num_envs

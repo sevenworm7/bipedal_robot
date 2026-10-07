@@ -396,6 +396,10 @@ class BipedWalkEnv(DirectRLEnv):
         }
         if self._clearance_on:
             terms["clearance"] = self._clearance_reward()
+        if w.lateral_vel_avg != 0.0:  # 04_sim2real round 5: filtered lateral velocity (only computed when weighted)
+            a = self.step_dt / (self.cfg.lateral_vel_tau + self.step_dt)
+            self._vy_avg = self._vy_avg + a * (v[:, 1] - self._vy_avg)
+            terms["lateral_vel_avg"] = torch.square(self._vy_avg)
         reward = torch.zeros_like(self.cmd_vx)
         for k, val in terms.items():
             r = getattr(w, k) * val * self.step_dt
@@ -413,6 +417,7 @@ class BipedWalkEnv(DirectRLEnv):
         self._next_resample = torch.full((n,), float("inf"), device=dev)
         self.clearance_cmd = torch.zeros(n, device=dev)
         self._swing_apex = torch.zeros(n, 2, device=dev)
+        self._vy_avg = torch.zeros(n, device=dev)
         self._foot_body_ids = [self.robot.find_bodies(nm)[0][0] for nm in self.rb.FOOT_BODY_NAMES]
 
     def _sample_commands(self, env_ids: torch.Tensor):
@@ -617,3 +622,4 @@ class BipedWalkEnv(DirectRLEnv):
         start_xy = root_pose[:, :2] - self.spawn_origins[env_ids, :2]
         self.tracker.reset(env_ids, start_xy, self.target_heading[env_ids])
         self._reset_runtime_randomisation(env_ids)
+        self._vy_avg[env_ids] = 0.0

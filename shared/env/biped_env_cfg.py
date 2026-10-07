@@ -49,6 +49,10 @@ class RewardWeightsCfg:
     """sum over touchdowns of (air_time - target_air_time) [s]"""
     contact_force: float = -1.0e-3
     """sum max(|F_foot| - contact_force_limit, 0) [N]"""
+    lateral_vel_avg: float = 0.0
+    """(lateral velocity low-pass filtered with ``lateral_vel_tau``)^2 [m^2/s^2]: penalises a steady sideways drift but not
+    the step-to-step sway; observable by the privileged teacher (04_sim2real round 5, replaces ``lateral_deviation``,
+    which penalises an unobservable, accumulating position). 0 keeps the 03 reward."""
     clearance: float = 0.0
     """per touchdown exp(-((swing apex - commanded clearance) / sigma)^2); used only with ``gait_var.clearance_range``
     (04_sim2real). 0 keeps the 03 reward."""
@@ -204,6 +208,8 @@ class BipedWalkEnvCfg(DirectRLEnvCfg):
     rewards: RewardWeightsCfg = RewardWeightsCfg()
     sigma_vx: float = 0.1
     sigma_heading: float = 0.2
+    lateral_vel_tau: float = 1.0
+    """Time constant of the low-pass filter of the ``lateral_vel_avg`` reward [s]."""
     target_air_time: float | None = None
     gait_swing_start: float = 0.075
     """Clock phase at which the left foot is expected to leave the ground (right foot: + 0.5) [cycles].

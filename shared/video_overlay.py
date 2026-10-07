@@ -54,6 +54,9 @@ class HudState:
     """WALKING / FALLEN / TIMEOUT / DONE"""
     trajectory: list[tuple[float, float]] = field(default_factory=list)
     """(distance, lateral) history for the mini-map."""
+    command: str = ""
+    """Current command when it can change mid-episode (04_sim2real), e.g. ``0.10 m/s``, ``STAND``, ``IN PLACE``;
+    shown on the status line. Empty (02 / 03) keeps the original layout."""
 
 
 def format_time(t: float) -> str:
@@ -71,7 +74,7 @@ def draw_hud(frame: np.ndarray, hud: HudState) -> np.ndarray:
         f"{hud.label:<20s} t = {format_time(hud.sim_time)}",
         f"steps   {hud.steps:>6d}     dist  {hud.distance:6.2f} m",
         f"lateral {hud.lateral:+6.2f} m   v_x   {hud.vx:6.2f} m/s",
-        f"status  {hud.status}",
+        f"status  {hud.status}" + (f"   cmd now {hud.command}" if hud.command else ""),
     ]
     overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)

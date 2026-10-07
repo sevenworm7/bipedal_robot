@@ -80,7 +80,7 @@ references/             # 參考資料（唯讀）：雙足機器人/ 為舊模�
 01_robot_construction/  # 實驗二：model/v<N>/ 每版的參數、零件、URDF；model/generator/ 產生程式；model/v2_backlog.md
 02_rule_based/          # 實驗二：rule_based/ 為控制器套件與腳本（從 00_test/rule_based 移植），params/ 為採用的參數檔
 03_training_pipeline/   # 實驗二：training_pipeline/ 為管線程式（從 00_test 移植），三輪完成（2026-10-01）
-04_sim2real/            # 實驗二：sim-to-real 強健性訓練（2026-10-06 新增）
+04_sim2real/            # 實驗二：sim-to-real 強健性訓練（2026-10-06 新增；2026-10-07 模擬測試完成，最終 student v5）
 shared/                 # 實驗二的共用模組（從 00_test/shared 移植）：介面、env/、指標、rollout、影片；robots/custom_biped.py
 tools/                  # 開發工具（urdf_inspect.py、isaacpy.cmd），兩次實驗共用
 outputs/                # 實驗二的產出（不進 git）

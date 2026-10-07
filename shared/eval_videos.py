@@ -86,9 +86,13 @@ def record_class_videos(env, agent, out_dir: Path, exp: str, label: str, tag: st
                 cmd = float(env.cmd_vx[i])
             trajs[i].append((hud_dist, hud_lat))
             if recs[i].wants_frame(t) or status != "WALKING":
+                now = ""
+                if getattr(env, "_gait_var_on", False):  # commands change mid-episode (04_sim2real gait variation)
+                    c_now, f_now = float(env.cmd_vx[i]), float(env.gait_freq[i])
+                    now = "STAND" if f_now == 0 else ("IN PLACE" if c_now == 0 else f"{c_now:.3f} m/s")
                 hud = HudState(label=f"{label} / {names[cls[i]]} cmd {cmd:.3f} m/s", sim_time=t, steps=int(hud_steps),
                                distance=hud_dist, lateral=hud_lat, vx=float(env.base_lin_vel[i, 0]), status=status,
-                               trajectory=list(trajs[i]))
+                               trajectory=list(trajs[i]), command=now)
                 if status == "WALKING" or last_frame[i] is None:
                     last_frame[i] = env.capture_frame(i)
                 recs[i].add_frame(last_frame[i], hud)
