@@ -5,6 +5,7 @@
 
 - `PROMPT.md`：這個階段的需求規格（使用者 2026-10-06 同意新增此階段）。
 - `CLAUDE.md`：規則與從 03 沿用的經驗。
+- `sim2real/`：程式與執行方式，見 [`sim2real/README.md`](sim2real/README.md)。
 
 ## 開始前確認的事項（PROMPT.md「若有不確定之處」，使用者 2026-10-06 決定）
 
@@ -278,3 +279,12 @@ outputs/robot_v1/sim2real/<run>/
   5. 100 episode 的固定集約有 ±4% 的誤差，接近門檻時要加大樣本再判斷。
 - **尚未完成（交付項目 5，屬於部署階段）**：匯出 TorchScript／ONNX 與實機說明（輸入正規化、觀測歷史順序、動作換算成伺服位置值）；
   馬達參數仍是未實測的寬範圍，取得實體 HD-1910 後應實測並以新場景版本收窄。
+
+
+## 產出清理（2026-10-07，使用者同意）
+為釋放空間（專案 18.9 GB → 3.2 GB），刪除了以下不在 git 中的產出；完整清單見 `outputs/cleanup_list_20261007.txt`：
+- 所有訓練資料集 `dataset.h5`（收集與篩選，12.9 GB）。需要時用相同指令與 seed 重新收集（模擬是確定性的）；04 的 PPO 與 DAgger 都在模擬中即時產生資料，不需要它們。
+- 中間版本的影片（1.8 GB）。保留：各實驗的 rule-based 與最終模型、student v5 全部、student v3 跛行對照（`dr_rough_eval_v1`）、student v4 HUD 修正版；被刪影片的 run 仍保留 `videos.json`（各段指標）。
+- 中間 checkpoint（203 個，0.9 GB）。每個 run 保留最後一個，另外保留被引用的 `teacher_v2/model_800.pt`（student v2 的來源）與 `teacher_v1/model_1000.pt`（第 1000 iteration 的評估）。
+- 速度／煙霧測試 run（`teacher_speedtest`、`teacher_symtest`、`teacher_v5test`、`smoke`）。
+所有 `config.yaml`、`stats.json`、`history.json`、`episodes.pt`、TensorBoard log 與 logs 都保留；刪除後重新載入 30 個保留模型，全部正常。

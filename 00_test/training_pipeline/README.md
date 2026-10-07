@@ -151,3 +151,9 @@ TensorBoard：`tools\isaacpy.cmd -m tensorboard.main --logdir 00_test\outputs\tr
 - **蒸餾（最終模型，`iter3_distill_20260923_022831`）**：篩選資料 ＋ 第 2 輪 rollout 492 episode（20%）；驗證 MSE 0.00005（R² 1.000）。
   固定集：成功率 99%、跌倒 0%、速度比 0.973、側向偏移中位數 0.072 m、方向 2.6°、**推擠 100%／0 跌倒**。
 - 三輪比較表與結論見 `00_test/outputs/summary.md`。
+
+## 產出清理（2026-10-07）
+為釋放空間，實驗一的 `dataset.h5`、中間 checkpoint 與中間版本影片已刪除（清單見 `outputs/cleanup_list_20261007.txt`）。
+上方提到的 `iter1_videos_ppo_*`、`iter2_videos_ppo_*`、`iter3_videos_ppo_*` 影片已不存在（`videos.json` 保留）；
+保留的影片只有 rule-based（`rule_based/videos_rule_based_20260919_162742`）與最終蒸餾（`training/iter3_videos_distill_20260923_023022`）。
+各 run 的最終模型、`config.yaml`、`stats.json` 與 TensorBoard log 都保留。
