@@ -1,4 +1,4 @@
-"""Observation interface v2 (04_sim2real, user decision 2026-10-06): a deployable student and a privileged teacher.
+"""Observation interface v2 (03_training/sim2real, user decision 2026-10-06): a deployable student and a privileged teacher.
 
 ``shared/interface.py`` (v1, 44 dims for custom_biped) is unchanged and still used by 02 / 03. v2 adds three groups,
 all float32, SI units, no normalisation (policies normalise their own inputs). J = len(ACTION_JOINT_NAMES) = 10.

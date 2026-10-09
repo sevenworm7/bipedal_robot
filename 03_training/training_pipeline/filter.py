@@ -16,17 +16,17 @@ without producing a dataset -> discuss the thresholds with the user.
 Output: ``iter<N>_filter_<time>/{filter_report.json | stats_report.json, dataset.h5, config.yaml}``.
 
 Usage:
-    tools\\isaacpy.cmd 03_training_pipeline\\training_pipeline\\filter.py --iter 1 --data <iter1_collect_ppo>/dataset.h5 --stats_only
-    tools\\isaacpy.cmd 03_training_pipeline\\training_pipeline\\filter.py --iter 1 --data <iter1_collect_ppo>/dataset.h5
+    tools\\isaacpy.cmd 03_training\\training_pipeline\\filter.py --iter 1 --data <iter1_collect_ppo>/dataset.h5 --stats_only
+    tools\\isaacpy.cmd 03_training\\training_pipeline\\filter.py --iter 1 --data <iter1_collect_ppo>/dataset.h5
 """
 
 import argparse
 import sys
 from pathlib import Path
 
-# project root (shared), 02_rule_based (rule_based teacher), 03_training_pipeline (training_pipeline)
+# project root (shared), 02_rule_based (rule_based teacher), 03_training (training_pipeline)
 _ROOT = Path(__file__).resolve().parents[2]
-sys.path[:0] = [str(_ROOT), str(_ROOT / "02_rule_based"), str(_ROOT / "03_training_pipeline")]
+sys.path[:0] = [str(_ROOT), str(_ROOT / "02_rule_based"), str(_ROOT / "03_training")]
 
 import numpy as np  # noqa: E402
 import yaml  # noqa: E402

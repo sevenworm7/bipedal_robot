@@ -25,7 +25,7 @@ CLASS_NAMES = ("slow", "medium", "fast")
 
 
 def record_class_videos(env, agent, out_dir: Path, exp: str, label: str, tag: str,
-                        speeds: list[float], freq: float, success_fn=None) -> dict:
+                        speeds: list[float], freq: float, success_fn=None, quality: int = 8) -> dict:
     """Record and select the videos.
 
     Args:
@@ -38,7 +38,7 @@ def record_class_videos(env, agent, out_dir: Path, exp: str, label: str, tag: st
         speeds: slow / medium / fast commands [m/s].
         freq: gait frequency of the class robots [Hz].
         success_fn: ``fn(ep) -> bool tensor`` deciding which episodes count as successful (default: the rule-based
-            criterion of 02 / 03; 04_sim2real passes its own criterion that allows corrective steps).
+            criterion of 02 / 03; 03_training/sim2real passes its own criterion that allows corrective steps).
     """
     n = env.num_envs
     per = max(1, n // (len(speeds) + 1))
@@ -54,7 +54,7 @@ def record_class_videos(env, agent, out_dir: Path, exp: str, label: str, tag: st
 
     vid_dir = Path(out_dir) / "videos"
     date = time.strftime("%Y%m%d")
-    recs = [EvalVideoRecorder(vid_dir / "all", exp=exp, tag=f"{tag}_env{i:02d}") for i in range(n)]
+    recs = [EvalVideoRecorder(vid_dir / "all", exp=exp, tag=f"{tag}_env{i:02d}", quality=quality) for i in range(n)]
     trajs = [[] for _ in range(n)]
     last_frame = [None] * n
     active = torch.ones(n, dtype=torch.bool)
@@ -87,7 +87,7 @@ def record_class_videos(env, agent, out_dir: Path, exp: str, label: str, tag: st
             trajs[i].append((hud_dist, hud_lat))
             if recs[i].wants_frame(t) or status != "WALKING":
                 now = ""
-                if getattr(env, "_gait_var_on", False):  # commands change mid-episode (04_sim2real gait variation)
+                if getattr(env, "_gait_var_on", False):  # commands change mid-episode (03_training/sim2real gait variation)
                     c_now, f_now = float(env.cmd_vx[i]), float(env.gait_freq[i])
                     now = "STAND" if f_now == 0 else ("IN PLACE" if c_now == 0 else f"{c_now:.3f} m/s")
                 hud = HudState(label=f"{label} / {names[cls[i]]} cmd {cmd:.3f} m/s", sim_time=t, steps=int(hud_steps),

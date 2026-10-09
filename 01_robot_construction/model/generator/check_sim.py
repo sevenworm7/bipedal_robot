@@ -45,7 +45,7 @@ from isaaclab.utils.math import quat_apply  # noqa: E402
 from shared.robots import custom_biped as cb  # noqa: E402
 
 SIM_DT = 0.005
-OUT_DIR = cb.TEST_ROOT / "robot_check" / time.strftime("%Y%m%d_%H%M%S")
+OUT_DIR = cb.TEST_ROOT / "01_model" / "robot_check" / time.strftime("%Y%m%d_%H%M%S")
 FIXED_ORIGIN = (0.0, -0.6, 0.35)
 FREE_ORIGIN = (0.0, 0.6, 0.0)
 

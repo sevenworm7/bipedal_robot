@@ -36,7 +36,7 @@
 | `reports/servo_map.md` | 馬達 ID、匯流排、擺臂朝向、位置值與關節角的方向 |
 | `reports/static_check.md` | 站姿、靜態扭矩、可達範圍、尾巴效果 |
 
-模擬檢查結果在 `outputs/robot_v1/robot_check/<時間>/`（不進 git）。重新產生的步驟見 `../generator/README.md`。
+模擬檢查結果在 `outputs/robot_v1/01_model/robot_check/<時間>/`（不進 git）。重新產生的步驟見 `../generator/README.md`。
 
 ## 檢查結果（2026-09-30 複查後）
 

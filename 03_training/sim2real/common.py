@@ -1,5 +1,6 @@
 """Helpers of the sim-to-real stage. Reuses the 03 pipeline modules (policy loading, fixed evaluation set) instead of
-copying them; adds named scenarios (``shared/env/scenarios.py``) and the ``outputs/robot_v<N>/sim2real/`` run folders."""
+copying them; adds named scenarios (``shared/env/scenarios.py``) and the ``outputs/robot_v<N>/03_training/sim2real/`` run
+folders."""
 
 from __future__ import annotations
 
@@ -21,9 +22,9 @@ def git_commit(root: Path) -> str:
 
 
 def run_dir(rb, stage: str, tag: str = "") -> Path:
-    """``outputs/robot_v<N>/sim2real/<stage>[_<tag>]_<YYYYMMDD_HHMMSS>/`` (never overwritten)."""
+    """``outputs/robot_v<N>/03_training/sim2real/<stage>[_<tag>]_<YYYYMMDD_HHMMSS>/`` (never overwritten)."""
     name = stage + (f"_{tag}" if tag else "") + f"_{time.strftime('%Y%m%d_%H%M%S')}"
-    path = Path(rb.TEST_ROOT) / "sim2real" / name
+    path = Path(rb.TEST_ROOT) / "03_training" / "sim2real" / name
     path.mkdir(parents=True, exist_ok=False)
     return path
 

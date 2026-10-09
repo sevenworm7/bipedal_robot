@@ -1,6 +1,6 @@
 """Hyper-parameters of the sim-to-real stage. Saved into every run's config.yaml.
 
-Network, BC and evaluation settings are those of ``03_training_pipeline/training_pipeline/config.py`` (imported, not
+Network, BC and evaluation settings are those of ``03_training/training_pipeline/config.py`` (imported, not
 copied); only what differs is defined here.
 """
 
@@ -14,7 +14,7 @@ class TeacherCfg:
     """Privileged teacher: PPO on interface v2 (``policy`` = ``critic`` = 55-dim teacher observation)."""
 
     scenario: str = "dr_rough_gait_train_v1"
-    init_checkpoint: str = "outputs/robot_v1/training/iter3_distill_20261001_132024/model.pt"
+    init_checkpoint: str = "outputs/robot_v1/03_training/pipeline/iter3_distill_20261001_132024/model.pt"
     """03 final model (44 inputs); its first layer is zero-padded to the 55 teacher inputs."""
     norm_stat_steps: int = 50
     """Control steps of the zero-action rollout used to estimate the normaliser statistics of the 11 new inputs."""

@@ -1,5 +1,5 @@
 # 角色與目標
-你是一位腿式機器人 sim-to-real 工程師。任務是以 `03_training_pipeline` 訓練出的行走策略為起點，
+你是一位腿式機器人 sim-to-real 工程師。任務是以 `03_training` 訓練出的行走策略為起點，
 在 Isaac Sim / Isaac Lab 中加入「實機會遇到、但目前模擬沒有」的各種變化，訓練出一個**能直接部署到實體
 robot v1** 的行走策略：只使用實機量得到的觀測、能容忍伺服延遲與參數誤差、能在不平整與摩擦不一的地面上行走、
 受到推擠時能恢復，而且步態不能只有單一模式。
@@ -7,7 +7,7 @@ robot v1** 的行走策略：只使用實機量得到的觀測、能容忍伺服
 # 背景
 - 機器人：`custom_biped` v1（tag `robot-v1`，已凍結）；0.696 kg；每腿 4 DOF ＋ 2 DOF 尾巴；10 顆 Feetech HD-1910-C001；
   感測器只有 IMU（角速度、姿態）與伺服回讀的關節角。之後會 3D 列印並在真實地面測試。
-- 起點：`03_training_pipeline` 的最終蒸餾模型（`outputs/robot_v1/training/iter3_distill_20261001_132024/model.pt`），
+- 起點：`03_training` 的最終蒸餾模型（`outputs/robot_v1/03_training/pipeline/iter3_distill_20261001_132024/model.pt`），
   在平地、理想馬達、輕推擠下成功率 99%、跌倒 1%、推擠測試 99%。
 - 已知的落差（2026-10-06 分析）：
   1. **觀測**：目前的 44 維觀測包含 base 線速度，實機量不到；方向誤差在實機上來自會漂移的 IMU yaw。

@@ -5,7 +5,7 @@ r"""Checks of the left-right mirror (``shared/symmetry.py``) on real states.
    symmetric gait, larger for an asymmetric one; a deliberately wrong map (hip roll not flipped) must be worse.
 
 Usage:
-    tools\isaacpy.cmd 04_sim2real\sim2real\check_symmetry.py --agent policy:<03 model.pt> --agent policy:<teacher.pt>
+    tools\isaacpy.cmd 03_training\sim2real\check_symmetry.py --agent policy:<03 model.pt> --agent policy:<teacher.pt>
 """
 
 import argparse
@@ -13,7 +13,7 @@ import sys
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[2]
-sys.path[:0] = [str(_ROOT), str(_ROOT / "02_rule_based"), str(_ROOT / "03_training_pipeline"), str(_ROOT / "04_sim2real")]
+sys.path[:0] = [str(_ROOT), str(_ROOT / "02_rule_based"), str(_ROOT / "03_training")]
 
 from isaaclab.app import AppLauncher  # noqa: E402
 

@@ -9,8 +9,8 @@ Each env runs complete episodes (``--rounds`` batches of ``--num_envs`` episodes
 ``outputs/robot_v<N>/training/iter<N>_collect[_<tag>]_<time>/{dataset.h5, stats.json, config.yaml}``.
 
 Usage:
-    tools\\isaacpy.cmd 03_training_pipeline\\training_pipeline\\collect.py --iter 0
-    tools\\isaacpy.cmd 03_training_pipeline\\training_pipeline\\collect.py --iter 1 --agent policy:<model.pt> --tag ppo
+    tools\\isaacpy.cmd 03_training\\training_pipeline\\collect.py --iter 0
+    tools\\isaacpy.cmd 03_training\\training_pipeline\\collect.py --iter 1 --agent policy:<model.pt> --tag ppo
 """
 
 import argparse
@@ -18,9 +18,9 @@ import sys
 import time
 from pathlib import Path
 
-# project root (shared), 02_rule_based (rule_based teacher), 03_training_pipeline (training_pipeline)
+# project root (shared), 02_rule_based (rule_based teacher), 03_training (training_pipeline)
 _ROOT = Path(__file__).resolve().parents[2]
-sys.path[:0] = [str(_ROOT), str(_ROOT / "02_rule_based"), str(_ROOT / "03_training_pipeline")]
+sys.path[:0] = [str(_ROOT), str(_ROOT / "02_rule_based"), str(_ROOT / "03_training")]
 
 from isaaclab.app import AppLauncher  # noqa: E402
 

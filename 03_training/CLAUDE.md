@@ -1,5 +1,7 @@
 # 03 訓練管線（實驗二）
 
+這份規則適用於 `training_pipeline/`（平地 BC → PPO → 蒸餾）；sim-to-real 強健性訓練有自己的 `sim2real/CLAUDE.md`。
+
 完整需求在 `PROMPT.md`，動工前先讀完。實驗一（`00_test/training_pipeline/`）也使用同一份規格，以下摘要同樣適用。
 
 **實驗一完成前，不要在這個資料夾中建立程式碼。** 實驗二的做法是移植 `00_test/training_pipeline/` 已驗證的程式碼。
@@ -15,7 +17,7 @@
 4. **自我蒸餾**：rollout → 依量化門檻篩選 → BC → 作為下一輪 PPO 的初始化，**共 3 輪**。篩選門檻要先和使用者確認。
 5. **評估影片**：每輪都要產出，格式依 `/eval-video`，檔名例如 `exp1_iter3_ppo_eval_20260918.mp4`。
 
-- 跨輪流程依 `/pipeline-iteration` skill 執行。每輪的 checkpoint、log、config、影片放在 `<產出根目錄>/training/iter<N>_<stage>_<date>/`（實驗一：`00_test/outputs/`；實驗二：`outputs/`）。
+- 跨輪流程依 `/pipeline-iteration` skill 執行。每輪的 checkpoint、log、config、影片放在 `iter<N>_<stage>_<date>/`：實驗一在 `00_test/outputs/training/`，實驗二在 `outputs/robot_v1/03_training/pipeline/`。
 - TensorBoard 至少要記錄：reward 各分項、episode length、跌倒率。
 - 最終交付：三輪之間的指標比較（跌倒率、行走距離、直線度、步態品質）。
 

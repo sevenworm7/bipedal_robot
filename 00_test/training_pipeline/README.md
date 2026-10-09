@@ -2,7 +2,7 @@
 
 **狀態：完成（2026-09-23）。三輪自我蒸餾跑完，最終模型成功率 99%、跌倒 0%、推擠 100%。**進度與數據見下方「執行紀錄」。
 
-- `PROMPT.md`、`CLAUDE.md`：從 `03_training_pipeline/` 複製過來的規格，測試過程中可以修改，原始版本保留在 03。
+- `PROMPT.md`、`CLAUDE.md`：從 `03_training/` 複製過來的規格，測試過程中可以修改，原始版本保留在 03。
 - 環境：`00_test/shared/env`（gym id `Biped-Test-Walk-v0`），觀測 38 維、動作 8 維，獎勵權重在 `BipedWalkEnvCfg.rewards`。
 - 教師策略：`rule_based.RuleBasedBipedController` ＋ `rule_based/params/cem2_best.json`（100 episode 成功率 95%、跌倒 0%）。
 - 決定（2026-09-22，使用者確認）：平地＋直線；PPO 只加輕微推擠（0.2 m/s，每 4–8 秒）；每輪 PPO 4096 環境 × 1500 iterations；每輪 PPO 與蒸餾 BC 都用同一組固定評估集。

@@ -10,8 +10,11 @@
 |---|---|---|
 | `01_robot_construction/` | 機器人模型設計（程式參數化 URDF → USD） | 見下方「機器人模型」 |
 | `02_rule_based/` | 規則式行走控制器，作為教師策略 | `02_rule_based/PROMPT.md` |
-| `03_training_pipeline/` | Rule-based → BC → PPO → 自我蒸餾 ×3 → 評估影片 | `03_training_pipeline/PROMPT.md` |
-| `04_sim2real/` | 實驗二新增（使用者 2026-10-06）：sim-to-real 隨機化、可部署觀測、步態多樣性、student 蒸餾 | `04_sim2real/PROMPT.md` |
+| `03_training/` | 產生學生並做訓練範圍內的驗收：`training_pipeline/`（Rule-based → BC → PPO → 自我蒸餾 ×3，平地）、`sim2real/`（使用者 2026-10-06 新增：隨機化、可部署觀測、步態多樣性、teacher → student 蒸餾） | `03_training/PROMPT.md`、`03_training/sim2real/PROMPT.md` |
+| `04_generalization/` | 不訓練：對 03 的學生做訓練範圍以外的泛化與壓力測試（使用者 2026-10-09 新增） | `04_generalization/README.md` |
+
+- **分工（使用者 2026-10-09 確認）**：01 機器人模型、02 老師、03 產生學生（含訓練範圍內的驗收）、04 訓練範圍以外的測試。
+  程式資料夾與輸出資料夾一一對應：`outputs/robot_v<N>/{01_model, 02_rule_based, 03_training/{pipeline, sim2real}, 04_generalization}/`。
 
 - 開始實作 rule-based、訓練管線或 sim-to-real 前（不論是在 `00_test/` 還是 02、03、04 中），**必須先完整閱讀對應的 PROMPT.md**；其中「若有不確定之處」列出的項目，不明確時要先問使用者，不可自行假設。
 - 實驗二尚未決定的設計事項（尺寸、質量分配、關節範圍、尾巴參數、訓練目標）記錄在 `01_robot_construction/README.md` 的「待決定事項」。這些是阻擋性的決策，遇到時要主動詢問。
@@ -23,10 +26,10 @@
 | 實驗 | 資料夾 | 機器人 | 流程 | 目的 |
 |---|---|---|---|---|
 | 實驗一（測試） | `00_test/` | `references/` 中的參考 URDF（髖關節位置修正版） | 略過建模，直接 rule-based → 訓練 | 確認 rule-based 與訓練管線可行 |
-| 實驗二（正式） | `01_`、`02_`、`03_` | 自行設計的參數化模型 | 01 → 02 → 03 | 在新模型上套用已驗證的管線 |
+| 實驗二（正式） | `01_`、`02_`、`03_`、`04_` | 自行設計的參數化模型 | 01 → 02 → 03 → 04 | 在新模型上套用已驗證的管線，並強化到可部署 |
 
 - **實驗一（`00_test/`）已完成，使用者於 2026-09-29 確認，目前進入實驗二（從 `01_robot_construction/` 開始）。** 實驗一的細節與參考模型的處理方式見 `00_test/CLAUDE.md`，結論見 `00_test/outputs/summary.md`。
-- **實驗一的經驗已經整理進實驗二的規格**：機器人設計要求與馬達選型在 `01_robot_construction/CLAUDE.md`；rule-based 的做法與陷阱在 `02_rule_based/CLAUDE.md`；訓練管線（獎勵設計、BC→PPO 權重接續、篩選門檻）在 `03_training_pipeline/CLAUDE.md`。動工前先讀。
+- **實驗一的經驗已經整理進實驗二的規格**：機器人設計要求與馬達選型在 `01_robot_construction/CLAUDE.md`；rule-based 的做法與陷阱在 `02_rule_based/CLAUDE.md`；訓練管線（獎勵設計、BC→PPO 權重接續、篩選門檻）在 `03_training/CLAUDE.md`。動工前先讀。
 - 需求規格：02、03 中的 PROMPT.md 與 CLAUDE.md 是原始版本，已複製一份到 `00_test/rule_based/` 與 `00_test/training_pipeline/`。實驗一只修改複本，原始版本保持不動；實驗一結束後，比較兩者的差異，再決定實驗二要採用哪個版本。
 - 實驗一的程式碼要**可以直接移植**：和機器人相關的內容（asset config、關節順序、站姿、致動器參數、觀測／動作定義）集中在 robot 設定檔中，管線程式碼不寫死任何機器人假設。實驗一完成後，把驗證過的程式碼移植到 02、03，只替換 robot 設定，不從頭重寫。
 - 實驗一的結論（哪些部分有效、哪些需要調整、各項指標、哪些問題來自參考模型本身）寫在 `00_test/outputs/summary.md`，作為實驗二的起點。**最終成績**：rule-based 成功率 95%／跌倒 0% → PPO 三輪都是 100%／0% → 最終蒸餾模型 99%／0%、推擠測試 100%。
@@ -79,15 +82,15 @@ references/             # 參考資料（唯讀）：雙足機器人/ 為舊模�
   outputs/              #   實驗一的產出（不進 git）
 01_robot_construction/  # 實驗二：model/v<N>/ 每版的參數、零件、URDF；model/generator/ 產生程式；model/v2_backlog.md
 02_rule_based/          # 實驗二：rule_based/ 為控制器套件與腳本（從 00_test/rule_based 移植），params/ 為採用的參數檔
-03_training_pipeline/   # 實驗二：training_pipeline/ 為管線程式（從 00_test 移植），三輪完成（2026-10-01）
-04_sim2real/            # 實驗二：sim-to-real 強健性訓練（2026-10-06 新增；2026-10-07 模擬測試完成，最終 student v5）
+03_training/            # 實驗二：產生學生。training_pipeline/（平地，2026-10-01 完成）、sim2real/（強健性訓練，最終 student v5，2026-10-07）
+04_generalization/      # 實驗二：不訓練，對 03 的學生做泛化／壓力測試（2026-10-09 新增）
 shared/                 # 實驗二的共用模組（從 00_test/shared 移植）：介面、env/、指標、rollout、影片；robots/custom_biped.py
 tools/                  # 開發工具（urdf_inspect.py、isaacpy.cmd），兩次實驗共用
 outputs/                # 實驗二的產出（不進 git）
 ```
 
 - **刻意保留的複本**：實驗一的程式（`00_test/shared/`、`00_test/rule_based/`）凍結不動，實驗二移植時複製一份再修改，所以有些檔案目前兩邊內容相同（`rollout.py`、`video_overlay.py`、`eval_videos.py`、`leg_kinematics.py`）。這是為了讓兩次實驗各自可重現，實驗二只改實驗二的複本，不回頭改 `00_test/`。`PROMPT.md` 的複本也是同樣道理。
-- 大型產出一律放在 `<產出根目錄>/<stage>/<run_name>/`：實驗一的產出根目錄是 `00_test/outputs/`，實驗二是 `outputs/`。`<stage>` 為 `rule_based`、`training` 或 `sim2real`，run 名稱包含日期，例如 `00_test/outputs/training/iter1_ppo_20260918/`。
+- 大型產出一律放在 `<產出根目錄>/<stage>/<run_name>/`：實驗一的產出根目錄是 `00_test/outputs/`，實驗二是 `outputs/`。實驗一的 `<stage>` 為 `rule_based` 或 `training`（例如 `00_test/outputs/training/iter1_ppo_20260918/`）；實驗二依步驟分為 `01_model`、`02_rule_based`、`03_training/pipeline`、`03_training/sim2real`、`04_generalization`（2026-10-09 起，對應程式資料夾），run 名稱都包含日期。
 - 所有超參數放在 config 檔（dataclass 或 YAML），不要寫死在程式中。每次訓練或評估都保存當下使用的 config。
 
 ## 版本控制（實驗二，使用者 2026-09-30 要求）
@@ -95,7 +98,7 @@ outputs/                # 實驗二的產出（不進 git）
 機器人模型、rule-based、訓練都預期會迭代多次（v1、v2、v3…）。**每個版本的設計與結果都要保留，不可覆蓋。**
 - **機器人模型**：每個版本一個資料夾 `01_robot_construction/model/v<N>/`，放該版的 `params.yaml`、產出的 URDF、列印零件檔與 `CHANGELOG`（相對上一版改了什麼、為什麼）。
   產生程式共用，但每版記錄產生時的 git commit，並打 git tag `robot-v<N>`，確保舊版可以重建。
-- **下游一律標明機器人版本**：robot 設定、USD、rule-based 參數、訓練產出都帶版本，例如 `outputs/robot_v1/rule_based/<run>/`、`outputs/robot_v1/training/<run>/`。
+- **下游一律標明機器人版本**：robot 設定、USD、rule-based 參數、訓練產出都帶版本，例如 `outputs/robot_v1/02_rule_based/<run>/`、`outputs/robot_v1/03_training/pipeline/<run>/`。
 - **run 資料夾不可覆寫**：run 名稱含日期與時間（例如 `iter1_ppo_20261005_1430`），程式遇到已存在的資料夾要停下來，不可覆蓋。
 - 每個機器人版本在 `outputs/robot_v<N>/summary.md` 整理 rule-based 與各輪訓練的比較，跨版本的比較放在根目錄的總表。
 - 以上資料夾結構是 2026-09-30 的提案，細節以使用者確認後的版本為準（見 `01_robot_construction/README.md`）。

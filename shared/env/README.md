@@ -49,10 +49,10 @@
 與實驗一相同，見 `00_test/shared/env/README.md`：推擠預設關閉，`push_interval_s` 設定後開啟；錄影要 `cfg.eval_camera = True` 加 `--enable_cameras`；
 接觸感測器是延遲更新的，著地由 `_update_touchdowns()` 自行判斷。
 
-## Sim-to-real 隨機化與場景版本（04_sim2real，2026-10-06 新增）
+## Sim-to-real 隨機化與場景版本（03_training/sim2real，2026-10-06 新增）
 
 `BipedWalkEnvCfg.dr`（`DomainRandCfg`）的每個欄位預設都是 `None`（關閉）。全部關閉時，環境和 03 **逐位元相同**：
-03 最終模型在 `flat_v1` 的固定評估集結果和原紀錄完全一致（`04_sim2real/sim2real/evaluate.py --compare`，2026-10-06 通過）。
+03 最終模型在 `flat_v1` 的固定評估集結果和原紀錄完全一致（`03_training/sim2real/evaluate.py --compare`，2026-10-06 通過）。
 
 | 欄位 | 作用 | 套用時機 |
 |---|---|---|

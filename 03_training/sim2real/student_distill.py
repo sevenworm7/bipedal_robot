@@ -10,7 +10,7 @@ are part of the data.
 Output: ``outputs/robot_v<N>/sim2real/student_<tag>_<time>/{student.pt, history.json, config.yaml, tb/}``.
 
 Usage:
-    tools\isaacpy.cmd 04_sim2real\sim2real\student_distill.py --teacher <teacher model_*.pt> --tag v1
+    tools\isaacpy.cmd 03_training\sim2real\student_distill.py --teacher <teacher model_*.pt> --tag v1
 """
 
 import argparse
@@ -21,7 +21,7 @@ import time
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[2]
-sys.path[:0] = [str(_ROOT), str(_ROOT / "02_rule_based"), str(_ROOT / "03_training_pipeline"), str(_ROOT / "04_sim2real")]
+sys.path[:0] = [str(_ROOT), str(_ROOT / "02_rule_based"), str(_ROOT / "03_training")]
 
 from isaaclab.app import AppLauncher  # noqa: E402
 

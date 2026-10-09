@@ -19,6 +19,6 @@
 | `SERVO_MAP` | 實機用：馬達 ID、匯流排、位置值與關節角的方向（讀自 `reports/servo_map.json`） |
 
 - `LEG_EFFORT_LIMIT` 是 DCMotor 實際能輸出的上限 0.8 N·m（連續值），堵轉值 1.18 N·m 只用在扭矩–速度曲線（2026-10-01 修正）。
-- 關節正方向（模擬中已驗證，`outputs/robot_v1/robot_check/`）：hip_roll + 腳往左、hip_pitch／knee + 往後、ankle + 腳尖往下、tail_yaw + 尾尖往右、tail_pitch + 尾尖往上。所有 `JOINT_AXIS_SIGN` 都是 +1。
+- 關節正方向（模擬中已驗證，`outputs/robot_v1/01_model/robot_check/`）：hip_roll + 腳往左、hip_pitch／knee + 往後、ankle + 腳尖往下、tail_yaw + 尾尖往右、tail_pitch + 尾尖往上。所有 `JOINT_AXIS_SIGN` 都是 +1。
 
 重新產生 USD：`tools\isaacpy.cmd 01_robot_construction\model\generator\convert_usd.py --version 1`

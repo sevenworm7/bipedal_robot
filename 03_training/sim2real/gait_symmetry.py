@@ -8,7 +8,7 @@ cmd / (2 f)); a step-to gait has one long step and one step near 0 (the trailing
 Output: ``outputs/robot_v<N>/sim2real/symmetry_<tag>_<time>/symmetry.json`` and a printed summary.
 
 Usage:
-    tools\isaacpy.cmd 04_sim2real\sim2real\gait_symmetry.py --agent student:<student.pt> --tag student_v3
+    tools\isaacpy.cmd 03_training\sim2real\gait_symmetry.py --agent student:<student.pt> --tag student_v3
 """
 
 import argparse
@@ -17,7 +17,7 @@ import sys
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[2]
-sys.path[:0] = [str(_ROOT), str(_ROOT / "02_rule_based"), str(_ROOT / "03_training_pipeline"), str(_ROOT / "04_sim2real")]
+sys.path[:0] = [str(_ROOT), str(_ROOT / "02_rule_based"), str(_ROOT / "03_training")]
 
 from isaaclab.app import AppLauncher  # noqa: E402
 

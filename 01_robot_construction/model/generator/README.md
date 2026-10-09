@@ -13,8 +13,8 @@
 | 3. 靜態檢查 | `.venv_cad\Scripts\python.exe 01_robot_construction\model\generator\check_static.py --version 1` | CAD | `reports/static_check.md`、`.json`（站姿、扭矩、可達範圍、尾巴） |
 | 4. URDF 檢查 | `tools\isaacpy.cmd tools\urdf_inspect.py 01_robot_construction\model\v1\urdf\custom_biped_v1.urdf` | Isaac | 終端輸出（要求 0 warning） |
 | 5. USD | `tools\isaacpy.cmd 01_robot_construction\model\generator\convert_usd.py --version 1` | Isaac | `shared/robots/usd/custom_biped_v1/`（不進 git） |
-| 6. 模擬檢查 | `tools\isaacpy.cmd 01_robot_construction\model\generator\check_sim.py --version 1 --enable_cameras` | Isaac | `outputs/robot_v1/robot_check/<時間>/`（report.json、截圖） |
-| 7. 互動圖 | `.venv_cad\Scripts\python.exe 01_robot_construction\model\generator\build_viewer.py --version 1` | CAD | `v1/viewer.html`（本機直接開）＋ `outputs/robot_v1/viewer/`（發佈 Artifact 用） |
+| 6. 模擬檢查 | `tools\isaacpy.cmd 01_robot_construction\model\generator\check_sim.py --version 1 --enable_cameras` | Isaac | `outputs/robot_v1/01_model/robot_check/<時間>/`（report.json、截圖） |
+| 7. 互動圖 | `.venv_cad\Scripts\python.exe 01_robot_construction\model\generator\build_viewer.py --version 1` | CAD | `v1/viewer.html`（本機直接開）＋ `outputs/robot_v1/01_model/viewer/`（發佈 Artifact 用） |
 
 輸出中文時，CAD 環境要先設定 `set PYTHONIOENCODING=utf-8`（PowerShell：`$env:PYTHONIOENCODING="utf-8"`）。
 CAD 環境的建立方式見根目錄 `CLAUDE.md`「工作準則」（uv 裝在 `tools/bin/`，環境在 `.venv_cad/`）。

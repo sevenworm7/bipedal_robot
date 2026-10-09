@@ -3,7 +3,7 @@
 **狀態：模型 v1 建模、複查與檢查完成（2026-09-30）；已凍結為 tag `robot-v1`（之後的問題記在 `model/v2_backlog.md`）。** 內容與檢查結果見 [`model/v1/README.md`](model/v1/README.md)，相對 v0.1 規劃稿的修改見 `model/v1/CHANGELOG.md`；互動 3D 圖：本機開 `model/v1/viewer.html`，或 https://claude.ai/artifact/KMshhxBa9vifvMSXP5GH9q（私人連結）。
 
 實驗二要自行設計一台雙足機器人，用程式參數化的方式產生 URDF → USD → Isaac Lab 可用的 `ArticulationCfg`，
-之後由 `02_rule_based/` 與 `03_training_pipeline/` 接手。
+之後由 `02_rule_based/` 與 `03_training/` 接手。
 
 | 位置 | 內容 |
 |---|---|
@@ -61,7 +61,7 @@ USD 是產出檔，不進 git，隨時可以重新產生。
 關節順序 `LEG_JOINT_NAMES`、關節正方向 `JOINT_AXIS_SIGN`、關節極限、腿長、腳掌 body 名稱……
 （完整欄位見 `00_test/shared/robots/README.md`）。
 
-**只要這個檔案的欄位齊全，`02_rule_based/` 和 `03_training_pipeline/` 的程式就可以從實驗一直接複製過來、
+**只要這個檔案的欄位齊全，`02_rule_based/` 和 `03_training/` 的程式就可以從實驗一直接複製過來、
 一行都不用改。** 這是實驗一刻意設計的成果。
 
 ### 步驟 5：模擬中的健全性檢查

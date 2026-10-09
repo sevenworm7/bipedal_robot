@@ -55,7 +55,7 @@ class HudState:
     trajectory: list[tuple[float, float]] = field(default_factory=list)
     """(distance, lateral) history for the mini-map."""
     command: str = ""
-    """Current command when it can change mid-episode (04_sim2real), e.g. ``0.10 m/s``, ``STAND``, ``IN PLACE``;
+    """Current command when it can change mid-episode (03_training/sim2real), e.g. ``0.10 m/s``, ``STAND``, ``IN PLACE``;
     shown on the status line. Empty (02 / 03) keeps the original layout."""
 
 
@@ -80,7 +80,7 @@ def draw_hud(frame: np.ndarray, hud: HudState) -> np.ndarray:
     draw = ImageDraw.Draw(overlay)
     pad, line_h = int(12 * scale), int(34 * scale)
     if draw.textlength(lines[0], font=font) + 2 * pad > w:
-        # long labels (04_sim2real) would push the time off the frame: give the time its own line; labels that fit
+        # long labels (03_training/sim2real) would push the time off the frame: give the time its own line; labels that fit
         # (02 / 03) keep the original single-line layout
         lines = [hud.label, f"t = {format_time(hud.sim_time)}"] + lines[1:]
     box_w = int(max(draw.textlength(l, font=font) for l in lines)) + 2 * pad
@@ -122,13 +122,13 @@ def video_filename(exp: str, tag: str, date: str | None = None, k: int | None = 
 class EvalVideoRecorder:
     """Writes an H.264 mp4 at ``fps`` frames per *simulated* second."""
 
-    def __init__(self, out_dir: str | Path, exp: str, tag: str, k: int | None = None, fps: int = 30):
+    def __init__(self, out_dir: str | Path, exp: str, tag: str, k: int | None = None, fps: int = 30, quality: int = 8):
         self.path = Path(out_dir) / video_filename(exp, tag, k=k)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.fps = fps
         self._next_t = 0.0
         self._writer = imageio.get_writer(
-            str(self.path), fps=fps, codec="libx264", quality=8, macro_block_size=1, pixelformat="yuv420p"
+            str(self.path), fps=fps, codec="libx264", quality=quality, macro_block_size=1, pixelformat="yuv420p"
         )
         self.frames = 0
 

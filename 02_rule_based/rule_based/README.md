@@ -1,7 +1,7 @@
 # 02_rule_based/rule_based：規則式控制器（實驗二）
 
 `RuleBasedBipedController`（`reset(env_ids)`、`compute_action(obs) -> action`），作為訓練管線的教師策略。
-程式從 `00_test/rule_based/` 移植（2026-10-01），控制方法不變；以套件形式放在這個子資料夾，腳本與之後的 `03_training_pipeline` 都用 `import rule_based`（資料夾名稱 `02_rule_based` 以數字開頭，不能直接當套件匯入）。
+程式從 `00_test/rule_based/` 移植（2026-10-01），控制方法不變；以套件形式放在這個子資料夾，腳本與之後的 `03_training` 都用 `import rule_based`（資料夾名稱 `02_rule_based` 以數字開頭，不能直接當套件匯入）。
 
 ## 執行方式（專案根目錄）
 

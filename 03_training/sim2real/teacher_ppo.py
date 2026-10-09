@@ -9,8 +9,8 @@ r"""Phase 4a: privileged teacher PPO on interface v2, initialised from the 03 fi
 Output: ``outputs/robot_v<N>/sim2real/teacher_<tag>_<time>/{teacher_init.pt, model_<it>.pt, config.yaml, stats.json, tb}``.
 
 Usage:
-    tools\isaacpy.cmd 04_sim2real\sim2real\teacher_ppo.py --tag v1
-    tools\isaacpy.cmd 04_sim2real\sim2real\teacher_ppo.py --tag speed --max_iterations 20 --num_envs 4096
+    tools\isaacpy.cmd 03_training\sim2real\teacher_ppo.py --tag v1
+    tools\isaacpy.cmd 03_training\sim2real\teacher_ppo.py --tag speed --max_iterations 20 --num_envs 4096
 """
 
 import argparse
@@ -19,7 +19,7 @@ import time
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[2]
-sys.path[:0] = [str(_ROOT), str(_ROOT / "02_rule_based"), str(_ROOT / "03_training_pipeline"), str(_ROOT / "04_sim2real")]
+sys.path[:0] = [str(_ROOT), str(_ROOT / "02_rule_based"), str(_ROOT / "03_training")]
 
 from isaaclab.app import AppLauncher  # noqa: E402
 

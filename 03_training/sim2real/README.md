@@ -1,11 +1,13 @@
-# 04_sim2real：sim-to-real 強健性訓練（實驗二）
+# 03_training/sim2real：sim-to-real 強健性訓練（實驗二）
 
-**狀態：模擬測試完成（2026-10-07，使用者決定告一段落）。最終模型 student v5，通過全部部署門檻；匯出與實機說明留待部署階段。** 機器人：`custom_biped` v1（tag `robot-v1`）。起點：`03_training_pipeline` 的最終蒸餾模型。
-產出：`outputs/robot_v1/sim2real/`。
+**狀態：模擬測試完成（2026-10-07，使用者決定告一段落）。最終模型 student v5，通過全部部署門檻；匯出與實機說明留待部署階段。** 機器人：`custom_biped` v1（tag `robot-v1`）。起點：`03_training/training_pipeline` 的最終蒸餾模型。
+產出：`outputs/robot_v1/03_training/sim2real/`。
 
-- `PROMPT.md`：這個階段的需求規格（使用者 2026-10-06 同意新增此階段）。
-- `CLAUDE.md`：規則與從 03 沿用的經驗。
-- `sim2real/`：程式與執行方式，見 [`sim2real/README.md`](sim2real/README.md)。
+**2026-10-09 起**：原 `04_sim2real/` 併入這裡（訓練屬於 03「產生學生」），訓練範圍以外的壓力測試移到 [`04_generalization/`](../../04_generalization/README.md)。
+
+- `PROMPT.md`：這部分的需求規格（使用者 2026-10-06 同意新增）。
+- `CLAUDE.md`：規則與從 `training_pipeline` 沿用的經驗。
+- 程式：本資料夾的 `*.py`，見下方「程式與執行方式」。
 
 ## 開始前確認的事項（PROMPT.md「若有不確定之處」，使用者 2026-10-06 決定）
 
@@ -21,26 +23,49 @@
 
 03 在理想條件下（平地、理想馬達、輕推擠）已經達到成功率 99%，但離實機部署還有四個落差：
 觀測含實機量不到的 base 線速度、致動器沒有延遲與參數誤差、只走過平地與固定摩擦、步態過於單一。
-這些改變觀測介面與環境，目標也不同，所以獨立成一個階段；03 的結果保持凍結、可重現。
+這些改變觀測介面與環境，目標也不同，所以當初獨立成一個階段（`04_sim2real`），2026-10-09 併入 `03_training/sim2real`；平地訓練的結果保持凍結、可重現。
 
-## 預定的檔案架構
+## 程式與執行方式
 
-```
-04_sim2real/
-  PROMPT.md, CLAUDE.md, README.md
-  sim2real/              # 程式：特權 PPO、student 蒸餾、各難度評估、匯出
-shared/
-  interface.py           # 新增 v2 觀測介面（actor／critic 分組、歷史），44 維舊版不動
-  env/                   # 新增可選功能（預設關閉）與具名場景（flat_v1、dr_v1、rough_v1…）
-outputs/robot_v1/sim2real/<run>/
-```
+### 執行方式（專案根目錄，每個指令一個 Isaac Lab 行程）
+
+| 用途 | 指令 |
+|---|---|
+| teacher PPO（第五輪的做法） | `tools\isaacpy.cmd 03_training\sim2real\teacher_ppo.py --tag <名稱> --symmetry --reward_preset obs_lateral --scenario dr_rough_gait_train_v2 --init <teacher checkpoint> --max_iterations 1500` |
+| student 蒸餾 | `tools\isaacpy.cmd 03_training\sim2real\student_distill.py --teacher <teacher model_*.pt> --tag <名稱> --symmetry --reward_preset obs_lateral --scenario dr_rough_gait_train_v2` |
+| 固定集評估 | `tools\isaacpy.cmd 03_training\sim2real\evaluate.py --scenario <場景> --agent student:<student.pt>`（`policy:<ckpt>` 也可；`--episodes 504` 加大樣本） |
+| 回歸檢查 | `evaluate.py --scenario flat_v1 --agent policy:<03 最終 model.pt> --compare <參考 stats.json>`（修改 `shared/env` 後必跑，必須完全一致） |
+| 重新計分 | `tools\isaacpy.cmd 03_training\sim2real\rescore.py <eval 資料夾…>`（sim-to-real 成功判定，不需要模擬） |
+| 評估影片 | `tools\isaacpy.cmd 03_training\sim2real\record_videos.py --scenario <場景> --agent student:<student.pt> --tag <名稱> --enable_cameras` |
+| 左右對稱 | `tools\isaacpy.cmd 03_training\sim2real\gait_symmetry.py --agent <agent> --tag <名稱>` |
+| 自發停頓 | `tools\isaacpy.cmd 03_training\sim2real\stop_analysis.py --scenario <場景> --agent <agent> --tag <名稱>` |
+| 鏡像映射檢查 | `tools\isaacpy.cmd 03_training\sim2real\check_symmetry.py --agent policy:<ckpt> [--agent …]` |
+| v2 觀測煙霧測試 | `tools\isaacpy.cmd 03_training\sim2real\check_env_v2.py --scenario <場景>` |
+
+產出在 `outputs/robot_v1/03_training/sim2real/<名稱>_<時間>/`，資料夾已存在時程式會停下來。
+
+### 檔案
+
+| 檔案 | 內容 |
+|---|---|
+| `config.py` | `TeacherCfg`（場景、PPO 參數、推擠、獎勵覆寫、`reward_presets`、`env_overrides`、對稱）、`StudentCfg`（DAgger 輪數、緩衝、鏡像樣本） |
+| `common.py` | run 資料夾、git commit、套用場景與 03 設定建立環境 |
+| `agents.py` | 依 checkpoint 輸入維度選觀測組（44＝03 模型、55＝teacher、210＝student）；`StudentAgent` |
+| `teacher_ppo.py` | 特權 teacher：從 03 模型（第一層補 0）或既有 teacher 接續；critic 預熱；可選鏡像對稱 |
+| `student_distill.py` | DAgger 蒸餾成只用 IMU 與伺服讀值的 student |
+| `symmetry.py` | rsl_rl 對稱資料擴充的掛鉤（`sim2real.symmetry:augment`） |
+| `scoring.py`、`rescore.py` | sim-to-real 成功判定（未跌倒、走完、速度 ±25%、方向 < 10°）與事後重新計分 |
+| `evaluate.py`、`record_videos.py` | 固定集評估、評估影片（`/eval-video` 格式，指令會變時 HUD 顯示 `cmd now`） |
+| `gait_symmetry.py`、`stop_analysis.py`、`check_symmetry.py`、`check_env_v2.py` | 診斷：左右步長、自發停頓、鏡像映射、v2 觀測 |
+
+最終模型：`outputs/robot_v1/03_training/sim2real/student_v5_20261007_003835/student.pt`（210 維輸入，介面 `shared/interface_v2.py` 的 `student`）。
 
 ## 執行紀錄
 
 ### 階段一：環境擴充（2026-10-06）
 - **確定性**：同一模型、同一 seed 重跑，固定評估集的每個欄位都完全相同，所以回歸檢查要求「完全一致」。
 - **回歸檢查**：加入隨機化後，03 最終模型在 `flat_v1` 與原紀錄完全一致（`eval_flat_v1_regress_20261006_100147`）。
-- **03 最終模型在各隨機化下的表現**（100 episode，`outputs/robot_v1/sim2real/eval_*_base03_*`）：
+- **03 最終模型在各隨機化下的表現**（100 episode，`outputs/robot_v1/03_training/sim2real/eval_*_base03_*`）：
 
 | 場景 | 成功率 | 跌倒 | 方向 p50 | 側向 p50 | 推擠 成功／跌倒 |
 |---|---|---|---|---|---|
@@ -73,7 +98,7 @@ outputs/robot_v1/sim2real/<run>/
   - `policy`／`critic`：teacher（特權）＝ v1 觀測（真值，無雜訊）＋ 10 個特權量（摩擦、質量倍率、kp／kd／扭矩倍率、延遲、地形振幅、base 高度、兩腳接觸）＝ 54 維。
     前 44 維與 v1 完全相同，所以 03 模型可以用「第一層新增輸入的權重補 0」的方式初始化 teacher，起點和 03 一模一樣。
   - `student`（可部署）：v1 去掉 base 線速度、加上場景的觀測雜訊與 IMU 偏差，每格 41 維 × 最近 5 步 ＝ 205 維。
-- 煙霧測試（`sim2real/check_env_v2.py`）：各組維度正確；特權量的範圍符合場景設定（摩擦 0.47–1.10、延遲 0–40 ms、kp 0.71–1.29…）；歷史逐格不同。
+- 煙霧測試（`check_env_v2.py`）：各組維度正確；特權量的範圍符合場景設定（摩擦 0.47–1.10、延遲 0–40 ms、kp 0.71–1.29…）；歷史逐格不同。
 - **發現並修正**：訓練地形原設 32 × 10 塊（5 cm 解析度，約 1200 萬個三角形），PhysX 無法建立碰撞網格，機器人直接掉穿地面（接觸率 5%）。
   `dr_rough_train_v1` 尚未被任何正式 run 使用，改為 16 × 10 塊（與評估地形相同大小，可正常建立）。評估用的 `rough_eval_v1` 一開始就是 16 × 10，結果有效。
 - 回歸檢查（`regress4`）：`flat_v1` 的 nominal 與推擠測試都和參考值完全一致。
@@ -91,11 +116,11 @@ outputs/robot_v1/sim2real/<run>/
 
 | 腳本 | 內容 |
 |---|---|
-| `sim2real/teacher_ppo.py` | 特權 teacher：從 03 最終模型初始化（第一層新增 11 個輸入的權重補 0，正規化器的新維度用短 rollout 估計），在 `dr_rough_gait_train_v1` 用 PPO 訓練；啟動時檢查 teacher 與 03 的輸出差異 |
-| `sim2real/student_distill.py` | 可部署 student：DAgger（前 6 輪 teacher 與 student 混合操作、之後只有 student；每個狀態都用 teacher 的動作當標籤），FIFO 資料 400 萬步 |
-| `sim2real/agents.py` | 依 checkpoint 的輸入維度選觀測組：44＝03 模型、55＝teacher、210＝student |
-| `sim2real/evaluate.py` | 任一 agent 在任一場景的固定集評估（會自動選觀測版本） |
-| `sim2real/config.py` | `TeacherCfg`、`StudentCfg`（網路、BC、評估設定沿用 03） |
+| `teacher_ppo.py` | 特權 teacher：從 03 最終模型初始化（第一層新增 11 個輸入的權重補 0，正規化器的新維度用短 rollout 估計），在 `dr_rough_gait_train_v1` 用 PPO 訓練；啟動時檢查 teacher 與 03 的輸出差異 |
+| `student_distill.py` | 可部署 student：DAgger（前 6 輪 teacher 與 student 混合操作、之後只有 student；每個狀態都用 teacher 的動作當標籤），FIFO 資料 400 萬步 |
+| `agents.py` | 依 checkpoint 的輸入維度選觀測組：44＝03 模型、55＝teacher、210＝student |
+| `evaluate.py` | 任一 agent 在任一場景的固定集評估（會自動選觀測版本） |
+| `config.py` | `TeacherCfg`、`StudentCfg`（網路、BC、評估設定沿用 03） |
 
 - teacher 的獎勵相對 03 的改變：`gait_contact` 2.0 → 1.0（放寬步態時鐘）、新增 `clearance` 5.0；推擠 0.25 m/s（每 4–8 秒）。其餘沿用 03（含扭矩 −0.7）。
 - 速度測試（`teacher_speedtest_*`，60 iterations）：teacher 初始化後與 03 的輸出差異 **0**；每個 iteration 約 1.3 s（4096 環境，含地形）。
@@ -114,8 +139,8 @@ outputs/robot_v1/sim2real/<run>/
   - 「成功率」低有兩個原因：(1) 沿用 rule-based 的判定（距離 ≥ 0.8 × 步數 × 步長），會把放寬時鐘後的修正步（多 15–18% 的著地）算成失敗；
     (2) 側向漂移約 0.3 m（03 是 0.034 m），平地無推擠也有。teacher 看得到側向速度，但 `lateral_vel` 每個 episode 只扣約 0.2 分；側向位置看不到，`lateral_deviation` 隨訓練增加（0.19 → 0.32 m）。
 - **決定（使用者，2026-10-06）**：
-  1. 部署門檻的「成功」改用 sim-to-real 判定（`sim2real/scoring.py`）：未跌倒、走完整個 episode、平均速度在指令 ±25% 內、最大方向誤差 < 10°；
-     允許修正步（拖步由速度條件擋掉），02／03 的判定不變。已存的評估可用 `sim2real/rescore.py` 重新計分（不需要重跑模擬）。
+  1. 部署門檻的「成功」改用 sim-to-real 判定（`scoring.py`）：未跌倒、走完整個 episode、平均速度在指令 ±25% 內、最大方向誤差 < 10°；
+     允許修正步（拖步由速度條件擋掉），02／03 的判定不變。已存的評估可用 `rescore.py` 重新計分（不需要重跑模擬）。
   2. 側向漂移先不處理（實機量不到側向位置，方向由 IMU 追蹤），直接蒸餾 student。
 - teacher v1 用新判定重新計分：`flat_v1` 99%、`dr_v1` 99%、`gait_eval_v1` 100%、`rough_eval_v1` 82%、`dr_rough_eval_v1` 55%
   （地形上未通過的原因都是方向誤差 ≥ 10°，不是跌倒）；同一判定下 03 模型在 `dr_v1` 只有 1%、兩種地形 0%。
@@ -166,7 +191,7 @@ outputs/robot_v1/sim2real/<run>/
 ### 第三輪：加強複雜地形（2026-10-06）
 - 新場景 `dr_rough_gait_train_v2`（`v1` 已被正式 run 使用，凍結不改）：同 v1，但地形初始等級放寬到 0–6，讓較難的等級有更多樣本。
 - teacher v3：從 teacher v2 最終版接續 3000 iterations；student v3 由 teacher v3 最終 checkpoint 蒸餾 120 輪（checkpoint 改用版本排序 `sort -V` 選取，避免第二輪選錯的問題）。
-- 評估影片：`sim2real/record_videos.py`（任一 agent、任一場景，`/eval-video` 格式；成功影片改用 sim-to-real 判定挑選）。
+- 評估影片：`record_videos.py`（任一 agent、任一場景，`/eval-video` 格式；成功影片改用 sim-to-real 判定挑選）。
   HUD 的標籤太長時（例如 `exp2 / robot_v1 / sim2real / student_v3 / dr_rough_eval_v1 / fast …`），經過時間會被擠出畫面；
   `shared/video_overlay.py` 改為只在第一行放不下時把時間移到第二行，02／03 的短標籤版面不變。
 - **結果**（teacher v3 `teacher_v3_20261006_144837`，3000 iterations、81 分鐘；student v3 `student_v3_20261006_160952`；sim-to-real 判定，成功／跌倒）：
@@ -183,12 +208,12 @@ outputs/robot_v1/sim2real/<run>/
   - **student v3 通過所有部署門檻**（組合場景的跌倒率 5% 剛好在上限）。
   - 需要注意：側向漂移變大（平地 p50 0.57 m、p90 0.82 m／20 秒；03 為 0.034 m），依使用者決定未處理；扭矩飽和比例 1.4–8%（03 約 0.1%），部分來自扭矩上限 ±20% 的隨機化，實機上代表發熱與磨耗較多。
   - 串接的評估與錄影在背景時間上限（2 小時）時被中止，最後兩組影片（`dr_rough_eval_v1`、`gait_eval_v1`）另外補錄。
-- **評估影片（student v3）**：`outputs/robot_v1/sim2real/videos_<場景>_student_v3_*/videos/`，5 個場景（`flat_v1`、`dr_v1`、`rough_eval_v1`、`dr_rough_eval_v1`、`gait_eval_v1`）各有慢／中／快，
+- **評估影片（student v3）**：`outputs/robot_v1/03_training/sim2real/videos_<場景>_student_v3_*/videos/`，5 個場景（`flat_v1`、`dr_v1`、`rough_eval_v1`、`dr_rough_eval_v1`、`gait_eval_v1`）各有慢／中／快，
   `dr_v1` 與 `dr_rough_eval_v1` 另有失敗案例（未跌倒、因方向或速度條件未通過）；抽格確認 HUD 時間獨立一行、步數與時鐘一致（10.6 秒 36 步）。
 
 ### 第四輪：修正跛行式步態（2026-10-06）
 - **使用者觀察**：影片中機器人左腳跨大步、右腳只跟到左腳旁邊（step-to，像跛腳），偏離預期的正常步態。
-- **量化**（`sim2real/gait_symmetry.py`，平地、0.10 m/s、1.6 Hz，著地時這隻腳相對另一隻腳的前後距離；名目步長 31 mm）：
+- **量化**（`gait_symmetry.py`，平地、0.10 m/s、1.6 Hz，著地時這隻腳相對另一隻腳的前後距離；名目步長 31 mm）：
 
 | 版本 | 左腳步長 p50 | 右腳步長 p50 | 不對稱度 |
 |---|---|---|---|
@@ -200,7 +225,7 @@ outputs/robot_v1/sim2real/<run>/
   不對稱是 04 訓練中出現的：放寬步態時鐘後，沒有任何項目要求左右對稱，PPO 找到在延遲與雜訊下也能平衡的不對稱步態。機器人本身左右對稱（只有尾巴 yaw 號誌相反）。
 - **決定（使用者，2026-10-06）**：鏡像對稱訓練，從 teacher v3 接續。
   - `shared/symmetry.py`：左右鏡像（y → −y）的觀測與動作映射，關節配對來自 `LEG_JOINT_LAYOUT`，號誌來自 robot 模組新增的 `MIRROR_SIGN`（hip roll 與 tail yaw 變號）；
-    步態時鐘因左右腳交換而位移半個週期。檢查（`sim2real/check_symmetry.py`）：鏡像兩次誤差 0；03 模型的等變誤差 0.29（故意寫錯的映射 0.51），teacher v3 為 0.43。
+    步態時鐘因左右腳交換而位移半個週期。檢查（`check_symmetry.py`）：鏡像兩次誤差 0；03 模型的等變誤差 0.29（故意寫錯的映射 0.51），teacher v3 為 0.43。
   - teacher：rsl_rl 內建的對稱資料擴充＋鏡像損失（係數 1.0，`--symmetry`）；student：每個樣本同時存入鏡像版本。
   - 煙霧測試 60 iterations：鏡像損失 0.126 → 0.089；每個 iteration 約 1.96 s（批次加倍）。正式訓練 `teacher_v4sym`：2000 iterations。
 - **結果**（teacher v4 `teacher_v4sym_20261006_201133`，2000 iterations、70 分鐘，鏡像損失 0.126 → 0.011；student v4 `student_v4sym_20261006_212327`，含鏡像樣本 120 輪）：
@@ -224,7 +249,7 @@ outputs/robot_v1/sim2real/<run>/
   - 代價：地形上的強健性略降（推擠跌倒增加，組合場景剛好達標）。teacher v4 本身在隨機化場景反而比 student 差（`dr_v1` 跌倒 7%）。
 - **使用者審視影片（2026-10-06）**：student v4 有嚴重問題：走一走會自己停下來，過一會兒又繼續；停下時有時僵住、有時原地踏步。
   **v4（teacher_v4sym、student_v4sym）可以保留紀錄，但不可作為之後訓練的初始值。** 下一步先重新評估現狀（獎勵設計與指令），再決定做法。
-- **重新檢查（2026-10-06）**：`sim2real/stop_analysis.py` 把「指令要走、實際停下」（1 秒平均速度 < 指令的 30%）和指令本身的停止分開統計：
+- **重新檢查（2026-10-06）**：`stop_analysis.py` 把「指令要走、實際停下」（1 秒平均速度 < 指令的 30%）和指令本身的停止分開統計：
 
 | 策略 | 場景 | 有行走指令時停住的時間比例 | 指令要求的停止（站立／原地） |
 |---|---|---|---|
@@ -264,7 +289,7 @@ outputs/robot_v1/sim2real/<run>/
   - student v5：左右步長 31.6／32.4 mm（不對稱度 0.025）；固定行走指令下沒有自發停頓（`flat_v1`、`dr_v1` 0%，`dr_rough_eval_v1` 0.0%）。
   - 100 episode 的組合場景 v4 與 v5 差距在統計誤差內（約 ±4%），所以另跑 504 episode：v4 跌倒 7.7% 未達標，v5 兩項都達標。
   - 鏡像對稱下仍有約 10% 的小碎步（著地步長 p10 為負、擺動 0.04–0.06 s），屬於修正步，比例遠低於 v1。
-  - **student v5 為最終模型**（`outputs/robot_v1/sim2real/student_v5_20261007_003835/student.pt`）。
+  - **student v5 為最終模型**（`outputs/robot_v1/03_training/sim2real/student_v5_20261007_003835/student.pt`）。
 
 ## 結論（2026-10-07，使用者決定模擬測試告一段落）
 
@@ -288,3 +313,5 @@ outputs/robot_v1/sim2real/<run>/
 - 中間 checkpoint（203 個，0.9 GB）。每個 run 保留最後一個，另外保留被引用的 `teacher_v2/model_800.pt`（student v2 的來源）與 `teacher_v1/model_1000.pt`（第 1000 iteration 的評估）。
 - 速度／煙霧測試 run（`teacher_speedtest`、`teacher_symtest`、`teacher_v5test`、`smoke`）。
 所有 `config.yaml`、`stats.json`、`history.json`、`episodes.pt`、TensorBoard log 與 logs 都保留；刪除後重新載入 30 個保留模型，全部正常。
+
+訓練範圍以外的壓力測試見 [`04_generalization/`](../../04_generalization/README.md)。

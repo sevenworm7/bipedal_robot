@@ -51,7 +51,7 @@ def main():
     args = ap.parse_args()
     vdir = P.version_dir(args.version)
     lay = P.load(args.version)
-    out = P.PROJECT_ROOT / "outputs" / f"robot_v{args.version}" / "viewer"
+    out = P.PROJECT_ROOT / "outputs" / f"robot_v{args.version}" / "01_model" / "viewer"
     (out / "meshes").mkdir(parents=True, exist_ok=True)
     model = Builder(lay).build()
     origin = lay.link_origin

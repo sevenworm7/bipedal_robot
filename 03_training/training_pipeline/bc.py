@@ -10,8 +10,8 @@
 Output: ``iter<N>_<bc|distill>_<time>/{model.pt, stats.json, config.yaml, tb/}``.
 
 Usage:
-    tools\\isaacpy.cmd 03_training_pipeline\\training_pipeline\\bc.py --iter 0 --data <iter0_collect>/dataset.h5
-    tools\\isaacpy.cmd 03_training_pipeline\\training_pipeline\\bc.py --iter 1 --stage distill --data <filtered.h5> --prev <iter0 data>
+    tools\\isaacpy.cmd 03_training\\training_pipeline\\bc.py --iter 0 --data <iter0_collect>/dataset.h5
+    tools\\isaacpy.cmd 03_training\\training_pipeline\\bc.py --iter 1 --stage distill --data <filtered.h5> --prev <iter0 data>
 """
 
 import argparse
@@ -20,9 +20,9 @@ import sys
 import time
 from pathlib import Path
 
-# project root (shared), 02_rule_based (rule_based teacher), 03_training_pipeline (training_pipeline)
+# project root (shared), 02_rule_based (rule_based teacher), 03_training (training_pipeline)
 _ROOT = Path(__file__).resolve().parents[2]
-sys.path[:0] = [str(_ROOT), str(_ROOT / "02_rule_based"), str(_ROOT / "03_training_pipeline")]
+sys.path[:0] = [str(_ROOT), str(_ROOT / "02_rule_based"), str(_ROOT / "03_training")]
 
 from isaaclab.app import AppLauncher  # noqa: E402
 

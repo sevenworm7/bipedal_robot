@@ -1,6 +1,6 @@
 # 02_rule_based：規則式行走控制器（實驗二）
 
-**狀態：完成，使用者已檢視影片並確認（2026-10-01）。100 episode 成功率 100%、跌倒 0%，採用 `rule_based/params/robot_v1_cem1_best.json`。** 機器人：`custom_biped` v1（tag `robot-v1`）。產出：`outputs/robot_v1/rule_based/`。
+**狀態：完成，使用者已檢視影片並確認（2026-10-01）。100 episode 成功率 100%、跌倒 0%，採用 `rule_based/params/robot_v1_cem1_best.json`。** 機器人：`custom_biped` v1（tag `robot-v1`）。產出：`outputs/robot_v1/02_rule_based/`。
 
 - `PROMPT.md`、`CLAUDE.md`：原始規格（不修改）。
 - `rule_based/`：控制器與所有腳本（從 `00_test/rule_based/` 移植），說明與開發紀錄見 [`rule_based/README.md`](rule_based/README.md)。

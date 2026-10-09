@@ -2,13 +2,13 @@
 
 ``--compare <stats.json>`` turns the run into a regression check: the nominal and push-test statistics must be
 identical to the reference (exit code 3 otherwise). Used after every change of ``shared/env``: the 03 final model in
-``flat_v1`` must reproduce ``outputs/robot_v1/training/iter3_distill_20261001_132024/stats.json`` exactly.
+``flat_v1`` must reproduce ``outputs/robot_v1/03_training/pipeline/iter3_distill_20261001_132024/stats.json`` exactly.
 
 Output: ``outputs/robot_v<N>/sim2real/eval_<scenario>_<tag>_<time>/{stats.json, episodes.pt, config.yaml}``.
 
 Usage:
-    tools\isaacpy.cmd 04_sim2real\sim2real\evaluate.py --scenario flat_v1 --agent policy:<model.pt> --compare <stats.json>
-    tools\isaacpy.cmd 04_sim2real\sim2real\evaluate.py --scenario dr_v1 --agent policy:<model.pt>
+    tools\isaacpy.cmd 03_training\sim2real\evaluate.py --scenario flat_v1 --agent policy:<model.pt> --compare <stats.json>
+    tools\isaacpy.cmd 03_training\sim2real\evaluate.py --scenario dr_v1 --agent policy:<model.pt>
 """
 
 import argparse
@@ -16,9 +16,9 @@ import json
 import sys
 from pathlib import Path
 
-# project root (shared), 02_rule_based (teacher), 03_training_pipeline (pipeline modules), 04_sim2real (sim2real)
+# project root (shared), 02_rule_based (teacher), 03_training (training_pipeline and sim2real packages)
 _ROOT = Path(__file__).resolve().parents[2]
-sys.path[:0] = [str(_ROOT), str(_ROOT / "02_rule_based"), str(_ROOT / "03_training_pipeline"), str(_ROOT / "04_sim2real")]
+sys.path[:0] = [str(_ROOT), str(_ROOT / "02_rule_based"), str(_ROOT / "03_training")]
 
 from isaaclab.app import AppLauncher  # noqa: E402
 
@@ -30,6 +30,10 @@ parser.add_argument("--tag", type=str, default="")
 parser.add_argument("--no_push", action="store_true")
 parser.add_argument("--compare", type=str, default=None, help="Reference stats.json for the regression check.")
 parser.add_argument("--episodes", type=int, default=None, help="Override the fixed set size (default EvalCfg.episodes = 100).")
+parser.add_argument("--push_speed", type=float, default=None, help="Push-test speed [m/s] (default EvalCfg.push_speed).")
+parser.add_argument("--out_dir", type=str, default=None, help="Exact output folder (stress tests); must not exist.")
+parser.add_argument("--push_only", action="store_true",
+                    help="Only the push test (pushes at EvalCfg.push_times_s); its episodes are saved as episodes.pt.")
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 app = AppLauncher(args_cli).app
@@ -48,18 +52,36 @@ def main():
     e = cfg.eval
     if args_cli.episodes:
         e.episodes = args_cli.episodes
+    if args_cli.push_speed is not None:
+        e.push_speed = args_cli.push_speed
     obs_version = obs_version_for(args_cli.agent)
     env = make_env(cfg, args_cli.scenario, e.episodes, e.episode_s, e.seed, obs_version=obs_version)
     agent = load_agent_v2(args_cli.agent, env, cfg.actor, env.rb.PROJECT_ROOT)
     safe = args_cli.scenario.replace(":", "-")
-    out = run_dir(env.rb, f"eval_{safe}", args_cli.tag)
+    if args_cli.out_dir:
+        out = Path(args_cli.out_dir)
+        out.mkdir(parents=True, exist_ok=False)
+    else:
+        out = run_dir(env.rb, f"eval_{safe}", args_cli.tag)
     dump_config(out, {"args": vars(args_cli), "scenario": args_cli.scenario, "obs_version": obs_version, "dr": env.cfg.dr.to_dict(),
                       "env": env_summary(env.cfg), "pipeline": cfg.to_dict(), "git_commit": git_commit(env.rb.PROJECT_ROOT)})
-    stats, ep = evaluate_agent(env, agent, e, push=not args_cli.no_push)
+    if args_cli.push_only:
+        from shared.rollout import aggregate, make_push, run_first_episodes
+
+        torch.manual_seed(e.seed)
+        ep = run_first_episodes(env, agent, push=make_push(e.push_speed, list(e.push_times_s)))
+        stats = {"env": {"episodes": env.num_envs, "episode_s": env.cfg.episode_length_s, "seed": e.seed},
+                 "push_only": {"push_speed_mps": e.push_speed, "push_times_s": list(e.push_times_s)},
+                 "nominal": aggregate(ep)}
+    else:
+        stats, ep = evaluate_agent(env, agent, e, push=not args_cli.no_push)
     stats = {"agent": args_cli.agent, "scenario": args_cli.scenario, **stats}
     write_json(out / "stats.json", stats)
     torch.save({k: v.cpu() for k, v in ep.items() if k != "torque_samples"}, out / "episodes.pt")
-    print(f"[eval] {args_cli.scenario}: {summary_line(stats)}")
+    if not args_cli.push_only:
+        print(f"[eval] {args_cli.scenario}: {summary_line(stats)}")
+    else:
+        print(f"[eval] {args_cli.scenario} push {e.push_speed} m/s: fall {stats['nominal']['fall_rate']}")
     print(f"[eval] output: {out}")
     code = 0
     if args_cli.compare:

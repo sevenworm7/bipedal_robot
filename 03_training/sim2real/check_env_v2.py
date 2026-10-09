@@ -1,7 +1,7 @@
 r"""Smoke test of the v2 observation groups (shapes, privileged values, history) in a scenario.
 
 Usage:
-    tools\isaacpy.cmd 04_sim2real\sim2real\check_env_v2.py --scenario dr_rough_train_v1 --num_envs 64
+    tools\isaacpy.cmd 03_training\sim2real\check_env_v2.py --scenario dr_rough_train_v1 --num_envs 64
 """
 
 import argparse
@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[2]
-sys.path[:0] = [str(_ROOT), str(_ROOT / "02_rule_based"), str(_ROOT / "03_training_pipeline"), str(_ROOT / "04_sim2real")]
+sys.path[:0] = [str(_ROOT), str(_ROOT / "02_rule_based"), str(_ROOT / "03_training")]
 
 from isaaclab.app import AppLauncher  # noqa: E402
 

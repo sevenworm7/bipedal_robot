@@ -41,3 +41,38 @@ class GradedBumpsCfg(HfTerrainBaseCfg):
     bump_spacing: float = 0.1
     """Distance between independent height samples [m] (bumps of about one foot length)."""
     seed_offset: int = 0
+
+
+@height_field_to_mesh
+def x_profile(difficulty: float, cfg: "XProfileCfg") -> np.ndarray:
+    """Height field [pixels] that varies only along x (the walking direction): flat for ``flat_until`` metres past the
+    tile centre (the robots start at the centre), then a ramp or steps. The start area is at height 0 (world z 0).
+    ``difficulty`` is ignored (stress tests use fixed values)."""
+    w = round(cfg.size[0] / cfg.horizontal_scale)
+    h = round(cfg.size[1] / cfg.horizontal_scale)
+    x = np.linspace(0, cfg.size[0], w) - cfg.size[0] / 2 - cfg.flat_until  # distance past the flat zone
+    past = np.clip(x, 0.0, None)
+    if cfg.kind in ("ramp_up", "ramp_down"):
+        z = np.tan(np.radians(cfg.slope_deg)) * past
+    elif cfg.kind in ("steps_up", "steps_down"):
+        z = np.where(x > 0, cfg.step_height * (np.floor(past / cfg.step_length) + 1), 0.0)
+    else:
+        raise ValueError(cfg.kind)
+    if cfg.kind.endswith("_down"):
+        z = -z
+    return np.rint(np.repeat(z[:, None], h, axis=1) / cfg.vertical_scale).astype(np.int16)
+
+
+@configclass
+class XProfileCfg(HfTerrainBaseCfg):
+    function = x_profile
+    kind: str = "ramp_up"
+    """ramp_up, ramp_down, steps_up or steps_down."""
+    slope_deg: float = 5.0
+    step_height: float = 0.005
+    """[m]"""
+    step_length: float = 0.25
+    """Tread length [m]."""
+    flat_until: float = 1.0
+    """Flat distance past the tile centre before the profile starts [m]. Stress tests use 0.3 m (slow robots walk only
+    1 m in 20 s) and spawn at world height 0 (``spawn_z_abs``), since the tile origin height is no longer 0."""

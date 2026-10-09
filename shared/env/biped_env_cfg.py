@@ -51,11 +51,11 @@ class RewardWeightsCfg:
     """sum max(|F_foot| - contact_force_limit, 0) [N]"""
     lateral_vel_avg: float = 0.0
     """(lateral velocity low-pass filtered with ``lateral_vel_tau``)^2 [m^2/s^2]: penalises a steady sideways drift but not
-    the step-to-step sway; observable by the privileged teacher (04_sim2real round 5, replaces ``lateral_deviation``,
+    the step-to-step sway; observable by the privileged teacher (03_training/sim2real round 5, replaces ``lateral_deviation``,
     which penalises an unobservable, accumulating position). 0 keeps the 03 reward."""
     clearance: float = 0.0
     """per touchdown exp(-((swing apex - commanded clearance) / sigma)^2); used only with ``gait_var.clearance_range``
-    (04_sim2real). 0 keeps the 03 reward."""
+    (03_training/sim2real). 0 keeps the 03 reward."""
     gait_contact: float = 2.0
     """mean over feet of [contact state == clock schedule] (in the air inside the foot's swing window of the
     gait clock, on the ground outside it); added 2026-09-22 (user decision) because PPO drifted away from
@@ -65,7 +65,7 @@ class RewardWeightsCfg:
 
 @configclass
 class DomainRandCfg:
-    """Sim-to-real randomisation (04_sim2real). **Every field defaults to None = off**; with all fields off the env
+    """Sim-to-real randomisation (03_training/sim2real). **Every field defaults to None = off**; with all fields off the env
     is bit-identical to the 03 environment (checked by the flat_v1 regression run). Values are set through the named
     scenarios in ``shared/env/scenarios.py``, never edited in place once a scenario has been used."""
 
@@ -103,7 +103,7 @@ class DomainRandCfg:
 
 @configclass
 class GaitVariationCfg:
-    """Gait diversity (04_sim2real phase 3, user decision 2026-10-06). **All off by default** (03 behaviour)."""
+    """Gait diversity (03_training/sim2real phase 3, user decision 2026-10-06). **All off by default** (03 behaviour)."""
 
     resample_interval_s: tuple[float, float] | None = None
     """Resample speed and gait frequency mid-episode after this many seconds (start / stop / speed changes).
@@ -218,14 +218,14 @@ class BipedWalkEnvCfg(DirectRLEnvCfg):
     """Length of the expected swing window [cycles]."""
     contact_force_limit: float | None = None
 
-    # -- sim-to-real randomisation (04_sim2real; all off by default) --
+    # -- sim-to-real randomisation (03_training/sim2real; all off by default) --
     scenario: str = "flat_v1"
     """Name of the scenario this config was built from (``shared/env/scenarios.py``); recorded in every run config."""
     dr: DomainRandCfg = DomainRandCfg()
     gait_var: GaitVariationCfg = GaitVariationCfg()
     obs_version: int = 1
     """1 = the 44-dim v1 observation (02 / 03). 2 = ``shared/interface_v2.py``: groups ``policy`` / ``critic`` =
-    privileged teacher observation, ``student`` = deployable history (04_sim2real)."""
+    privileged teacher observation, ``student`` = deployable history (03_training/sim2real)."""
 
     # -- bookkeeping --
     record_episodes: bool = False

@@ -1,4 +1,4 @@
-"""Left-right mirror (y -> -y) of observations and actions (04_sim2real, against the step-to gait of 2026-10-06).
+"""Left-right mirror (y -> -y) of observations and actions (03_training/sim2real, against the step-to gait of 2026-10-06).
 
 Robot-agnostic: joint pairs come from ``LEG_JOINT_LAYOUT`` (left / right swap) and signs from the robot module's
 ``MIRROR_SIGN``; non-leg joints (tail) mirror onto themselves. Canonical base frame (x forward, y left, z up):

@@ -1,17 +1,17 @@
 ---
 name: pipeline-iteration
-description: Runbook for one round of the training pipeline (exp1 in 00_test/training_pipeline, exp2 in 03_training_pipeline) (collect → BC → PPO → filter → distill → eval video) including artifact layout, go/no-go checks and the cross-iteration comparison. Use when running, resuming, or reporting on any training stage or self-distillation iteration.
+description: Runbook for one round of the training pipeline (exp1 in 00_test/training_pipeline, exp2 in 03_training) (collect → BC → PPO → filter → distill → eval video) including artifact layout, go/no-go checks and the cross-iteration comparison. Use when running, resuming, or reporting on any training stage or self-distillation iteration.
 ---
 
 # 訓練迭代流程
 
 前置條件：該實驗的 `shared/robots/<robot>.py` 已定案；同一台機器人的 rule-based 控制器跌倒率 < 30%；自我蒸餾的篩選門檻已經使用者確認。
 
-每次執行前，先確認這次屬於哪個實驗：實驗一在 `00_test/` 中使用 `ref_biped`；實驗二在 `03_training_pipeline/` 中使用 `custom_biped`。確認 config 中的 `robot` 欄位正確，且產出寫入對應實驗的 outputs。
+每次執行前，先確認這次屬於哪個實驗：實驗一在 `00_test/` 中使用 `ref_biped`；實驗二在 `03_training/training_pipeline/` 中使用 `custom_biped`（sim-to-real 強健性訓練在 `03_training/sim2real/`，流程見其 README）。確認 config 中的 `robot` 欄位正確，且產出寫入對應實驗的 outputs。
 
 ## 產出檔案結構
 ```
-<實驗根目錄>/outputs/training/     # 實驗一：00_test/outputs/training/；實驗二：outputs/training/
+<產出資料夾>/                      # 實驗一：00_test/outputs/training/；實驗二：outputs/robot_v1/03_training/pipeline/
   iter0_collect_<date>/   dataset.h5, config.yaml, stats.json
   iter0_bc_<date>/        model.pt, config.yaml, tb/, stats.json
   iter1_ppo_<date>/       model_*.pt, config.yaml, tb/, stats.json, videos/

@@ -1,4 +1,4 @@
-# 03_training_pipeline/training_pipeline：訓練管線程式（實驗二）
+# 03_training/training_pipeline：訓練管線程式（實驗二）
 
 collect → BC → PPO → 篩選 → 蒸餾 ×3 → 評估影片。程式從 `00_test/training_pipeline/` 移植（2026-10-01），邏輯相同；
 檔案說明與設計重點（BC 直接訓練 rsl_rl `MLPModel`、PPO 凍結 actor 正規化器、critic 預熱、依 episode 切分）見 `00_test/training_pipeline/README.md`。
@@ -7,17 +7,17 @@ collect → BC → PPO → 篩選 → 蒸餾 ×3 → 評估影片。程式從 `0
 
 | 步驟 | 指令 |
 |---|---|
-| 量測步態時鐘 | `tools\isaacpy.cmd 03_training_pipeline\training_pipeline\measure_gait.py` |
-| 收集老師資料 | `tools\isaacpy.cmd 03_training_pipeline\training_pipeline\collect.py --iter 0` |
-| BC | `tools\isaacpy.cmd 03_training_pipeline\training_pipeline\bc.py --iter 0 --data <iter0_collect>\dataset.h5` |
-| PPO | `tools\isaacpy.cmd 03_training_pipeline\training_pipeline\ppo.py --iter 1 --init <iter0_bc>\model.pt` |
-| 蒸餾 rollout | `tools\isaacpy.cmd 03_training_pipeline\training_pipeline\collect.py --iter 1 --agent policy:<model_1499.pt> --tag ppo` |
-| 篩選（先只統計） | `tools\isaacpy.cmd 03_training_pipeline\training_pipeline\filter.py --iter 1 --data <dataset.h5> --stats_only` |
-| 蒸餾 BC | `tools\isaacpy.cmd 03_training_pipeline\training_pipeline\bc.py --iter 1 --stage distill --data <filtered.h5> --prev <iter0 dataset>` |
-| 固定集評估 | `tools\isaacpy.cmd 03_training_pipeline\training_pipeline\evaluate.py --iter 1 --stage ppo --agent policy:<ckpt>` |
+| 量測步態時鐘 | `tools\isaacpy.cmd 03_training\training_pipeline\measure_gait.py` |
+| 收集老師資料 | `tools\isaacpy.cmd 03_training\training_pipeline\collect.py --iter 0` |
+| BC | `tools\isaacpy.cmd 03_training\training_pipeline\bc.py --iter 0 --data <iter0_collect>\dataset.h5` |
+| PPO | `tools\isaacpy.cmd 03_training\training_pipeline\ppo.py --iter 1 --init <iter0_bc>\model.pt` |
+| 蒸餾 rollout | `tools\isaacpy.cmd 03_training\training_pipeline\collect.py --iter 1 --agent policy:<model_1499.pt> --tag ppo` |
+| 篩選（先只統計） | `tools\isaacpy.cmd 03_training\training_pipeline\filter.py --iter 1 --data <dataset.h5> --stats_only` |
+| 蒸餾 BC | `tools\isaacpy.cmd 03_training\training_pipeline\bc.py --iter 1 --stage distill --data <filtered.h5> --prev <iter0 dataset>` |
+| 固定集評估 | `tools\isaacpy.cmd 03_training\training_pipeline\evaluate.py --iter 1 --stage ppo --agent policy:<ckpt>` |
 | 評估影片 | 同上加 `--video_only --enable_cameras` |
 
-產出在 `outputs/robot_v1/training/iter<N>_<stage>[_<tag>]_<時間>/`，資料夾已存在時程式會停下來。
+產出在 `outputs/robot_v1/03_training/pipeline/iter<N>_<stage>[_<tag>]_<時間>/`，資料夾已存在時程式會停下來。
 
 ## 和實驗一的差異
 
@@ -111,9 +111,9 @@ collect → BC → PPO → 篩選 → 蒸餾 ×3 → 評估影片。程式從 `0
 4. 和實驗一相比：老師本身已經很好（成功率 100%），所以訓練的效益不在成功率，而在抗推擠（99 → 100%）與 PPO 帶來的步態多樣性；
    直線度目前**不如**老師。
 
-## 事後修正（2026-10-06，04_sim2real 發現）
+## 事後修正（2026-10-06，03_training/sim2real 發現）
 `shared/rollout.py` 的 `run_first_episodes` 原本先清空 `completed_episodes` 再 reset，導致同一行程中第二次 rollout（推擠測試）會混入上一次 rollout 還在跑的 episode。
-本資料夾各輪的推擠測試只受到 1 個 episode 影響：成功率／跌倒率不變，距離、時間等平均值差 < 1%。資料收集每次只跑一輪，沒有受影響。修正見 `04_sim2real/README.md`。
+本資料夾各輪的推擠測試只受到 1 個 episode 影響：成功率／跌倒率不變，距離、時間等平均值差 < 1%。資料收集每次只跑一輪，沒有受影響。修正見 `03_training/sim2real/README.md`。
 
 
 ## 產出清理（2026-10-07，使用者同意）

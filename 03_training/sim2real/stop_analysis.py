@@ -9,7 +9,7 @@ commanded stop (stand or stepping in place). Falls end an env's record.
 Output: ``outputs/robot_v<N>/sim2real/stops_<scenario>_<tag>_<time>/stops.json``.
 
 Usage:
-    tools\isaacpy.cmd 04_sim2real\sim2real\stop_analysis.py --scenario gait_eval_v1 --agent student:<student.pt> --tag v4
+    tools\isaacpy.cmd 03_training\sim2real\stop_analysis.py --scenario gait_eval_v1 --agent student:<student.pt> --tag v4
 """
 
 import argparse
@@ -17,7 +17,7 @@ import sys
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[2]
-sys.path[:0] = [str(_ROOT), str(_ROOT / "02_rule_based"), str(_ROOT / "03_training_pipeline"), str(_ROOT / "04_sim2real")]
+sys.path[:0] = [str(_ROOT), str(_ROOT / "02_rule_based"), str(_ROOT / "03_training")]
 
 from isaaclab.app import AppLauncher  # noqa: E402
 

@@ -7,4 +7,4 @@
 |---|---|---|---|
 | `robot_v1_cem1_best.json` | 第一輪 CEM（24 參數、30 代，目標函數含速度／側向／方向誤差） | 成功率 100%、跌倒 0%、側向 0.019 m、方向 0.9° | **採用** |
 
-搜尋過程與完整輸出在 `outputs/robot_v1/rule_based/cem1_20261001_000238/`（history.json、final.json、objective.json）。
+搜尋過程與完整輸出在 `outputs/robot_v1/02_rule_based/cem1_20261001_000238/`（history.json、final.json、objective.json）。

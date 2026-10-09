@@ -17,12 +17,12 @@ from .config import PipelineCfg
 
 
 def run_dir(cfg: PipelineCfg, iteration: int, stage: str, tag: str = "") -> Path:
-    """``outputs/robot_v<N>/training/iter<N>_<stage>[_<tag>]_<YYYYMMDD_HHMMSS>/`` (never overwritten)."""
+    """``outputs/robot_v<N>/03_training/pipeline/iter<N>_<stage>[_<tag>]_<YYYYMMDD_HHMMSS>/`` (never overwritten)."""
     from shared.robots import get_robot
 
     rb = get_robot(cfg.robot)
     name = f"iter{iteration}_{stage}" + (f"_{tag}" if tag else "") + f"_{time.strftime('%Y%m%d_%H%M%S')}"
-    path = rb.TEST_ROOT / "training" / name
+    path = rb.TEST_ROOT / "03_training" / "pipeline" / name
     path.mkdir(parents=True, exist_ok=False)
     return path
 

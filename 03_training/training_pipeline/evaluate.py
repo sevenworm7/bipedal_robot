@@ -5,17 +5,17 @@ Videos (``/eval-video`` format) are recorded by a separate command with ``--vide
 into ``iter<N>_videos_<stage>_<time>/videos/`` (small env with a follow camera per robot).
 
 Usage:
-    tools\\isaacpy.cmd 03_training_pipeline\\training_pipeline\\evaluate.py --iter 1 --stage ppo --agent policy:<model_1499.pt>
-    tools\\isaacpy.cmd 03_training_pipeline\\training_pipeline\\evaluate.py --iter 1 --stage ppo --agent policy:<ckpt> --video_only --enable_cameras
+    tools\\isaacpy.cmd 03_training\\training_pipeline\\evaluate.py --iter 1 --stage ppo --agent policy:<model_1499.pt>
+    tools\\isaacpy.cmd 03_training\\training_pipeline\\evaluate.py --iter 1 --stage ppo --agent policy:<ckpt> --video_only --enable_cameras
 """
 
 import argparse
 import sys
 from pathlib import Path
 
-# project root (shared), 02_rule_based (rule_based teacher), 03_training_pipeline (training_pipeline)
+# project root (shared), 02_rule_based (rule_based teacher), 03_training (training_pipeline)
 _ROOT = Path(__file__).resolve().parents[2]
-sys.path[:0] = [str(_ROOT), str(_ROOT / "02_rule_based"), str(_ROOT / "03_training_pipeline")]
+sys.path[:0] = [str(_ROOT), str(_ROOT / "02_rule_based"), str(_ROOT / "03_training")]
 
 from isaaclab.app import AppLauncher  # noqa: E402
 

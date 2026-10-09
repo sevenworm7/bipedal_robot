@@ -74,14 +74,21 @@ def _configure_rough_terrain(cfg: BipedWalkEnvCfg, rt: dict) -> None:
     """Generated uneven ground (``shared/env/terrain.py``): ``levels`` rows of increasing bump height x ``cols``."""
     from isaaclab.terrains import TerrainGeneratorCfg, TerrainImporterCfg
 
-    from .terrain import GradedBumpsCfg
+    from .terrain import GradedBumpsCfg, XProfileCfg
 
+    # optional keys (04_generalization stress tests): "profile" (ramp / steps along x, XProfileCfg fields), "bump_spacing",
+    # "exact" (difficulty fixed at 1 -> the bumps are exactly +-amplitude), "slope_threshold" (vertical step faces)
+    if "profile" in rt:
+        sub = XProfileCfg(proportion=1.0, horizontal_scale=rt["horizontal_scale"], vertical_scale=0.001, **rt["profile"])
+    else:
+        sub = GradedBumpsCfg(proportion=1.0, amplitude_range=(0.0, float(rt["amplitude"])),
+                             horizontal_scale=rt["horizontal_scale"], vertical_scale=0.001,
+                             bump_spacing=float(rt.get("bump_spacing", 0.1)))
     gen = TerrainGeneratorCfg(
         size=tuple(rt["tile_size"]), border_width=1.0, num_rows=int(rt["levels"]), num_cols=int(rt["cols"]),
-        horizontal_scale=rt["horizontal_scale"], vertical_scale=0.001, slope_threshold=None, curriculum=True,
-        use_cache=False,
-        sub_terrains={"bumps": GradedBumpsCfg(proportion=1.0, amplitude_range=(0.0, float(rt["amplitude"])),
-                                              horizontal_scale=rt["horizontal_scale"], vertical_scale=0.001)},
+        horizontal_scale=rt["horizontal_scale"], vertical_scale=0.001, slope_threshold=rt.get("slope_threshold"),
+        curriculum=True, use_cache=False, difficulty_range=(1.0, 1.0) if rt.get("exact") else (0.0, 1.0),
+        sub_terrains={"profile" if "profile" in rt else "bumps": sub},  # "bumps" as before (frozen scenarios)
     )
     cfg.terrain = TerrainImporterCfg(
         prim_path="/World/ground", terrain_type="generator", terrain_generator=gen,
@@ -396,7 +403,7 @@ class BipedWalkEnv(DirectRLEnv):
         }
         if self._clearance_on:
             terms["clearance"] = self._clearance_reward()
-        if w.lateral_vel_avg != 0.0:  # 04_sim2real round 5: filtered lateral velocity (only computed when weighted)
+        if w.lateral_vel_avg != 0.0:  # 03_training/sim2real round 5: filtered lateral velocity (only computed when weighted)
             a = self.step_dt / (self.cfg.lateral_vel_tau + self.step_dt)
             self._vy_avg = self._vy_avg + a * (v[:, 1] - self._vy_avg)
             terms["lateral_vel_avg"] = torch.square(self._vy_avg)
@@ -407,7 +414,7 @@ class BipedWalkEnv(DirectRLEnv):
             reward += r
         return reward
 
-    # ------------------------------------------------------------------ gait diversity (04_sim2real phase 3)
+    # ------------------------------------------------------------------ gait diversity (03_training/sim2real phase 3)
     def _init_gait_variation(self):
         gv, n, dev = self.cfg.gait_var, self.num_envs, self.device
         self._gait_var_on = (gv.resample_interval_s is not None or gv.zero_speed_prob > 0 or gv.stand_prob > 0
@@ -460,7 +467,7 @@ class BipedWalkEnv(DirectRLEnv):
         self._swing_apex = torch.where(self.first_contact, torch.zeros_like(self._swing_apex), self._swing_apex)
         return r
 
-    # ------------------------------------------------------------------ sim-to-real randomisation (04_sim2real)
+    # ------------------------------------------------------------------ sim-to-real randomisation (03_training/sim2real)
     def _init_runtime_randomisation(self):
         """Buffers for the per-episode items of ``cfg.dr``; everything stays None when they are off."""
         dr, n, dev = self.cfg.dr, self.num_envs, self.device
@@ -505,9 +512,12 @@ class BipedWalkEnv(DirectRLEnv):
         sx, sy = rt["tile_size"]
         per = int(rt["robots_per_tile"])
         o = self.terrain.terrain_origins[self.terrain_level[env_ids], self.terrain_col[env_ids]]
-        self.spawn_origins[env_ids, 0] = o[:, 0] - sx / 2 + 0.5
+        self.spawn_origins[env_ids, 0] = o[:, 0] + float(rt.get("spawn_x", -sx / 2 + 0.5))
         self.spawn_origins[env_ids, 1] = o[:, 1] + (self.terrain_slot[env_ids].float() - (per - 1) / 2) * (sy / per)
-        self.spawn_origins[env_ids, 2] = o[:, 2] + float(rt["amplitude"])
+        if "spawn_z_abs" in rt:  # profile terrains: the start area is at world height 0 by construction
+            self.spawn_origins[env_ids, 2] = float(rt["spawn_z_abs"])
+        else:
+            self.spawn_origins[env_ids, 2] = o[:, 2] + float(rt.get("spawn_z", rt["amplitude"]))
 
     def _reset_runtime_randomisation(self, env_ids: torch.Tensor):
         dr, k, dev = self.cfg.dr, len(env_ids), self.device

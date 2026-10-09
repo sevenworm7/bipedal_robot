@@ -33,7 +33,8 @@ URDF_PATH = MODEL_DIR / "urdf" / f"{ROBOT_NAME}_v{ROBOT_VERSION}.urdf"
 BUILD_DIR = Path(__file__).resolve().parent / "usd" / f"{ROBOT_NAME}_v{ROBOT_VERSION}"
 """Converted USD (not in git): ``shared/robots/usd/custom_biped_v<N>/``."""
 TEST_ROOT = PROJECT_ROOT / "outputs" / f"robot_v{ROBOT_VERSION}"
-"""Output root of this robot version (``outputs/robot_v<N>/<stage>/<run>/``)."""
+"""Output root of this robot version: ``outputs/robot_v<N>/<step>/...`` with steps ``01_model``, ``02_rule_based``,
+``03_training/{pipeline,sim2real}`` and ``04_generalization`` (mirrors the code folders, 2026-10-09)."""
 
 _P = yaml.safe_load((MODEL_DIR / "params.yaml").read_text(encoding="utf-8"))
 _MP = json.loads((MODEL_DIR / "reports" / "mass_properties.json").read_text(encoding="utf-8"))
