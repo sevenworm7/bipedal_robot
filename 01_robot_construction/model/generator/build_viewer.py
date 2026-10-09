@@ -3,7 +3,7 @@
 Run after build_parts.py and check_static.py (CAD environment):
     .venv_cad\\Scripts\\python.exe 01_robot_construction\\model\\generator\\build_viewer.py --version 1
 
-Output (not in git, rebuild any time): outputs/robot_v<N>/viewer/
+Output (not in git, rebuild any time): outputs/robot_v<N>/01_model/viewer/
     index.html            the page (template: generator/viewer_template.html)
     robot.json            joints, link frames, masses, stance, report numbers (all from params + reports)
     meshes/<link>_<kind>.stl   printed parts and servos per link, link frame, mm

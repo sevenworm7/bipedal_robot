@@ -1,6 +1,6 @@
 """In-sim sanity checks of a model version (Isaac Lab), after convert_usd.py.
 
-Checks (-> outputs/robot_v<N>/robot_check/<YYYYmmdd_HHMMSS>/report.json + png):
+Checks (-> outputs/robot_v<N>/01_model/robot_check/<YYYYmmdd_HHMMSS>/report.json + png):
   1. axes  : base held in place; each of the 10 joints driven +probe rad from the stance (right hip_roll: -probe,
              outward, to avoid the other foot); reports how the foot frame (ankles: toe, tail: tip) moves in the
              world frame. Expected: hip_roll + -> foot left,

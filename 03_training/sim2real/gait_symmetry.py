@@ -5,7 +5,7 @@ settling time. Per touchdown of foot F: step length = (x of F) - (x of the other
 the air time of that swing. A normal (step-through) gait has equal positive step lengths for both feet (about
 cmd / (2 f)); a step-to gait has one long step and one step near 0 (the trailing foot only catches up).
 
-Output: ``outputs/robot_v<N>/sim2real/symmetry_<tag>_<time>/symmetry.json`` and a printed summary.
+Output: ``outputs/robot_v<N>/03_training/sim2real/symmetry_<tag>_<time>/symmetry.json`` and a printed summary.
 
 Usage:
     tools\isaacpy.cmd 03_training\sim2real\gait_symmetry.py --agent student:<student.pt> --tag student_v3

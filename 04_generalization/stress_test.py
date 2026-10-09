@@ -1,4 +1,7 @@
-r"""Stress tests v1 of a trained policy (no training): one factor at a time, ``shared/env/scenarios.py`` ``STRESS_V1``.
+r"""Stress tests of a trained policy (no training): one factor at a time, ``shared/env/scenarios.py`` ``STRESS_V1`` / ``STRESS_V2``.
+
+v2 (2026-10-09) repeats the slope / step conditions of v1 with the fall height measured from the ground under the feet
+(v1 measured it from the spawn height: walking ~10 cm downhill counted as a fall). Select with ``--suite``.
 
 Stages (each condition is a separate Isaac Lab process; finished conditions are skipped, so batches can be resumed):
 
@@ -7,13 +10,14 @@ Stages (each condition is a separate Isaac Lab process; finished conditions are 
                ``videos/medium/<id>.mp4``
 * ``report`` : README.md with tables, failure-boundary plots and video links (sim-to-real success criterion)
 
-Output: ``outputs/robot_v<N>/04_generalization/stress_v1_<date>/{README.md, plots/, videos/medium/, runs/<id>/, video_runs/<id>/}``.
+Output: ``outputs/robot_v<N>/04_generalization/stress_v<K>_<date>/{README.md, plots/, videos/medium/, runs/<id>/, video_runs/<id>/}``.
 The policies come from ``03_training``; this step never trains.
 This script itself does not start Isaac Sim (run it with ``tools\isaacpy.cmd``; it calls ``tools\isaacpy.cmd`` per condition).
 
 Usage:
     tools\isaacpy.cmd 04_generalization\stress_test.py --out outputs\robot_v1\04_generalization\stress_v1_20261009 --stage stats --only 01_ 02_
     tools\isaacpy.cmd 04_generalization\stress_test.py --out outputs\robot_v1\04_generalization\stress_v1_20261009 --stage report
+    tools\isaacpy.cmd 04_generalization\stress_test.py --suite v2 --out outputs\robot_v1\04_generalization\stress_v2_20261009 --stage stats
 """
 
 import argparse
@@ -27,7 +31,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT), str(ROOT / "03_training")]  # shared, sim2real (scoring)
 
-from shared.env.scenarios import STRESS_V1, STRESS_V1_META  # noqa: E402
+from shared.env.scenarios import STRESS_V1, STRESS_V1_META, STRESS_V2, STRESS_V2_META  # noqa: E402
+
+SUITES = {"v1": (STRESS_V1, STRESS_V1_META), "v2": (STRESS_V2, STRESS_V2_META)}
+SUITE = "v1"  # set from --suite in main()
 
 DEFAULT_AGENT = "student:outputs/robot_v1/03_training/sim2real/student_v5_20261007_003835/student.pt"
 """Final deployable model of 03_training/sim2real (student v5)."""
@@ -46,8 +53,8 @@ def stage_stats(out: Path, ids: list[str], agent: str):
             continue
         if d.exists():
             shutil.rmtree(d)  # unfinished attempt of this runner
-        ov = STRESS_V1[i]
-        cmd = [ISAACPY, "03_training/sim2real/evaluate.py", "--scenario", f"stress_v1/{i}", "--agent", agent,
+        ov = SUITES[SUITE][0][i]
+        cmd = [ISAACPY, "03_training/sim2real/evaluate.py", "--scenario", f"stress_{SUITE}/{i}", "--agent", agent,
                "--out_dir", str(d)]
         cmd += ["--push_only", "--push_speed", str(ov["_push_speed"])] if "_push_speed" in ov else ["--no_push"]
         t0 = time.time()
@@ -64,8 +71,8 @@ def stage_videos(out: Path, ids: list[str], agent: str):
         d = out / "video_runs" / i
         if d.exists():
             shutil.rmtree(d)
-        ov = STRESS_V1[i]
-        cmd = [ISAACPY, "03_training/sim2real/record_videos.py", "--scenario", f"stress_v1/{i}", "--agent", agent,
+        ov = SUITES[SUITE][0][i]
+        cmd = [ISAACPY, "03_training/sim2real/record_videos.py", "--scenario", f"stress_{SUITE}/{i}", "--agent", agent,
                "--tag", i, "--num_envs", "4", "--episode_s", "10", "--quality", "5", "--keep_all", "--out_dir", str(d),
                "--enable_cameras"]
         if "_video_cmd" in ov:
@@ -112,7 +119,7 @@ def stage_report(out: Path, ids: list[str]):
             if int(m.sum()):
                 sub = {k: v[m] for k, v in ep.items() if hasattr(v, "shape") and v.shape[:1] == m.shape}
                 bins[name] = summarize(sub, st["env"]["episode_s"])["success"]
-        rows[i] = {**STRESS_V1_META[i], "success": crit["success"], "fall": crit["fall_rate"],
+        rows[i] = {**SUITES[SUITE][1][i], "success": crit["success"], "fall": crit["fall_rate"],
                    "speed_p50": (q.get("speed_ratio") or [None, None])[1],
                    "heading_p50": (q.get("max_abs_heading_err_deg") or [None, None])[1],
                    "lateral_p50": (q.get("max_abs_lateral_m") or [None, None])[1],
@@ -125,12 +132,19 @@ def stage_report(out: Path, ids: list[str]):
     tests = {}
     for i, r in rows.items():
         tests.setdefault(r["test"], []).append((i, r))
-    lines = ["# Stress tests v1：student v5 在訓練範圍內外的表現", "",
+    lines = [f"# Stress tests {SUITE}：student v5 在訓練範圍內外的表現", "",
              f"- 模型：`{DEFAULT_AGENT.split(':', 1)[1]}`（不重新訓練）",
              "- 方法：每次只改一個條件，其餘為理想平地（`flat_v1`）；每個條件 100 episode × 20 s、seed 42、指令 0.05–0.15 m/s、1.2–2.0 Hz。",
              "- 成功＝未跌倒、走完、平均速度在指令 ±25% 內、最大方向誤差 < 10°（`sim2real/scoring.py`）。推擠測試：第 5、10、15 秒各推一次。",
              "- 部署門檻：平地與中等隨機化成功率 ≥ 95%、不規則地形 ≥ 85%、跌倒 ≤ 5%。",
-             "- 影片：每個條件一段中速（0.10 m/s）10 秒片段，`videos/medium/<條件>.mp4`；成功率與跌倒率以 20 秒統計為準。", ""]
+             "- 影片：每個條件一段中速（0.10 m/s）10 秒片段，`videos/medium/<條件>.mp4`；成功率與跌倒率以 20 秒統計為準。"]
+    if SUITE == "v1":
+        lines += ["- **注意（2026-10-09）**：v1 的跌倒高度以出生點高度為基準，斜坡（06）與台階（07）往下走約 10 cm 就被誤判為跌倒、"
+                  "往上走則可能漏判。06、07 以 [`stress_v2_20261009`](../stress_v2_20261009/README.md) 的結果為準（跌倒高度改以腳下地面為基準）。"]
+    else:
+        lines += ["- v2：重做 v1 的斜坡（06）與台階（07），跌倒高度改以腳下地面為基準（`fall_height_ref=\"feet\"`）；"
+                  "`02_bumps_00mm` 為平地對照。其餘條件見 [`stress_v1_20261009`](../stress_v1_20261009/README.md)。"]
+    lines.append("")
     for t, items in sorted(tests.items()):
         title, unit = items[0][1]["title"], items[0][1]["unit"]
         lines += [f"## {t}：{title}", "",
@@ -171,10 +185,13 @@ def main():
     ap.add_argument("--stage", required=True, choices=("stats", "videos", "report"))
     ap.add_argument("--only", nargs="*", default=[], help="Condition id prefixes (default: all).")
     ap.add_argument("--agent", default=DEFAULT_AGENT)
+    ap.add_argument("--suite", default="v1", choices=tuple(SUITES))
     a = ap.parse_args()
+    global SUITE
+    SUITE = a.suite
     out = ROOT / a.out
     (out / "logs").mkdir(parents=True, exist_ok=True)
-    ids = [i for i in STRESS_V1 if not a.only or any(i.startswith(p) for p in a.only)]
+    ids = [i for i in SUITES[SUITE][0] if not a.only or any(i.startswith(p) for p in a.only)]
     if a.stage == "stats":
         stage_stats(out, ids, a.agent)
     elif a.stage == "videos":

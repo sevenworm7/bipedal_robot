@@ -4,7 +4,7 @@
 identical to the reference (exit code 3 otherwise). Used after every change of ``shared/env``: the 03 final model in
 ``flat_v1`` must reproduce ``outputs/robot_v1/03_training/pipeline/iter3_distill_20261001_132024/stats.json`` exactly.
 
-Output: ``outputs/robot_v<N>/sim2real/eval_<scenario>_<tag>_<time>/{stats.json, episodes.pt, config.yaml}``.
+Output: ``outputs/robot_v<N>/03_training/sim2real/eval_<scenario>_<tag>_<time>/{stats.json, episodes.pt, config.yaml}``.
 
 Usage:
     tools\isaacpy.cmd 03_training\sim2real\evaluate.py --scenario flat_v1 --agent policy:<model.pt> --compare <stats.json>
@@ -57,7 +57,7 @@ def main():
     obs_version = obs_version_for(args_cli.agent)
     env = make_env(cfg, args_cli.scenario, e.episodes, e.episode_s, e.seed, obs_version=obs_version)
     agent = load_agent_v2(args_cli.agent, env, cfg.actor, env.rb.PROJECT_ROOT)
-    safe = args_cli.scenario.replace(":", "-")
+    safe = args_cli.scenario.replace(":", "-").replace("/", "-")  # stress_v1/<id> must not create sub-folders
     if args_cli.out_dir:
         out = Path(args_cli.out_dir)
         out.mkdir(parents=True, exist_ok=False)

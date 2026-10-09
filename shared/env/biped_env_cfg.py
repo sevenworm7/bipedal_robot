@@ -201,6 +201,13 @@ class BipedWalkEnvCfg(DirectRLEnvCfg):
     # -- termination --
     fall_com_height: float | None = None
     """Episode ends when the base CoM drops below this height [m]."""
+    fall_height_ref: str = "spawn"
+    """What ``fall_com_height`` is measured from. "spawn" (default; every scenario before stress_v2): the fixed spawn
+    height, correct on flat ground and small bumps but wrong on slopes / steps (walking 10 cm downhill counts as a fall).
+    "feet": the ground under the robot, estimated as the lower foot body minus ``fall_foot_height`` (04_generalization,
+    2026-10-09)."""
+    fall_foot_height: float = 0.026
+    """Foot body origin above the ground while standing [m] (custom_biped v1, measured on flat_v1: 0.025-0.029)."""
     fall_tilt_deg: float = 40.0
     """Episode ends when the base tilts more than this [deg]."""
 

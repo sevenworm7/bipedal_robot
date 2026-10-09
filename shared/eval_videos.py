@@ -116,7 +116,7 @@ def record_class_videos(env, agent, out_dir: Path, exp: str, label: str, tag: st
                        ("cmd_vx", "steps", "distance", "lateral", "max_abs_lateral", "time", "fell", "mean_vx")}})
         if cls[i] >= 0 and ok and names[cls[i]] not in keep:
             keep[names[cls[i]]] = i
-        if s["fell"] > 0.5 and "failure" not in keep:
+        if s["fell"] > 0.5 and "failure" not in keep and i not in keep.values():  # a clip can be kept only once
             keep["failure"] = i
     if "failure" not in keep:  # no fall: keep an unsuccessful (e.g. too short / too slow) episode instead
         bad = [r["env"] for r in report if not r["success"]]

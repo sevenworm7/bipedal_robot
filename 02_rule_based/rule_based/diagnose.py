@@ -3,7 +3,7 @@
 Logs, for environment 0 (and optional others): clock phase, base roll/pitch, lateral/forward velocity,
 foot heights and contact states, and leg joint targets vs. measured angles. Writes ``timeseries.png``
 and ``timeseries.npz`` (and ``diagnose.mp4`` with ``--video --enable_cameras``) to
-``outputs/robot_v<N>/rule_based/diag_<tag>_<timestamp>/``.
+``outputs/robot_v<N>/02_rule_based/diag_<tag>_<timestamp>/``.
 
 Usage:
     tools\\isaacpy.cmd 02_rule_based\\rule_based\\diagnose.py --cmd 0 --freq 1.6 --seconds 6 --set sway_amp=0.1

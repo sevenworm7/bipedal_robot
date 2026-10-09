@@ -5,7 +5,7 @@ No simulator is started. Checks:
   2. The controller over one full gait cycle for a grid of (cmd_vx, gait frequency) with an upright,
      static base: joint targets within limits, reach error (requested step/lift not achievable),
      sole kept parallel to the ground.
-Writes ``outputs/robot_v<N>/rule_based/check_ik_<time>/report.json`` and ``trajectories.png``.
+Writes ``outputs/robot_v<N>/02_rule_based/check_ik_<time>/report.json`` and ``trajectories.png``.
 
 Usage:
     tools\\isaacpy.cmd 02_rule_based\\rule_based\\check_ik.py

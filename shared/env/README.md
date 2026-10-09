@@ -3,6 +3,13 @@
 `BipedWalkEnv`（Isaac Lab `DirectRLEnv`），gym id 為 `Biped-Walk-v0`。rule-based 評估、資料收集、BC 評估、PPO 訓練都使用同一個環境。
 程式從 `00_test/shared/env/` 移植（2026-10-01），邏輯不變，只有下面「和實驗一的差異」列出的地方有改。所有參數都在 `biped_env_cfg.py`（`BipedWalkEnvCfg`）中。
 
+| 檔案 | 內容 |
+|---|---|
+| `biped_env.py` | 環境本體：reset、觀測（v1／v2）、獎勵、結束條件、推擠、隨機化、步態變化、地形 curriculum、錄影鏡頭 |
+| `biped_env_cfg.py` | 所有參數：`BipedWalkEnvCfg`、獎勵權重 `RewardWeightsCfg`、隨機化 `DomainRandCfg`、步態變化 `GaitVariationCfg` |
+| `terrain.py` | 地形產生：`graded_bumps`（分級凸起，`03_training/sim2real`）、`x_profile`（沿前進方向的斜坡／台階，`04_generalization`） |
+| `scenarios.py` | 具名、帶版本的場景（訓練與驗收用 `SCENARIOS`，壓力測試用 `STRESS_V1`）與 `apply_scenario()` |
+
 ## 和實驗一的差異
 
 | 項目 | 實驗一 | 實驗二 |
@@ -30,6 +37,8 @@
 ## 結束條件
 
 - 跌倒：base CoM 低於 0.146 m（站姿時 base CoM 高 0.243 m 的 60%），或傾斜超過 40°（2026-10-01 修正：原本誤用全身 CoM 高度 0.183 m，門檻只有 0.110 m）
+  - 高度的基準由 `fall_height_ref` 決定：預設 `"spawn"`＝固定的出生點高度（平地與 ±8 mm 凸起沒問題，所有訓練與 `stress_v1` 都用這個）；
+    `"feet"`＝腳下地面（較低那隻腳的 foot body 高度 − `fall_foot_height` 0.026 m），斜坡與台階必須用這個（2026-10-09 新增，原因：`stress_v1` 中往下坡走約 10 cm 就被誤判為跌倒）。
 - 時間到
 
 ## 指標（`shared/metrics.py`）
@@ -51,8 +60,8 @@
 
 ## Sim-to-real 隨機化與場景版本（03_training/sim2real，2026-10-06 新增）
 
-`BipedWalkEnvCfg.dr`（`DomainRandCfg`）的每個欄位預設都是 `None`（關閉）。全部關閉時，環境和 03 **逐位元相同**：
-03 最終模型在 `flat_v1` 的固定評估集結果和原紀錄完全一致（`03_training/sim2real/evaluate.py --compare`，2026-10-06 通過）。
+`BipedWalkEnvCfg.dr`（`DomainRandCfg`）與 `gait_var`（`GaitVariationCfg`）的每個欄位預設都是關閉。全部關閉時，環境和 `training_pipeline` 當時**逐位元相同**：
+`training_pipeline` 最終模型在 `flat_v1` 的固定評估集結果和原紀錄完全一致（`03_training/sim2real/evaluate.py --compare`；每次修改 `shared/env` 後都重跑，最近一次 2026-10-09 `regress8`，結構重整後）。
 
 | 欄位 | 作用 | 套用時機 |
 |---|---|---|
@@ -63,14 +72,25 @@
 | `rough_terrain` | 不規則地形與 curriculum（`terrain.py`）；啟用時才關閉環境之間的機器人碰撞 | 啟動時建立，等級在每次 reset 更新 |
 | `obs_noise_*`、`heading_bias` | 觀測雜訊（只加在 policy 觀測，獎勵與指標用真值）、方向誤差的固定偏差（模擬 IMU yaw 偏移） | 每一步／每個 episode |
 
+`rough_terrain` 另有選填項目（不填時行為不變，04 的壓力測試新增）：`profile`（改用 `x_profile` 斜坡／台階）、`bump_spacing`、`exact`（凸起高度固定為指定值）、`slope_threshold`、`spawn_x`、`spawn_z_abs`（起點的世界高度）。
+
+**步態變化**（`gait_var`，2026-10-06）：每 3–6 秒重新抽一次指令（速度、步頻、離地高度），含原地踏步（`zero_speed_prob`）與站立（`stand_prob`，步頻 0、時鐘停止）；開啟時步態時鐘改為積分（相位 += f·dt），換頻率時不跳相位。
+
+**新增獎勵項**（預設權重 0，不影響 `training_pipeline`）：`lateral_vel_avg`（側向速度經 τ = 1 s 低通後平方，取代看不到的側向位置懲罰；sim2real 第五輪 −300）、`clearance`（擺動腳最高點與離地高度指令的差）。
+
 **場景**（`scenarios.py`）：具名、帶版本的設定組合。**被正式 run 用過的場景不可修改，要改就新增 `_v2`**（使用者 2026-10-06 規則）。
 
 | 場景 | 內容 |
 |---|---|
-| `flat_v1` | 03 的環境（無任何修改），凍結 |
+| `flat_v1` | `training_pipeline` 的環境（無任何修改），凍結 |
 | `dr_light_v1` | 平地，中等範圍的一半 |
 | `dr_v1` | 平地，中等範圍（延遲 0–40 ms、kp／kd ±30%、扭矩 ±20%、摩擦 0.4–1.2、質量 ±15%、重心 ±1 cm、觀測雜訊、方向偏差 ±2°） |
 | `rough_eval_v1` | 不規則地形最難一級（±8 mm），其餘理想；評估用 |
 | `dr_rough_eval_v1` | 中等隨機化＋最難地形；評估用 |
 | `dr_rough_train_v1` | 中等隨機化＋不規則地形 10 級 curriculum（初始 0–2 級）；訓練用 |
+| `gait_eval_v1` | 平地、理想致動器、變化的指令（站立／原地踏步／啟停／離地高度）；評估步態多樣性 |
+| `dr_rough_gait_train_v1` | 中等隨機化＋地形 curriculum＋變化的指令；訓練用（teacher v1、v2） |
+| `dr_rough_gait_train_v2` | 同上，初始地形等級改為 0–6（第三輪起，加強困難地形） |
 | `probe:<欄位>` | 只開一個中等範圍的項目（診斷用，不是訓練場景） |
+| `stress_v2/<條件>` | 04 壓力測試 v2（2026-10-09）：重做 v1 的斜坡與台階（加平地對照），跌倒高度改以腳下地面為基準 |
+| `stress_v1/<條件>` | 04 壓力測試（2026-10-09）：56 個條件，一次只改一個因素（延遲、凸起、斜坡、台階、摩擦、馬達、質量、推擠、IMU、指令），其餘同 `flat_v1`；只用於評估，已凍結。說明見 [`04_generalization/README.md`](../../04_generalization/README.md) |

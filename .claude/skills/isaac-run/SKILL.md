@@ -45,7 +45,7 @@ tools\isaacpy.cmd C:\isaaclab\scripts\reinforcement_learning\play.py  --rl_libra
 
 ## 長時間任務
 - 訓練與大量 rollout 一律使用 Bash/PowerShell 的 `run_in_background`，並把輸出導向 該 run 的輸出資料夾中的 `stdout.log`。
-- 開啟 TensorBoard：`tools\isaacpy.cmd -m tensorboard.main --logdir 00_test\outputs\training`（實驗二改為 `outputs\training`），然後打開 http://localhost:6006。
+- 開啟 TensorBoard：`tools\isaacpy.cmd -m tensorboard.main --logdir 00_test\outputs\training`（實驗二改為 `outputs\robot_v1\03_training\pipeline` 或 `outputs\robot_v1\03_training\sim2real`），然後打開 http://localhost:6006。
 
 ## Isaac Lab 3.0 / Isaac Sim 6 的陷阱（本機已實際遇到）
 - **四元數是 XYZW**（舊版是 WXYZ）。例如 `init_state.rot`、`root_pose[:, 3:7]`。網路上的範例大多還是舊格式。

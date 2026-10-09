@@ -7,7 +7,7 @@ mean action. The (student observation, teacher action) pairs are aggregated in a
 round and then frozen. Episode endings come from the env (falls reset as usual), so states after the student's mistakes
 are part of the data.
 
-Output: ``outputs/robot_v<N>/sim2real/student_<tag>_<time>/{student.pt, history.json, config.yaml, tb/}``.
+Output: ``outputs/robot_v<N>/03_training/sim2real/student_<tag>_<time>/{student.pt, history.json, config.yaml, tb/}``.
 
 Usage:
     tools\isaacpy.cmd 03_training\sim2real\student_distill.py --teacher <teacher model_*.pt> --tag v1

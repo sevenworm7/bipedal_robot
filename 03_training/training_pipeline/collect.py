@@ -6,7 +6,7 @@
   absolute noise std (``FilterCfg.rollout_noise_std``) and the label is the policy mean (see ``filter.py``).
 
 Each env runs complete episodes (``--rounds`` batches of ``--num_envs`` episodes). Output:
-``outputs/robot_v<N>/training/iter<N>_collect[_<tag>]_<time>/{dataset.h5, stats.json, config.yaml}``.
+``outputs/robot_v<N>/03_training/pipeline/iter<N>_collect[_<tag>]_<time>/{dataset.h5, stats.json, config.yaml}``.
 
 Usage:
     tools\\isaacpy.cmd 03_training\\training_pipeline\\collect.py --iter 0

@@ -95,6 +95,8 @@ def apply_scenario(env_cfg, name: str) -> None:
         overrides = SINGLE_ITEM_PROBES[name.split(":", 1)[1]]
     elif name.startswith("stress_v1/"):
         overrides = STRESS_V1[name.split("/", 1)[1]]
+    elif name.startswith("stress_v2/"):
+        overrides = STRESS_V2[name.split("/", 1)[1]]
     else:
         overrides = SCENARIOS[name]
     for k, v in overrides.items():
@@ -170,3 +172,13 @@ for v in (0.18, 0.22):
     _add("12_command", "速度指令", v, "m/s", False, {"cmd_vx_range": (v, v), "_video_cmd": v}, f"speed_{int(v * 100):02d}cms")
 for f in (1.0, 2.3):
     _add("12_command", "步頻指令", f, "Hz", False, {"gait_freq_range": (f, f), "_video_freq": f}, f"freq_{int(f * 10):02d}")
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Stress tests v2 (04_generalization, 2026-10-09): stress_v1 measured the fall height from the fixed spawn height, so
+# walking ~10 cm down a slope or steps counted as a fall (and a fall on an up-slope could be missed). v2 repeats the slope
+# and step conditions (plus the flat baseline) with the fall height measured from the ground under the feet
+# (``fall_height_ref="feet"``). Names "stress_v2/<id>" (same ids as v1). Frozen once used.
+# ----------------------------------------------------------------------------------------------------------------------
+STRESS_V2: dict[str, dict] = {k: {**v, "fall_height_ref": "feet"} for k, v in STRESS_V1.items()
+                              if k == "02_bumps_00mm" or k.startswith(("06_", "07_"))}
+STRESS_V2_META: dict[str, dict] = {k: STRESS_V1_META[k] for k in STRESS_V2}

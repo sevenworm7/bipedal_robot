@@ -9,6 +9,8 @@
 - `CLAUDE.md`：規則與從 `training_pipeline` 沿用的經驗。
 - 程式：本資料夾的 `*.py`，見下方「程式與執行方式」。
 
+**用語**：本文件與 `PROMPT.md` 寫於重整前，其中的「03」「03 最終模型」指平地的 `training_pipeline`（最終模型 `outputs/robot_v1/03_training/pipeline/iter3_distill_20261001_132024/model.pt`），「04」指本資料夾（原 `04_sim2real`）。run 內 `config.yaml`／`stats.json` 的舊路徑是歷史紀錄。
+
 ## 開始前確認的事項（PROMPT.md「若有不確定之處」，使用者 2026-10-06 決定）
 
 | 項目 | 決定 |
@@ -34,7 +36,7 @@
 | teacher PPO（第五輪的做法） | `tools\isaacpy.cmd 03_training\sim2real\teacher_ppo.py --tag <名稱> --symmetry --reward_preset obs_lateral --scenario dr_rough_gait_train_v2 --init <teacher checkpoint> --max_iterations 1500` |
 | student 蒸餾 | `tools\isaacpy.cmd 03_training\sim2real\student_distill.py --teacher <teacher model_*.pt> --tag <名稱> --symmetry --reward_preset obs_lateral --scenario dr_rough_gait_train_v2` |
 | 固定集評估 | `tools\isaacpy.cmd 03_training\sim2real\evaluate.py --scenario <場景> --agent student:<student.pt>`（`policy:<ckpt>` 也可；`--episodes 504` 加大樣本） |
-| 回歸檢查 | `evaluate.py --scenario flat_v1 --agent policy:<03 最終 model.pt> --compare <參考 stats.json>`（修改 `shared/env` 後必跑，必須完全一致） |
+| 回歸檢查 | `evaluate.py --scenario flat_v1 --agent policy:<training_pipeline 最終 model.pt> --compare <參考 stats.json>`（修改 `shared/env` 後必跑，必須完全一致） |
 | 重新計分 | `tools\isaacpy.cmd 03_training\sim2real\rescore.py <eval 資料夾…>`（sim-to-real 成功判定，不需要模擬） |
 | 評估影片 | `tools\isaacpy.cmd 03_training\sim2real\record_videos.py --scenario <場景> --agent student:<student.pt> --tag <名稱> --enable_cameras` |
 | 左右對稱 | `tools\isaacpy.cmd 03_training\sim2real\gait_symmetry.py --agent <agent> --tag <名稱>` |
@@ -49,7 +51,7 @@
 | 檔案 | 內容 |
 |---|---|
 | `config.py` | `TeacherCfg`（場景、PPO 參數、推擠、獎勵覆寫、`reward_presets`、`env_overrides`、對稱）、`StudentCfg`（DAgger 輪數、緩衝、鏡像樣本） |
-| `common.py` | run 資料夾、git commit、套用場景與 03 設定建立環境 |
+| `common.py` | run 資料夾、git commit、套用場景與 `training_pipeline` 設定建立環境 |
 | `agents.py` | 依 checkpoint 輸入維度選觀測組（44＝03 模型、55＝teacher、210＝student）；`StudentAgent` |
 | `teacher_ppo.py` | 特權 teacher：從 03 模型（第一層補 0）或既有 teacher 接續；critic 預熱；可選鏡像對稱 |
 | `student_distill.py` | DAgger 蒸餾成只用 IMU 與伺服讀值的 student |
@@ -222,7 +224,7 @@
 | teacher v2／student v2 | 46／40 mm | 19／25 mm | 0.81／0.47 |
 | teacher v3／student v3 | 45／49 mm | 17／14 mm | 0.89／1.10 |
 
-  不對稱是 04 訓練中出現的：放寬步態時鐘後，沒有任何項目要求左右對稱，PPO 找到在延遲與雜訊下也能平衡的不對稱步態。機器人本身左右對稱（只有尾巴 yaw 號誌相反）。
+  不對稱是 sim2real 訓練中出現的：放寬步態時鐘後，沒有任何項目要求左右對稱，PPO 找到在延遲與雜訊下也能平衡的不對稱步態。機器人本身左右對稱（只有尾巴 yaw 號誌相反）。
 - **決定（使用者，2026-10-06）**：鏡像對稱訓練，從 teacher v3 接續。
   - `shared/symmetry.py`：左右鏡像（y → −y）的觀測與動作映射，關節配對來自 `LEG_JOINT_LAYOUT`，號誌來自 robot 模組新增的 `MIRROR_SIGN`（hip roll 與 tail yaw 變號）；
     步態時鐘因左右腳交換而位移半個週期。檢查（`check_symmetry.py`）：鏡像兩次誤差 0；03 模型的等變誤差 0.29（故意寫錯的映射 0.51），teacher v3 為 0.43。
@@ -308,7 +310,7 @@
 
 ## 產出清理（2026-10-07，使用者同意）
 為釋放空間（專案 18.9 GB → 3.2 GB），刪除了以下不在 git 中的產出；完整清單見 `outputs/cleanup_list_20261007.txt`：
-- 所有訓練資料集 `dataset.h5`（收集與篩選，12.9 GB）。需要時用相同指令與 seed 重新收集（模擬是確定性的）；04 的 PPO 與 DAgger 都在模擬中即時產生資料，不需要它們。
+- 所有訓練資料集 `dataset.h5`（收集與篩選，12.9 GB）。需要時用相同指令與 seed 重新收集（模擬是確定性的）；sim2real 的 PPO 與 DAgger 都在模擬中即時產生資料，不需要它們。
 - 中間版本的影片（1.8 GB）。保留：各實驗的 rule-based 與最終模型、student v5 全部、student v3 跛行對照（`dr_rough_eval_v1`）、student v4 HUD 修正版；被刪影片的 run 仍保留 `videos.json`（各段指標）。
 - 中間 checkpoint（203 個，0.9 GB）。每個 run 保留最後一個，另外保留被引用的 `teacher_v2/model_800.pt`（student v2 的來源）與 `teacher_v1/model_1000.pt`（第 1000 iteration 的評估）。
 - 速度／煙霧測試 run（`teacher_speedtest`、`teacher_symtest`、`teacher_v5test`、`smoke`）。

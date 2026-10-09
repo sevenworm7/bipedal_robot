@@ -1,7 +1,7 @@
 r"""Re-score saved evaluations (``episodes.pt``) with the sim-to-real success criterion; no simulation needed.
 
 Usage:
-    tools\isaacpy.cmd 03_training\sim2real\rescore.py outputs\robot_v1\sim2real\eval_*_teacher_final_*
+    tools\isaacpy.cmd 03_training\sim2real\rescore.py outputs\robot_v1\03_training\sim2real\eval_*_teacher_final_*
 """
 
 import json

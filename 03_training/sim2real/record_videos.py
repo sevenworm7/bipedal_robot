@@ -4,7 +4,7 @@ Robots side by side with slow / medium / fast commands (``EvalCfg.video_speeds``
 successful video per speed class plus a failure case when there is one. The HUD label is
 ``exp2 / robot_v<N> / sim2real / <tag> / <scenario>``.
 
-Output: ``outputs/robot_v<N>/sim2real/videos_<scenario>_<tag>_<time>/videos/exp2_sim2real_<tag>_<scenario>_<class>_eval_<date>.mp4``.
+Output: ``outputs/robot_v<N>/03_training/sim2real/videos_<scenario>_<tag>_<time>/videos/exp2_sim2real_<tag>_<scenario>_<class>_eval_<date>.mp4``.
 
 Usage:
     tools\isaacpy.cmd 03_training\sim2real\record_videos.py --scenario dr_rough_eval_v1 --agent student:<student.pt> --tag student_v3 --enable_cameras
@@ -57,7 +57,7 @@ def main():
     env = make_env(cfg, args_cli.scenario, args_cli.num_envs, e.episode_s, args_cli.seed, eval_camera=True,
                    obs_version=obs_version, **pushes)
     agent = load_agent_v2(args_cli.agent, env, cfg.actor, env.rb.PROJECT_ROOT)
-    safe = args_cli.scenario.replace(":", "-")
+    safe = args_cli.scenario.replace(":", "-").replace("/", "-")  # stress_v1/<id> must not create sub-folders
     if args_cli.out_dir:
         out = Path(args_cli.out_dir)
         out.mkdir(parents=True, exist_ok=False)

@@ -15,7 +15,7 @@ Per-env score (higher is better):
 The chatter term keeps the search away from gaits that bounce on the sole edges; the progress term
 keeps it away from shuffling (few steps, sliding feet).
 
-Output: ``outputs/robot_v<N>/rule_based/<tag>_<timestamp>/{history.json, best_params.json}``.
+Output: ``outputs/robot_v<N>/02_rule_based/<tag>_<timestamp>/{history.json, best_params.json}``.
 
 Usage:
     tools\\isaacpy.cmd 02_rule_based\\rule_based\\optimize.py --tag cem1 --gens 25 --pop 256 --envs_per 12

@@ -5,7 +5,7 @@
 
 ## 執行方式（專案根目錄）
 
-| 步驟 | 指令 | 產出（`outputs/robot_v<N>/rule_based/<名稱>_<時間>/`） |
+| 步驟 | 指令 | 產出（`outputs/robot_v<N>/02_rule_based/<名稱>_<時間>/`） |
 |---|---|---|
 | 1. 離線 IK 檢查 | `tools\isaacpy.cmd 02_rule_based\rule_based\check_ik.py` | `check_ik_*`：report.json、trajectories.png |
 | 2. 時序診斷 | `tools\isaacpy.cmd 02_rule_based\rule_based\diagnose.py --cmd 0.1 --freq 1.6 --params <json>` | `diag_*`：timeseries.png/.npz（加 `--video --enable_cameras` 另存影片） |

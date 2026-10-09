@@ -6,7 +6,7 @@ r"""Phase 4a: privileged teacher PPO on interface v2, initialised from the 03 fi
    inputs from a short zero-action rollout. The script checks that the teacher reproduces the 03 actions (max |diff|).
 3. PPO as in 03 (critic warm-up with the actor frozen, learning-rate reset, actor normaliser frozen).
 
-Output: ``outputs/robot_v<N>/sim2real/teacher_<tag>_<time>/{teacher_init.pt, model_<it>.pt, config.yaml, stats.json, tb}``.
+Output: ``outputs/robot_v<N>/03_training/sim2real/teacher_<tag>_<time>/{teacher_init.pt, model_<it>.pt, config.yaml, stats.json, tb}``.
 
 Usage:
     tools\isaacpy.cmd 03_training\sim2real\teacher_ppo.py --tag v1

@@ -27,7 +27,7 @@ status   WALKING   (FALLEN / TIMEOUT / DONE)
 ## 格式
 - mp4（H.264），至少 1280×720、30 fps。錄影 fps 與控制頻率不同時，依模擬時間取樣 frame，不可直接逐 step 寫入。
 - 檔名：`<exp>_<tag>_eval_<YYYYMMDD>[_<k>].mp4`，其中 `<exp>` 為 `exp1` 或 `exp2`，例如 `exp1_iter3_ppo_eval_20260918.mp4`、`exp2_rule_based_eval_20261001_2.mp4`。
-- 存放位置：`<實驗根目錄>/outputs/<rule_based|training>/<run>/videos/`（實驗根目錄：實驗一為 `00_test/`，實驗二為專案根目錄）。
+- 存放位置：`<run>/videos/`。實驗一在 `00_test/outputs/<rule_based|training>/<run>/`；實驗二在 `outputs/robot_v<N>/<步驟>/<run>/`，步驟為 `02_rule_based`、`03_training/pipeline`、`03_training/sim2real`、`04_generalization`。
 - 兩次實驗的影片格式要完全相同，方便直接比較。
 
 ## 實作（實驗一已完成，實驗二直接移植）

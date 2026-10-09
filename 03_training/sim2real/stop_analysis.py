@@ -6,7 +6,7 @@ of the forward velocity, a robot is "stalled" when the command asks to walk (> 0
 events per minute (entries into the stalled state), and the median stall duration; plus the fraction of time with a
 commanded stop (stand or stepping in place). Falls end an env's record.
 
-Output: ``outputs/robot_v<N>/sim2real/stops_<scenario>_<tag>_<time>/stops.json``.
+Output: ``outputs/robot_v<N>/03_training/sim2real/stops_<scenario>_<tag>_<time>/stops.json``.
 
 Usage:
     tools\isaacpy.cmd 03_training\sim2real\stop_analysis.py --scenario gait_eval_v1 --agent student:<student.pt> --tag v4

@@ -354,7 +354,12 @@ class BipedWalkEnv(DirectRLEnv):
     def _get_dones(self) -> tuple[torch.Tensor, torch.Tensor]:
         self._compute_state()
         tilt_limit = -math.cos(math.radians(self.cfg.fall_tilt_deg))
-        self.fell = (self.com_pos[:, 2] < self.cfg.fall_com_height) | (self.projected_gravity[:, 2] > tilt_limit)
+        if self.cfg.fall_height_ref == "feet":  # height above the local ground (slopes / steps)
+            feet_z = self.robot.data.body_pos_w.torch[:, self._foot_body_ids, 2]
+            height = self.robot.data.root_com_pos_w.torch[:, 2] - feet_z.min(dim=1).values + self.cfg.fall_foot_height
+        else:
+            height = self.com_pos[:, 2]
+        self.fell = (height < self.cfg.fall_com_height) | (self.projected_gravity[:, 2] > tilt_limit)
         time_out = self.episode_length_buf >= self.max_episode_length - 1
 
         self.first_contact = self._update_touchdowns()

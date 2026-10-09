@@ -1,7 +1,16 @@
 # 03_training/training_pipeline：訓練管線程式（實驗二）
 
 collect → BC → PPO → 篩選 → 蒸餾 ×3 → 評估影片。程式從 `00_test/training_pipeline/` 移植（2026-10-01），邏輯相同；
-檔案說明與設計重點（BC 直接訓練 rsl_rl `MLPModel`、PPO 凍結 actor 正規化器、critic 預熱、依 episode 切分）見 `00_test/training_pipeline/README.md`。
+設計重點（BC 直接訓練 rsl_rl `MLPModel`、PPO 凍結 actor 正規化器、critic 預熱、依 episode 切分）的詳細說明見 `00_test/training_pipeline/README.md`。
+
+| 檔案 | 內容 |
+|---|---|
+| `config.py` | `PipelineCfg`：機器人、獎勵權重、PPO／BC 超參數、篩選門檻、env 覆寫值 |
+| `common.py` | 共用工具：run 資料夾（`outputs/robot_v1/03_training/pipeline/`，不覆寫）、config 存檔、建立環境 `make_env` |
+| `policy.py` | 策略網路（rsl_rl `MLPModel`）、觀測正規化器的設定與凍結、agent 載入（`rule:`／`policy:`） |
+| `dataset.py` | rollout 收集（含 DART 執行雜訊）、合併、依 episode 選取、HDF5 讀寫、episode 統計 |
+| `evaluation.py` | 固定評估集與推擠測試（`sim2real` 也沿用） |
+| `collect.py`、`bc.py`、`ppo.py`、`filter.py`、`evaluate.py`、`measure_gait.py` | 各步驟的執行腳本（見下表） |
 
 ## 執行方式（專案根目錄，每個指令一個 Isaac Lab 行程）
 
@@ -118,7 +127,7 @@ collect → BC → PPO → 篩選 → 蒸餾 ×3 → 評估影片。程式從 `0
 
 ## 產出清理（2026-10-07，使用者同意）
 為釋放空間（專案 18.9 GB → 3.2 GB），刪除了以下不在 git 中的產出；完整清單見 `outputs/cleanup_list_20261007.txt`：
-- 所有訓練資料集 `dataset.h5`（收集與篩選，12.9 GB）。需要時用相同指令與 seed 重新收集（模擬是確定性的）；04 的 PPO 與 DAgger 都在模擬中即時產生資料，不需要它們。
+- 所有訓練資料集 `dataset.h5`（收集與篩選，12.9 GB）。需要時用相同指令與 seed 重新收集（模擬是確定性的）；`sim2real` 的 PPO 與 DAgger 都在模擬中即時產生資料，不需要它們。
 - 中間版本的影片（1.8 GB）。保留：各實驗的 rule-based 與最終模型、student v5 全部、student v3 跛行對照（`dr_rough_eval_v1`）、student v4 HUD 修正版；被刪影片的 run 仍保留 `videos.json`（各段指標）。
 - 中間 checkpoint（203 個，0.9 GB）。每個 run 保留最後一個，另外保留被引用的 `teacher_v2/model_800.pt`（student v2 的來源）與 `teacher_v1/model_1000.pt`（第 1000 iteration 的評估）。
 - 速度／煙霧測試 run（`teacher_speedtest`、`teacher_symtest`、`teacher_v5test`、`smoke`）。
