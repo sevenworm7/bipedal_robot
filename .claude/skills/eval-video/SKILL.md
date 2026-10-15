@@ -1,11 +1,11 @@
 ---
 name: eval-video
-description: The shared evaluation-video spec (HUD overlay metrics, format, filename) used by the rule-based controller and every training iteration, in both experiments (00_test and 02/03). Use when recording, overlaying, or reviewing evaluation rollouts.
+description: The shared evaluation-video spec (HUD overlay metrics, format, filename) used by the rule-based controller and every training iteration, in both experiments (archive/exp1_reference and exp2's control/ + evaluation/). Use when recording, overlaying, or reviewing evaluation rollouts.
 ---
 
 # 評估影片規格（兩次實驗、rule-based 與訓練共用）
 
-每個實驗的實作只有一份，放在實驗根目錄的 `shared/`（例如 `00_test/shared/video_overlay.py`），rule-based 和訓練都呼叫這份，避免兩邊格式不一致。實驗二直接移植實驗一的版本。
+每個實驗的實作只有一份：實驗一在 `archive/exp1_reference/shared/video_overlay.py`，實驗二在 `simulation/video_overlay.py`、`simulation/eval_videos.py`，rule-based 和訓練都呼叫這份，避免兩邊格式不一致。實驗二直接移植實驗一的版本。
 
 ## 疊加資訊（每個 frame 都要更新）
 固定在左上角，使用等寬字體，白字搭配半透明黑底；在 720p 下仍需清楚可讀。
@@ -27,14 +27,14 @@ status   WALKING   (FALLEN / TIMEOUT / DONE)
 ## 格式
 - mp4（H.264），至少 1280×720、30 fps。錄影 fps 與控制頻率不同時，依模擬時間取樣 frame，不可直接逐 step 寫入。
 - 檔名：`<exp>_<tag>_eval_<YYYYMMDD>[_<k>].mp4`，其中 `<exp>` 為 `exp1` 或 `exp2`，例如 `exp1_iter3_ppo_eval_20260918.mp4`、`exp2_rule_based_eval_20261001_2.mp4`。
-- 存放位置：`<run>/videos/`。實驗一在 `00_test/outputs/<rule_based|training>/<run>/`；實驗二在 `outputs/robot_v<N>/<步驟>/<run>/`，步驟為 `02_rule_based`、`03_training/pipeline`、`03_training/sim2real`、`04_generalization`。
+- 存放位置：`<run>/videos/`。實驗一在 `archive/exp1_reference/outputs/<rule_based|training>/<run>/`；實驗二在 `outputs/robot_v<N>/<步驟>/<run>/`，步驟為 `control/rule_based`、`control/flat_pipeline`、`control/sim2real`、`evaluation/generalization`。
 - 兩次實驗的影片格式要完全相同，方便直接比較。
 
 ## 實作（實驗一已完成，實驗二直接移植）
-- HUD 與錄影：`shared/video_overlay.py`（`HudState`、`EvalVideoRecorder`、`video_filename`），使用 PIL + Consolas 字型，並用 imageio（H.264）寫檔。
+- HUD 與錄影：`simulation/video_overlay.py`（`HudState`、`EvalVideoRecorder`、`video_filename`），使用 PIL + Consolas 字型，並用 imageio（H.264）寫檔。
 - 畫面：環境設定 `cfg.eval_camera=True`，並加上 `--enable_cameras`，再呼叫 `env.capture_frame(env_id)`（獨立的 Camera 感測器，位於機器人側前方，跟隨目標方向）。**不要使用 `env.render()` 或 viewer 的 asset_root 模式**，取景會跑掉。
 - 指標：`env.tracker`（步數、距離、側向偏移）與 `env.base_lin_vel`，都和畫面來自同一個 step。
-- 範例：`00_test/scripts/smoke_env.py --video`；多台並排、每台各一段影片：`00_test/rule_based/record_videos.py`。
+- 範例：`archive/exp1_reference/scripts/smoke_env.py --video`；多台並排、每台各一段影片：`archive/exp1_reference/rule_based/record_videos.py`。
 - episode 結束時環境會自動 reset，結束畫面（定格 1 秒）要沿用最後一個還在走的 frame，不可在 reset 後重新拍攝。
 - 錄影時只開少量環境（1–16 個）。
 - 數值和畫面必須來自同一個 step，禁止用前一個 step 的數值。

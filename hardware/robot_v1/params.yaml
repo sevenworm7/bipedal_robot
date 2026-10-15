@@ -1,0 +1,136 @@
+# custom_biped v1 — single source of truth for geometry, mass, joints and actuators.
+# Units in this file: mm, g, deg (converted to SI when the URDF is written).
+# World frame at zero pose: +X forward, +Y left, +Z up, origin on the ground below the hip_roll axes.
+# Zero pose = every servo at position 2048: legs straight, feet flat, tail level and straight back.
+# Started from design_refs/architecture_v0_1.md; changes from v0.1 are listed in CHANGELOG.md.
+
+robot:
+  name: custom_biped
+  version: 1
+
+# ---------------------------------------------------------------- servo
+servo:
+  model: Feetech HD-1910-C001 (dual shaft)
+  mass: 21.0
+  # Servo frame S: origin on the output axis at the body mid-plane; +z_S = primary horn side,
+  # +x_S = from the axis toward the far end of the 34 mm body, y_S = z_S x x_S.
+  body: {near: 9.5, far: 24.5, half_width: 10.0, half_thick: 11.35}   # x_S in [-near, far], |y_S| <= 10, |z_S| <= 11.35
+  horn: {radius: 7.9, primary_thick: 2.8, secondary_thick: 3.0, screw_radius: 6.0, screw_count: 4,
+         screw_angle0: 0.0}           # holes at 0/90/180/270 deg from +x_S (official STEP; orientation at 2048 to VERIFY)
+  # Connector sockets (3-pin, both long sides, secondary-horn half), measured from the official STEP / STL:
+  # x_S 3.5..15, z_S -11.35..-2.35, 3.8 mm deep into the side face. Assumed plug entry: sideways (+-y_S),
+  # keep-out = plug + cable bend extending `keepout` mm beyond the side face. VERIFY on the real servo.
+  connector: {x: [3.5, 15.0], z: [-11.35, -2.35], keepout: 10.0}
+  # Position increases = counter-clockwise seen from the primary horn (right-hand about +z_S). VERIFY on hardware;
+  # the per-servo direction table (reports/servo_map.md) is derived from this and the horn directions.
+  position_increase_ccw: 1
+  mount_holes: {x: [-7.5, 22.5], y: [-8.0, 8.0], diameter: 1.5}   # on both horn faces; only the far pair (x=22.5) is used
+  torque_stall_6v: 1.18   # N*m
+  torque_rated_6v: 0.294
+  speed_noload_6v: 9.6    # rad/s
+  torque_stall_7v4: 1.47
+  speed_noload_7v4: 11.8
+
+# ---------------------------------------------------------------- fabrication
+print:
+  material: PETG             # or PLA; printer not decided yet
+  nozzle: 0.4
+  tolerance: 0.2             # general fit clearance per side
+  max_part_size: 180
+  effective_density: 1.05    # g/cm^3 for the solid CAD volume (PETG 1.27 x ~0.83 fill); replace with weighed values
+  wall: 2.5                  # default structural wall
+  arm_thick: 5.1             # bracket arm, from inner face (horn half-gap - pocket) to outer face
+  horn_clearance: 0.8        # gap between a bracket arm's inner face and the servo body it rotates around
+  horn_pocket_clearance: 0.4 # radial clearance of the horn pocket (the pocket is an open channel toward the servo body)
+  servo_fit: 0.25            # gap per side between a servo body and the walls that hold it
+fasteners:
+  insert: {name: "M2 heat-set insert (M2 x 3 x 3.2)", hole_d: 3.2, hole_depth: 4.5}
+  m2_clear: 2.3
+  m2_head_d: 4.0
+  m2_head_h: 1.6
+  horn_screw: "M2 x 5 pan head, never longer (a longer screw passes the horn and rubs the servo body)"
+  servo_screw: "M2 x 6 self-tapping pan head into the 1.5 mm body holes (walls are counterbored to 2.5 mm)"
+  screw_mass: 0.3            # g per screw incl. insert, used for the mass budget
+
+# ---------------------------------------------------------------- joints
+# axis: joint axis in the parent frame at zero pose. Positive direction = right-hand rotation about it.
+# Pipeline sign convention (archive/exp1_reference/shared/robots/README.md): roll about +X, pitch about +Y -> all signs +1.
+joints:
+  hip_roll:    {axis: [1, 0, 0], lower: -25, upper: 25}    # + = foot moves left (+Y)
+  hip_pitch:   {axis: [0, 1, 0], lower: -55, upper: 45}    # + = leg swings back; -55: the hip_pitch connector reaches the hip block (see CHANGELOG)
+  knee:        {axis: [0, 1, 0], lower: 0,   upper: 120}   # + = shin swings back (flex); one direction only
+  ankle_pitch: {axis: [0, 1, 0], lower: -60, upper: 60}    # + = toe down
+  tail_yaw:    {axis: [0, 0, 1], lower: -60, upper: 60}    # + = tail tip moves right (-Y): right-hand rotation about +Z moves a point at -X toward -Y
+  tail_pitch:  {axis: [0, 1, 0], lower: -45, upper: 60}    # + = tail tip moves up (right-hand about +Y lifts a point at -X)
+  friction: 0.016            # N*m, friction_base of the community BAM M6 fit (design_refs/hd1910/sim/1910_m6.json)
+  armature: 0.0018           # kg*m^2 reflected rotor inertia, same source
+  command_delay: 0.006       # s, same source (not modelled by DCMotorCfg; use DelayedPD or the env)
+
+# ---------------------------------------------------------------- geometry (zero pose, world frame)
+legs:
+  hip_spacing: 60            # distance between the two hip_roll axes (y = +-30)
+  hip_roll_to_pitch: 34      # vertical (v0.1: 25). The hip block is a cross piece between two servos whose corners
+                             # sweep r = 13.8 mm: 2 x 14.5 clearance + 5 mm core
+  # hip_roll axis height is derived: ankle_height + shin + thigh + hip_roll_to_pitch = 239
+  thigh: 90                  # hip_pitch -> knee
+  shin: 90                   # knee -> ankle
+  ankle_height: 25           # ankle axis -> ground (sole incl. pads)
+  foot: {length: 90, width: 55, plate: 4.0, pad_thick: 1.5, pad_size: [16, 12], pad_inset: [2, 2]}
+  link_bottom_clear: 20.5    # a leg link's structure starts this far above the axis of the servo it holds
+tail:
+  yaw_x: -64                 # tail_yaw axis (vertical) position (v0.1: -54; servo now sits behind the torso rear wall)
+  z_rel: 17                  # tail axes height above the hip_roll axis (world z = 256)
+  yaw_to_pitch: 44           # tail_pitch axis is this far behind tail_yaw (v0.1: 42; tail_yaw connector clearance at +-60 deg)
+  length: 250                # tail_pitch axis -> tip mass centre (tunable)
+  rod: {diameter: 8.0, inner: 6.0, linear_density: 0.035, insert_depth: 12}   # carbon tube, g/mm
+  tip: {mass: 40.0, diameter: 26, length: 34, socket: 12}   # total tip incl. printed holder; ballast (steel) = mass - holder
+torso:
+  x: [-32, 95]               # shell outer extent
+  y: [-43, 43]
+  z_rel: [-12, 46]           # relative to the hip_roll axis (world z 227 .. 285)
+  wall: 2.5
+  hip_bay_x: [-21, 20.5]     # side-wall cut-outs where the hip blocks swing (the shell bottom is open)
+  hip_bay_top_rel: 16        # side walls are cut below this height (hip block sweep + hip_roll connector keep-out)
+
+# ---------------------------------------------------------------- electronics (placeholders; models will change)
+# size [x, y, z]; center [x, y, z_rel]: x, y in the world frame, z relative to the hip_roll axis; reserve = space kept free.
+electronics:
+  battery: {model: "2S LiPo 1000 mAh (placeholder)", size: [70, 35, 16], mass: 60, center: [56, 0, -1], reserve: [72, 40, 20]}
+  board:   {model: "Raspberry Pi Zero 2 W (placeholder)", size: [65, 30, 13], mass: 13, center: [56, 0, 32], reserve: [70, 35, 14],
+            holes: [58, 23], hole_d: 2.75}
+  ttl:     {model: "half-duplex TTL adapter (placeholder)", size: [35, 25, 10], mass: 6, center: [40, -26, 14]}
+  bec:     {model: "2S -> 5 V 3 A buck (placeholder)", size: [25, 15, 8], mass: 5, center: [78, 28, 14]}
+  imu:     {model: "6-axis IMU module (placeholder)", size: [25, 18, 4], mass: 3, center: [-10, 0, 36], holes: 20}   # hole spacing VERIFY
+  misc:    {model: "switch, fuse, XT30, wiring", mass: 35, center: [30, 0, 10]}
+
+# ---------------------------------------------------------------- actuators in simulation (SI)
+actuator:
+  type: DCMotor
+  saturation_effort: 1.18    # N*m, 6 V stall (conservative)
+  effort_limit: 0.8          # N*m, continuous clip used by DCMotorCfg
+  velocity_limit: 9.6        # rad/s
+  stiffness: 8.0             # N*m/rad, starting PD gains, tuned in control/rule_based
+  damping: 0.3               # N*m*s/rad
+
+# ---------------------------------------------------------------- stance
+# knee is chosen; hip_pitch / ankle_pitch come from check_static.py (sole flat, CoM above the foot centre).
+stance:
+  hip_pitch: -9.9
+  knee: 34
+  ankle_pitch: -24.1
+  tail_yaw: 0
+  tail_pitch: 0
+
+# ---------------------------------------------------------------- servo bus (real robot)
+# The sign between servo position and joint angle is derived by the generator (reports/servo_map.md).
+servo_bus:
+  - {id: 1,  joint: left_hip_roll,     bus: left}
+  - {id: 2,  joint: left_hip_pitch,    bus: left}
+  - {id: 3,  joint: left_knee,         bus: left}
+  - {id: 4,  joint: left_ankle_pitch,  bus: left}
+  - {id: 5,  joint: right_hip_roll,    bus: right}
+  - {id: 6,  joint: right_hip_pitch,   bus: right}
+  - {id: 7,  joint: right_knee,        bus: right}
+  - {id: 8,  joint: right_ankle_pitch, bus: right}
+  - {id: 9,  joint: tail_yaw,          bus: tail}
+  - {id: 10, joint: tail_pitch,        bus: tail}

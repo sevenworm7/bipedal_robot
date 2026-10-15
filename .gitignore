@@ -15,7 +15,7 @@ references/**/*.stl
 *.STL
 
 # Generated USD (rebuild from URDF)
-01_robot_construction/model/usd/
+simulation/robot_assets/usd/
 **/shared/robots/usd/
 
 # Python / tooling
@@ -27,9 +27,9 @@ __pycache__/
 .claude/settings.local.json
 
 # Third-party servo CAD / vendor files (downloaded locally; licences CC BY-NC-SA etc., re-download from links in the README)
-01_robot_construction/design_refs/hd1910/cad/
+hardware/design_refs/hd1910/cad/
 *.xlsx
-01_robot_construction/design_refs/hd1910/vendor/fddebug/
+hardware/design_refs/hd1910/vendor/fddebug/
 
 # CAD Python environment (uv + build123d), kept inside the project but not versioned
 tools/bin/
@@ -37,5 +37,5 @@ tools/bin/
 .venv_cad/
 
 # Robot model versions keep their print files and visual meshes (a few MB, needed to rebuild a tagged version)
-!01_robot_construction/model/v*/parts/stl/*.stl
-!01_robot_construction/model/v*/meshes/*.stl
+!hardware/robot_v*/parts/stl/*.stl
+!hardware/robot_v*/meshes/*.stl

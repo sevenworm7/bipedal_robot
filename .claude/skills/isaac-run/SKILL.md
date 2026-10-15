@@ -45,7 +45,7 @@ tools\isaacpy.cmd C:\isaaclab\scripts\reinforcement_learning\play.py  --rl_libra
 
 ## 長時間任務
 - 訓練與大量 rollout 一律使用 Bash/PowerShell 的 `run_in_background`，並把輸出導向 該 run 的輸出資料夾中的 `stdout.log`。
-- 開啟 TensorBoard：`tools\isaacpy.cmd -m tensorboard.main --logdir 00_test\outputs\training`（實驗二改為 `outputs\robot_v1\03_training\pipeline` 或 `outputs\robot_v1\03_training\sim2real`），然後打開 http://localhost:6006。
+- 開啟 TensorBoard：`tools\isaacpy.cmd -m tensorboard.main --logdir archive\exp1_reference\outputs\training`（實驗二改為 `outputs\robot_v1\control\flat_pipeline` 或 `outputs\robot_v1\control\sim2real`），然後打開 http://localhost:6006。
 
 ## Isaac Lab 3.0 / Isaac Sim 6 的陷阱（本機已實際遇到）
 - **四元數是 XYZW**（舊版是 WXYZ）。例如 `init_state.rot`、`root_pose[:, 3:7]`。網路上的範例大多還是舊格式。
@@ -53,10 +53,10 @@ tools\isaacpy.cmd C:\isaaclab\scripts\reinforcement_learning\play.py  --rl_libra
 - 寫入模擬器的方法都分成 `_index` 與 `_mask` 兩種：`write_root_pose_to_sim_index(root_pose=..., env_ids=...)`、`set_joint_position_target_index(target=..., joint_ids=...)`。
 - URDF 轉換器輸出 `<dir>/<robot_name>/<robot_name>.usda`，所有 link 會**巢狀**排列在父 link 底下，因此：
   - `fix_root_link=True` 會造成兩個 ArticulationRoot 而報錯 → 改成每一步寫回 root pose
-  - `activate_contact_sensors` 只作用在最外層的剛體 → 需要自己遍歷所有剛體並補上 API（見 `00_test/shared/env/biped_env.py`）
+  - `activate_contact_sensors` 只作用在最外層的剛體 → 需要自己遍歷所有剛體並補上 API（見 `archive/exp1_reference/shared/env/biped_env.py`）
   - 用一個 regex 的 ContactSensor 橫跨左右腳時，只抓得到第一隻 → 每隻腳各建一個感測器
 - 原始檔的路徑含中文時，先複製到 ASCII 路徑再轉檔。
-- `ContactSensor` 是延遲更新的：讀取 `.data` 才會取樣接觸狀態（每個控制步一次）。`compute_first_contact(dt)` 不會觸發更新，且 `contact_time < dt` 的判斷卡在 float32 邊界，會漏掉大部分著地 → 用 `foot_in_contact()` 自己追蹤「離地 → 著地」轉換（見 `00_test/shared/env/biped_env.py` 的 `_update_touchdowns`）。
+- `ContactSensor` 是延遲更新的：讀取 `.data` 才會取樣接觸狀態（每個控制步一次）。`compute_first_contact(dt)` 不會觸發更新，且 `contact_time < dt` 的判斷卡在 float32 邊界，會漏掉大部分著地 → 用 `foot_in_contact()` 自己追蹤「離地 → 著地」轉換（見 `archive/exp1_reference/shared/env/biped_env.py` 的 `_update_touchdowns`）。
 - 錄影時用獨立的 `Camera` 感測器搭配 `set_world_poses_from_view`；viewer 的 `asset_root` 跟隨模式取景不準。
 - 最終以本機原始碼 `C:\isaaclab\docs\source\migration\migrating_to_isaaclab_3-0.rst` 為準。
 

@@ -1,17 +1,17 @@
 ---
 name: pipeline-iteration
-description: Runbook for one round of the training pipeline (exp1 in 00_test/training_pipeline, exp2 in 03_training) (collect → BC → PPO → filter → distill → eval video) including artifact layout, go/no-go checks and the cross-iteration comparison. Use when running, resuming, or reporting on any training stage or self-distillation iteration.
+description: Runbook for one round of the training pipeline (exp1 in archive/exp1_reference/training_pipeline, exp2 in control/flat_pipeline; the sim-to-real stage is control/sim2real) (collect → BC → PPO → filter → distill → eval video) including artifact layout, go/no-go checks and the cross-iteration comparison. Use when running, resuming, or reporting on any training stage or self-distillation iteration.
 ---
 
 # 訓練迭代流程
 
-前置條件：該實驗的 `shared/robots/<robot>.py` 已定案；同一台機器人的 rule-based 控制器跌倒率 < 30%；自我蒸餾的篩選門檻已經使用者確認。
+前置條件：該實驗的 `core/robots/<robot>.py` 已定案；同一台機器人的 rule-based 控制器跌倒率 < 30%；自我蒸餾的篩選門檻已經使用者確認。
 
-每次執行前，先確認這次屬於哪個實驗：實驗一在 `00_test/` 中使用 `ref_biped`；實驗二在 `03_training/training_pipeline/` 中使用 `custom_biped`（sim-to-real 強健性訓練在 `03_training/sim2real/`，流程見其 README）。確認 config 中的 `robot` 欄位正確，且產出寫入對應實驗的 outputs。
+每次執行前，先確認這次屬於哪個實驗：實驗一在 `archive/exp1_reference/` 中使用 `ref_biped`；實驗二在 `control/flat_pipeline/` 中使用 `custom_biped`（sim-to-real 強健性訓練在 `control/sim2real/`，流程見其 README）。確認 config 中的 `robot` 欄位正確，且產出寫入對應實驗的 outputs。
 
 ## 產出檔案結構
 ```
-<產出資料夾>/                      # 實驗一：00_test/outputs/training/；實驗二：outputs/robot_v1/03_training/pipeline/
+<產出資料夾>/                      # 實驗一：archive/exp1_reference/outputs/training/；實驗二：outputs/robot_v1/control/flat_pipeline/
   iter0_collect_<date>/   dataset.h5, config.yaml, stats.json
   iter0_bc_<date>/        model.pt, config.yaml, tb/, stats.json
   iter1_ppo_<date>/       model_*.pt, config.yaml, tb/, stats.json, videos/
@@ -42,7 +42,7 @@ description: Runbook for one round of the training pipeline (exp1 in 00_test/tra
 每輪結束後更新 `summary.md`，用表格列出各輪指標，並附上影片路徑。若某輪表現退步，要回報可能原因（例如篩選過嚴、資料分布變窄、BC 過擬合），不可跳過。
 
 ## 實驗結束
-- 實驗一結束後，在 `00_test/outputs/summary.md` 整理：管線各階段是否有效、需要修正的地方、哪些問題來自參考模型本身的限制。實驗二開始前，先和使用者一起檢視這份整理。
+- 實驗一結束後，在 `archive/exp1_reference/outputs/summary.md` 整理：管線各階段是否有效、需要修正的地方、哪些問題來自參考模型本身的限制。實驗二開始前，先和使用者一起檢視這份整理。
 - 實驗二結束後，把兩次實驗的最終指標並列比較。
 
 ## 執行方式

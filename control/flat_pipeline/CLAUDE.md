@@ -1,0 +1,64 @@
+# control/flat_pipeline：平地訓練管線（實驗二）
+
+這份規則適用於 `flat_pipeline/`（平地 BC → PPO → 蒸餾）；sim-to-real 強健性訓練有自己的 `sim2real/CLAUDE.md`。
+
+完整需求在 `PROMPT.md`，動工前先讀完。實驗一（`archive/exp1_reference/training_pipeline/`）也使用同一份規格，以下摘要同樣適用。
+
+**實驗一完成前，不要在這個資料夾中建立程式碼。** 實驗二的做法是移植 `archive/exp1_reference/training_pipeline/` 已驗證的程式碼。
+
+- 管線程式碼**不綁定特定機器人**，只透過 config 的 `robot` 欄位切換；獎勵權重等超參數可以依機器人分別設定 config，但程式邏輯要共用。
+- 實驗一的目的是驗證管線是否可行：遇到問題時，要記錄是管線本身的問題，還是參考模型的限制（例如腳掌太重、缺少自由度），以便實驗二參考。
+
+1. **資料收集**：執行同一個實驗的 rule-based 控制器，把 (state, action) 存成 HDF5，並記錄 episode 邊界與情境參數。
+2. **BC**：用 MLP 監督式學習（MSE／NLL），**依 episode 切分** train/val（不可依 step 切分，否則會資料洩漏）。
+3. **PPO**：以 BC 權重初始化 actor（rsl_rl 5.0.1），獎勵項與權重要寫在 config 中並列出。
+   - BC 的 MLP 架構、激活函數、觀測正規化方式必須與 rsl_rl actor 完全一致，才能直接載入權重。
+   - 初始的 action std 要設小一點，避免一開始就把 BC 學到的行為破壞掉。
+4. **自我蒸餾**：rollout → 依量化門檻篩選 → BC → 作為下一輪 PPO 的初始化，**共 3 輪**。篩選門檻要先和使用者確認。
+5. **評估影片**：每輪都要產出，格式依 `/eval-video`，檔名例如 `exp1_iter3_ppo_eval_20260918.mp4`。
+
+- 跨輪流程依 `/pipeline-iteration` skill 執行。每輪的 checkpoint、log、config、影片放在 `iter<N>_<stage>_<date>/`：實驗一在 `archive/exp1_reference/outputs/training/`，實驗二在 `outputs/robot_v1/control/flat_pipeline/`。
+- TensorBoard 至少要記錄：reward 各分項、episode length、跌倒率。
+- 最終交付：三輪之間的指標比較（跌倒率、行走距離、直線度、步態品質）。
+
+## 實驗一的經驗（2026-09-23，來源：`archive/exp1_reference/training_pipeline/README.md`、`archive/exp1_reference/outputs/summary.md`）
+
+實驗一完整跑完 collect → BC → PPO → 篩選 → 蒸餾 ×3：PPO 各輪成功率 100%、跌倒 0%，最終蒸餾模型 99%、推擠測試 100%。
+三輪的進步集中在直線度（側向偏移 0.139 → 0.067 m、方向誤差 4.3° → 2.6°），成功率在第 1 輪就飽和。
+整條管線的實作可以直接移植（`archive/exp1_reference/training_pipeline/`），以下是必須沿用的經驗。
+
+### 獎勵設計（最容易出問題的地方，實驗一為此重跑了兩輪 PPO）
+- **必須有「步態時鐘」項**（`gait_contact`）：時鐘相位在該腳的擺動區間時應離地，其餘時間應著地，兩腳平均。
+  少了這一項，PPO 會為了追速度把步伐打亂（實際著地次數是時鐘的 0.5–1.8 倍），成功率反而從 BC 的 95% 掉到 80%。
+  擺動區間要**用該機器人的 rule-based 實測離地相位**設定，不要用猜的（實驗一老師：左腳 0.075–0.275，右腳 +0.5）。
+- **權重要和主要項目同量級才有效**。速度追蹤一個 20 秒 episode 約 30 分；`lateral_deviation` 權重 −10 時，
+  側向偏移 0.3 m 只扣 2.5 分，PPO 就放任慢速指令整條路徑漂移，篩選後慢速分組直接沒有資料。改成 −40（約扣 10 分）後
+  同一輪的側向偏移從 0.183 m 降到 0.114 m，篩選通過率 26% → 84%。
+  **新增任何項目前，先用老師資料跑一次 `collect.py` 看各項分數的量級。**
+- 教師資料的獎勵分項是很好的基準線：實驗一老師每個 episode 為 track_vx +17、alive +10、track_heading +8.8、
+  lateral_vel −3.9、torque −2.7。PPO 若在某一項遠超過老師卻在另一項崩掉，通常就是權重失衡。
+
+### BC → PPO 的權重接續
+- BC **直接訓練 rsl_rl 的 `MLPModel`**（和 PPO actor 同一個類別、同樣的 hidden dims／激活函數／正規化設定），
+  checkpoint 就能用 `load_state_dict` 載入，不需要轉換。載入後**一定要比對兩者的輸出**（實驗一實測差異為 0）。
+- BC 用資料集的平均與變異數設定 `EmpiricalNormalization`，PPO 期間**凍結 actor 的正規化器**，避免輸入尺度慢慢漂移。
+- 初始動作 std 設小（實驗一 0.2，即 0.05 rad）。訓練後期 std 會掉到 0.01–0.02，探索幾乎消失，屬於正常現象。
+- **critic 預熱**：前 50 個 iteration 凍結 actor 只訓練 critic，之後**重設學習率**（adaptive KL schedule 在 KL = 0 時
+  會把學習率一路調到上限）。少了這一步，剛初始化的 critic 會用隨機 advantage 破壞 BC 學到的步態。
+
+### 資料與篩選
+- 老師資料用 DART：執行動作加雜訊（實驗一 σ = 0.05），標籤用乾淨動作，資料才會包含「偏離後修正回來」的示範。
+  雜訊會讓成功率下降（0.05 → 86%、0.1 → 55%），但那是多餘的著地造成的，不是跌倒，對 BC 沒有壞處。
+- **蒸餾 rollout 的雜訊要用絕對值**（例如固定 σ = 0.05），不要用 `policy std` 的比例：PPO 結束時 std 只剩 0.015，
+  比例式雜訊等於沒有雜訊，第 1 輪蒸餾因此比該輪 PPO 明顯差（95% vs 100%、側向 0.160 vs 0.139 m）。
+- 篩選門檻**要看資料再定**：實驗一原訂側向偏移逐輪收緊到 0.08 m，但搖擺步態本身就擺約 0.1 m，第 2 輪資料中 < 0.08 m 只有 2%，
+  最後三輪都維持 0.15 m。有趣的是第 3 輪已有 66% 低於 0.08 m —— **門檻要在當下的資料分布上判斷，不要預先寫死收緊時程。**
+- 「只統計、不篩選」的分析（`filter.py --stats_only`）在每一輪都值得跑：它同時是門檻檢查和訓練成效的體檢。
+  停止規則（通過率 < 30% 或有分組為空）用**通過硬性門檻的比例**判斷，不要用最終保留量（排名只取前 50%，永遠低於 50%）。
+
+### 工程細節
+- **一個行程只能建立一個 Isaac Lab 環境**，所以訓練、評估、錄影、rollout 收集必須是分開的指令。
+- 每輪 PPO（4096 環境 × 1500 iterations）約 30–50 分鐘，全部跑完（含收集、蒸餾、評估、錄影）約 4 小時。
+  長時間工作一律 `run_in_background` 並把 stdout 導到 log。
+- 資料集加入新的獎勵項後，舊資料會缺 `rew_<term>`；合併時只取共同欄位。
+- 所有階段用**同一組固定評估集**（100 episode、固定 seed、和 rule-based 相同的 `stats.json` 格式），數字才能直接比較。
