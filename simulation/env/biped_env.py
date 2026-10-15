@@ -295,13 +295,18 @@ class BipedWalkEnv(DirectRLEnv):
         self._apply_pushes()
         self.prev_actions[:] = self.actions
         self.actions[:] = actions.clamp(-itf.ACTION_CLIP, itf.ACTION_CLIP)
-        self.q_target[:] = itf.action_to_joint_targets(self.actions, self.default_leg_pos)
+        new_target = itf.action_to_joint_targets(self.actions, self.default_leg_pos)
+        if self.cfg.dr.action_drop_prob is not None:  # missed bus writes keep the previous targets
+            keep = torch.rand(self.num_envs, device=self.device) < self.cfg.dr.action_drop_prob
+            keep &= self.episode_length_buf > 0
+            new_target = torch.where(keep.unsqueeze(-1), self.q_target, new_target)
+        self.q_target[:] = new_target
 
     def _apply_action(self):
-        target = self.q_target
+        target = self.q_target if self._joint_offset is None else self.q_target + self._joint_offset
         if self._delay_hist is not None:  # dr.action_delay_phys_steps: called once per physics step
             self._delay_hist = torch.roll(self._delay_hist, 1, dims=0)
-            self._delay_hist[0] = self.q_target
+            self._delay_hist[0] = target
             target = self._delay_hist[self._delay, torch.arange(self.num_envs, device=self.device)]
         self.robot.set_joint_position_target_index(target=target, joint_ids=self.leg_ids)
 
@@ -325,7 +330,20 @@ class BipedWalkEnv(DirectRLEnv):
             obs = obs + self._obs_noise * torch.randn_like(obs)
         if self._heading_bias is not None:
             obs[:, self.layout.slices()["heading_error"]] += self._heading_bias.unsqueeze(-1)
-        return {"policy": obs}
+        return {"policy": self._sensor_errors(obs)}
+
+    def _sensor_errors(self, obs: torch.Tensor) -> torch.Tensor:
+        """Constant sensor errors of ``cfg.dr`` on a policy observation: servo zero offsets, IMU mounting tilt."""
+        if self._joint_offset is None and self._imu_rot is None:
+            return obs
+        obs = obs.clone()
+        sl = self.layout.slices()
+        if self._joint_offset is not None:
+            obs[:, sl["joint_pos_rel"]] -= self._joint_offset
+        if self._imu_rot is not None:  # vector seen in the tilted IMU frame: R^T v (row vectors: v R)
+            for k in ("base_ang_vel", "projected_gravity"):
+                obs[:, sl[k]] = torch.einsum("ni,nij->nj", obs[:, sl[k]], self._imu_rot)
+        return obs
 
     def _observations_v2(self, clean: torch.Tensor) -> dict:
         """``core/interface_v2.py``: privileged teacher (true state + PRIV_FIELDS) and the noisy student history."""
@@ -333,6 +351,7 @@ class BipedWalkEnv(DirectRLEnv):
         if self._heading_bias is not None:
             noisy = noisy.clone()
             noisy[:, self.layout.slices()["heading_error"]] += self._heading_bias.unsqueeze(-1)
+        noisy = self._sensor_errors(noisy)
         frame = itf2.student_frame(noisy, self.clearance_cmd)
         fresh = self.episode_length_buf == 0
         self._hist = torch.roll(self._hist, 1, dims=1)
@@ -492,6 +511,8 @@ class BipedWalkEnv(DirectRLEnv):
                 if v is not None:
                     self._obs_noise[self.layout.slices()[k]] = v
         self._heading_bias = torch.zeros(n, device=dev) if dr.heading_bias is not None else None
+        self._joint_offset = torch.zeros(n, self.num_legs, device=dev) if dr.joint_offset is not None else None
+        self._imu_rot = torch.eye(3, device=dev).repeat(n, 1, 1) if dr.imu_tilt is not None else None
         # privileged values (interface v2); scales are 1 unless randomised
         self._gain_scale = torch.ones(n, 3, device=dev)  # kp, kd, effort
         if self.cfg.obs_version == 2:
@@ -544,6 +565,18 @@ class BipedWalkEnv(DirectRLEnv):
             self._gain_scale[env_ids, idx] = s.squeeze(-1)
         if self._heading_bias is not None:
             self._heading_bias[env_ids] = uniform((-dr.heading_bias, dr.heading_bias))
+        if self._joint_offset is not None:
+            mag = torch.empty(k, self.num_legs, device=dev).uniform_(*dr.joint_offset)
+            sign = torch.randint(0, 2, (k, self.num_legs), device=dev).float() * 2 - 1
+            self._joint_offset[env_ids] = mag * sign
+        if self._imu_rot is not None:  # rotation by `angle` about a random horizontal axis (Rodrigues)
+            angle, az = uniform(dr.imu_tilt), uniform((0.0, 2 * math.pi))
+            axis = torch.stack((torch.cos(az), torch.sin(az), torch.zeros_like(az)), dim=-1)
+            kx = torch.zeros(k, 3, 3, device=dev)
+            kx[:, 0, 1], kx[:, 0, 2], kx[:, 1, 2] = -axis[:, 2], axis[:, 1], -axis[:, 0]
+            kx[:, 1, 0], kx[:, 2, 0], kx[:, 2, 1] = axis[:, 2], -axis[:, 1], axis[:, 0]
+            s, c = torch.sin(angle).view(-1, 1, 1), torch.cos(angle).view(-1, 1, 1)
+            self._imu_rot[env_ids] = torch.eye(3, device=dev) + s * kx + (1 - c) * (kx @ kx)
 
     # ------------------------------------------------------------------ reset
     def _reset_idx(self, env_ids: torch.Tensor | None):

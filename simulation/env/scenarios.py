@@ -97,6 +97,8 @@ def apply_scenario(env_cfg, name: str) -> None:
         overrides = STRESS_V1[name.split("/", 1)[1]]
     elif name.startswith("stress_v2/"):
         overrides = STRESS_V2[name.split("/", 1)[1]]
+    elif name.startswith("stress_v3/"):
+        overrides = STRESS_V3[name.split("/", 1)[1]]
     else:
         overrides = SCENARIOS[name]
     for k, v in overrides.items():
@@ -182,3 +184,33 @@ for f in (1.0, 2.3):
 STRESS_V2: dict[str, dict] = {k: {**v, "fall_height_ref": "feet"} for k, v in STRESS_V1.items()
                               if k == "02_bumps_00mm" or k.startswith(("06_", "07_"))}
 STRESS_V2_META: dict[str, dict] = {k: STRESS_V1_META[k] for k in STRESS_V2}
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Stress tests v3 (evaluation/generalization, 2026-10-15): real-robot errors the training never randomised, one factor
+# at a time on top of flat_v1, plus one combined row. Names "stress_v3/<id>". Frozen once used.
+#   13 servo zero-point (calibration) error: every joint offset by +-value (random sign) -> pose differs from belief
+#   14 IMU mounting tilt: gravity / angular velocity seen in a frame tilted by value about a random horizontal axis
+#   15 missed servo writes: probability per control step that the servos keep the previous targets
+#   16 combined: joint offset 2 deg + IMU tilt 3 deg + 5% missed writes
+# ----------------------------------------------------------------------------------------------------------------------
+STRESS_V3: dict[str, dict] = {}
+STRESS_V3_META: dict[str, dict] = {}
+
+
+def _add3(test: str, title: str, value, unit: str, overrides: dict, tag: str):
+    key = f"{test}_{tag}"
+    STRESS_V3[key] = overrides
+    STRESS_V3_META[key] = {"test": test, "title": title, "value": value, "unit": unit, "in_training": value == 0}
+
+
+for d in (0, 1, 2, 3, 5):
+    r = float(np.radians(d))
+    _add3("13_joint_offset", "關節零點偏差（每個關節 ±）", d, "deg", {"dr": {"joint_offset": (r, r)}} if d else {}, f"{d}deg")
+for d in (0, 2, 5, 8, 12):
+    r = float(np.radians(d))
+    _add3("14_imu_tilt", "IMU 安裝傾斜", d, "deg", {"dr": {"imu_tilt": (r, r)}} if d else {}, f"{d:02d}deg")
+for p in (0, 5, 10, 20, 40):
+    _add3("15_action_drop", "伺服指令遺失率", p, "%", {"dr": {"action_drop_prob": p / 100}} if p else {}, f"{p:02d}pct")
+_add3("16_combined", "組合（零點 2°＋IMU 3°＋遺失 5%）", 1, "-",
+      {"dr": {"joint_offset": (float(np.radians(2)), float(np.radians(2))), "imu_tilt": (float(np.radians(3)),) * 2,
+              "action_drop_prob": 0.05}}, "typical")

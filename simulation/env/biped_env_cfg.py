@@ -94,6 +94,16 @@ class DomainRandCfg:
     """Std of Gaussian noise on the joint velocity observation [rad/s]."""
     heading_bias: float | None = None
     """Per-episode constant bias of the heading-error observation, uniform in +-value [rad] (IMU yaw offset)."""
+    joint_offset: tuple[float, float] | None = None
+    """Servo zero-point (calibration) error [rad]: per episode and joint, magnitude uniform in the range and a random
+    sign. The servo reports q - offset and drives to target + offset, so the real pose differs from what the policy
+    believes (evaluation/generalization stress_v3, 2026-10-15)."""
+    imu_tilt: tuple[float, float] | None = None
+    """IMU mounting tilt [rad]: per episode, angle uniform in the range about a random horizontal axis; rotates the
+    observed gravity direction and angular velocity (stress_v3)."""
+    action_drop_prob: float | None = None
+    """Probability per control step that the servos miss the new targets and keep the previous ones (bus write
+    failure). The policy still sees its new action as ``last_action`` (stress_v3)."""
     rough_terrain: dict | None = None
     """Uneven ground with a curriculum (``simulation/env/terrain.py``). Keys: ``amplitude`` (max bump height [m] at the
     hardest level), ``levels``, ``cols``, ``tile_size`` ((x, y) [m]), ``robots_per_tile``, ``horizontal_scale`` [m],

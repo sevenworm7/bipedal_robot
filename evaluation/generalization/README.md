@@ -17,7 +17,7 @@ tools\isaacpy.cmd evaluation\generalization\stress_test.py --out outputs\robot_v
 tools\isaacpy.cmd evaluation\generalization\stress_test.py --out outputs\robot_v1\evaluation\generalization\stress_v1_<日期> --stage videos  [--only …]
 tools\isaacpy.cmd evaluation\generalization\stress_test.py --out outputs\robot_v1\evaluation\generalization\stress_v1_<日期> --stage report
 ```
-`--suite v2` 執行 v2（斜坡／台階，修正跌倒判定）。`--agent student:<student.pt>` 可換成其他模型（預設為 `control/sim2real` 的最終模型 student v5）。產出放在 `outputs/robot_v1/evaluation/generalization/`。
+`--suite v2` 執行 v2（斜坡／台階，修正跌倒判定），`--suite v3` 執行 v3（實機誤差：零點、IMU 傾斜、指令遺失）。`--agent student:<student.pt>` 可換成其他模型（預設為 `control/sim2real` 的最終模型 student v5）。產出放在 `outputs/robot_v1/evaluation/generalization/`。
 
 ## 壓力測試 v1（2026-10-09）
 - **對象**：最終模型 student v5（`outputs/robot_v1/control/sim2real/student_v5_20261007_003835/student.pt`）。
@@ -56,6 +56,34 @@ tools\isaacpy.cmd evaluation\generalization\stress_test.py --out outputs\robot_v
 | 下台階 10 mm | 58%／40% | **95%／1%** | |
 | 上台階 10 mm | 40%／20% | 40%／20%（不變） | 真正的跌倒，方向誤差 p50 11° |
 | 上坡 3／5／8° | 99／99／80% | 不變 | 沒有漏判；8° 失敗是速度過慢（0.79 倍） |
+
+## 壓力測試 v3（2026-10-15）：實機常見、但訓練沒有隨機化的誤差
+
+- **目的**：決定實機組裝與校正要做到多精準（使用者 2026-10-15 同意）。對象同為 student v5，一次只改一個條件，其餘同 `flat_v1`。
+- **新增環境功能**（`simulation/env`，預設關閉；`flat_v1` 回歸檢查 `regress11` 與 student v5 平地評估都完全一致）：
+  - `joint_offset`：伺服零點偏差。每個關節固定偏移 ±值（正負號隨機），伺服回讀的角度少了這個偏移、走到的位置多了這個偏移，所以機器人的實際姿勢和策略以為的不同。
+  - `imu_tilt`：IMU 安裝傾斜。重力方向與角速度改在傾斜的座標系中量測（傾斜方向隨機）。
+  - `action_drop_prob`：伺服指令遺失。每個控制步以該機率沿用上一個目標（匯流排寫入失敗）；策略仍以為新指令已送出。
+- 結果：`outputs/robot_v1/evaluation/generalization/stress_v3_20261015/README.md`（16 個條件、每個都有中速影片）。
+
+| 條件 | 0（對照） | 1° | 2° | 3° | 5° | 8° | 12° |
+|---|---|---|---|---|---|---|---|
+| 關節零點偏差（每個關節 ±） | 100%／0% | 100%／0% | **100%／0%** | 93%／2% | **39%／跌倒 27%** | — | — |
+| IMU 安裝傾斜 | 100%／0% | — | 100%／0% | — | 100%／0% | **99%／0%** | 49%／跌倒 13% |
+
+| 條件 | 0 | 5% | 10% | 20% | 40% |
+|---|---|---|---|---|---|
+| 伺服指令遺失率 | 100%／0% | 100%／0% | 100%／0% | 100%／0% | **100%／0%**（方向誤差 p50 1.5° → 3.8°） |
+
+- 組合（零點 2°＋IMU 3°＋遺失 5%）：**99%／跌倒 1%**，側向漂移 p50 0.10 → 0.29 m。
+- **結論（實機要求）**：
+  1. **關節零點要校正到每顆 ±2° 以內**：2° 不影響成功率（但側向漂移 0.10 → 0.25 m），3° 開始掉（93%），5° 跌倒 27%。HD-1910 一圈 4096 格（0.088°／格），軟體校正可以做到；
+     擺臂花鍵裝偏一齒的角度遠大於 2°，所以**組裝後一定要做軟體零點校正**，不能只靠機構對位。
+  2. **IMU 安裝傾斜容許到約 8°**，一般機構固定（±2–3°）不需要額外校正。
+  3. **偶爾遺失伺服指令幾乎沒有影響**（40% 仍 100%），匯流排偶發錯誤不是風險；真正的風險是**延遲**（v1：80 ms 起失效）。
+- **一次性異常（已處理）**：第一次統計中 IMU 傾斜 5° 出現一半機器人原地不動（成功 40%），重跑兩次都是 100%，其他條件重跑與原紀錄完全相同，
+  判定為該次執行受干擾（執行時間 41 s，其他約 30 s；可能是同時有其他模擬程式使用 GPU）。原結果移到 `runs_invalid/`（保留），以重跑結果為準。
+  之後**模擬一次只跑一個**，結果不單調時先重跑確認可重現再下結論。
 
 ## 結論（2026-10-09）
 

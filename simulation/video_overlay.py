@@ -57,6 +57,12 @@ class HudState:
     command: str = ""
     """Current command when it can change mid-episode (control/sim2real), e.g. ``0.10 m/s``, ``STAND``, ``IN PLACE``;
     shown on the status line. Empty (02 / 03) keeps the original layout."""
+    joint_load: list[tuple[str, float]] = field(default_factory=list)
+    """(joint label, |torque| [N m]) per joint for the load panel (evaluation/load_analysis); empty = no panel."""
+    load_refs: tuple[float, float, float] = (0.294, 0.8, 1.18)
+    """(rated, simulated limit, stall) torque [N m]: bar scale and marker lines of the load panel."""
+    load_note: str = ""
+    """Extra line under the load panel, e.g. the estimated total servo current."""
 
 
 def format_time(t: float) -> str:
@@ -107,10 +113,42 @@ def draw_hud(frame: np.ndarray, hud: HudState) -> np.ndarray:
             draw.line(pts, fill=(80, 200, 255, 255), width=max(2, int(3 * scale)))
         draw.ellipse((pts[-1][0] - 4, pts[-1][1] - 4, pts[-1][0] + 4, pts[-1][1] + 4), fill=(255, 200, 0, 255))
 
+    if hud.joint_load:
+        _draw_load_panel(draw, hud, w, h, scale, box_h + pad)
+
     if hud.status == "FALLEN":
         bw = max(4, int(10 * scale))
         draw.rectangle((0, 0, w - 1, h - 1), outline=(230, 30, 30, 255), width=bw)
     return np.asarray(Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB"))
+
+
+def _draw_load_panel(draw: ImageDraw.ImageDraw, hud: HudState, w: int, h: int, scale: float, top: int) -> None:
+    """Per-joint |torque| bars (left side, under the text box): green below the rated torque, yellow up to the simulated
+    limit, red at / above it; marker lines at rated (yellow) and limit (red); the bar spans 0 .. stall torque."""
+    rated, limit, stall = hud.load_refs
+    font = _font(int(18 * scale))
+    pad, row = int(10 * scale), int(24 * scale)
+    lab_w, bar_w, val_w = int(110 * scale), int(230 * scale), int(64 * scale)
+    rows = len(hud.joint_load) + 1 + (1 if hud.load_note else 0)
+    box_w, box_h = lab_w + bar_w + val_w + 3 * pad, rows * row + 2 * pad
+    x0, y0 = 0, top
+    draw.rectangle((x0, y0, x0 + box_w, y0 + box_h), fill=(0, 0, 0, 170))
+    draw.text((x0 + pad, y0 + pad), "joint torque |N m|", font=font, fill=(220, 220, 220, 255))
+    bx = x0 + pad + lab_w
+    for i, (name, tau) in enumerate(hud.joint_load):
+        y = y0 + pad + (i + 1) * row
+        draw.text((x0 + pad, y), name, font=font, fill=(255, 255, 255, 255))
+        frac = min(abs(tau) / stall, 1.0)
+        color = (60, 200, 90, 255) if abs(tau) < rated else ((240, 200, 40, 255) if abs(tau) < limit - 1e-3 else (235, 60, 60, 255))
+        draw.rectangle((bx, y + 4, bx + bar_w, y + row - 4), outline=(110, 110, 110, 255), width=1)
+        draw.rectangle((bx, y + 4, bx + int(frac * bar_w), y + row - 4), fill=color)
+        for ref, col in ((rated, (240, 200, 40, 255)), (limit, (235, 60, 60, 255))):
+            xr = bx + int(ref / stall * bar_w)
+            draw.line((xr, y + 1, xr, y + row - 1), fill=col, width=max(1, int(2 * scale)))
+        draw.text((bx + bar_w + pad, y), f"{abs(tau):.2f}", font=font, fill=(255, 255, 255, 255))
+    if hud.load_note:
+        y = y0 + pad + (len(hud.joint_load) + 1) * row
+        draw.text((x0 + pad, y), hud.load_note, font=font, fill=(255, 255, 255, 255))
 
 
 def video_filename(exp: str, tag: str, date: str | None = None, k: int | None = None) -> str:

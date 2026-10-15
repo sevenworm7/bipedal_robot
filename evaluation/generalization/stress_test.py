@@ -31,9 +31,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(ROOT), str(ROOT / "control")]  # core / simulation, sim2real (scoring)
 
-from simulation.env.scenarios import STRESS_V1, STRESS_V1_META, STRESS_V2, STRESS_V2_META  # noqa: E402
+from simulation.env.scenarios import (STRESS_V1, STRESS_V1_META, STRESS_V2, STRESS_V2_META, STRESS_V3,  # noqa: E402
+                                       STRESS_V3_META)
 
-SUITES = {"v1": (STRESS_V1, STRESS_V1_META), "v2": (STRESS_V2, STRESS_V2_META)}
+SUITES = {"v1": (STRESS_V1, STRESS_V1_META), "v2": (STRESS_V2, STRESS_V2_META), "v3": (STRESS_V3, STRESS_V3_META)}
 SUITE = "v1"  # set from --suite in main()
 
 DEFAULT_AGENT = "student:outputs/robot_v1/control/sim2real/student_v5_20261007_003835/student.pt"
@@ -141,9 +142,13 @@ def stage_report(out: Path, ids: list[str]):
     if SUITE == "v1":
         lines += ["- **注意（2026-10-09）**：v1 的跌倒高度以出生點高度為基準，斜坡（06）與台階（07）往下走約 10 cm 就被誤判為跌倒、"
                   "往上走則可能漏判。06、07 以 [`stress_v2_20261009`](../stress_v2_20261009/README.md) 的結果為準（跌倒高度改以腳下地面為基準）。"]
-    else:
+    elif SUITE == "v2":
         lines += ["- v2：重做 v1 的斜坡（06）與台階（07），跌倒高度改以腳下地面為基準（`fall_height_ref=\"feet\"`）；"
                   "`02_bumps_00mm` 為平地對照。其餘條件見 [`stress_v1_20261009`](../stress_v1_20261009/README.md)。"]
+    else:
+        lines += ["- v3：實機常見、但訓練沒有隨機化的誤差：伺服零點偏差（每個關節固定 ±值、正負號隨機，回讀與指令都偏移）、"
+                  "IMU 安裝傾斜（重力方向與角速度在傾斜的座標系中量測）、伺服指令遺失（每個控制步以該機率沿用上一個目標）。"
+                  "每個測試的 0 為平地對照；`16_combined` 是三項同時存在的典型情況。"]
     lines.append("")
     for t, items in sorted(tests.items()):
         title, unit = items[0][1]["title"], items[0][1]["unit"]
