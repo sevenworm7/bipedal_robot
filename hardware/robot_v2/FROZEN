@@ -1,0 +1,2 @@
+robot-v2 frozen on 2026-11-18 (user approved: tag after the sim check passes). Generator scripts refuse to rebuild this version.
+Any model change goes into v3; collect issues in ../v2_backlog.md (rename to a v3 backlog when v3 starts).

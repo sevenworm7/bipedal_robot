@@ -4,8 +4,8 @@ v1 縮短腿部的版本。起因是實機的馬達線太短（原廠線 16 cm�
 v2 只改大腿、小腿和膝關節範圍，讓「折返接法」的每一段線都在 12 cm 以內。修改與原因見 [`CHANGELOG.md`](CHANGELOG.md)，
 從 v1 實機改裝的步驟與接線見 [`ASSEMBLY.md`](ASSEMBLY.md)，計算過程見 [`../v2_backlog.md`](../v2_backlog.md)。
 
-**狀態：建模與 hardware 端檢查完成（2026-11-18），尚未凍結。** USD 轉檔與模擬檢查（generator README 第 5、6 步）還沒做；
-確認沒問題後再打 tag `robot-v2` 並放 `FROZEN` 檔。
+**狀態：已凍結（2026-11-18，tag `robot-v2`、`FROZEN` 檔）。** hardware 端檢查、USD 轉檔與模擬檢查都通過；generator 拒絕重新產生這一版。
+芒果磚的實際尺寸、質量和列印件秤重還是估計值，之後要修正就開 v3。
 
 互動 3D 圖：直接開啟 [`viewer.html`](viewer.html)（完全離線）。整機組裝檔：`parts/assembly_v2.step`。
 
@@ -43,6 +43,10 @@ v2 只改大腿、小腿和膝關節範圍，讓「折返接法」的每一段�
 - **URDF 檢查**：0 warning；11 個 link、10 個致動關節；左右腿鏈長 0.189 m。
 - **靜態扭矩**（6 V 堵轉 1.18 N·m）：單腳支撐最大是 hip_roll 0.155 N·m（額定 53%），knee 從 v1 的 0.21 降到 0.15 N·m。
 - **可達範圍**：前後 ±67 mm；**原地抬腳最高 24 mm**（v1 56 mm），是 v2 最大的代價。
+- **模擬檢查**（Isaac Sim，`outputs/robot_v2/simulation/robot_check/20261118_203336/`）：
+  - 10 個關節的正方向都正確（和 v1 相同）；模擬中總重 0.670 kg，和 URDF 一致。
+  - 站立 5 秒：高度漂移 0 mm、水平位移 0 mm、最大傾斜 1.1°，通過。
+  - 生成落地時有 37 mm 的沉降位移（v1 是 20 mm），站立期間不再移動。
 
 ## 已知風險
 

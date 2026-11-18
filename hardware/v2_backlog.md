@@ -63,9 +63,9 @@ v1 已於 2026-09-30 凍結（tag `robot-v1`），之後在 rule-based、訓練�
 
 ## v2 工作順序（2026-11-18 使用者確認，在 branch `robot-v2` 上進行）
 
-1. **數學計算決定腿長**：只縮短大腿和小腿的長度。用計算確認折返接法的每一段線（1→3、3→4、4→2、跨腿段）都 ≤ 12 cm，
+1. **數學計算決定腿長**（2026-11-18 完成：大腿 70、小腿 55 mm）：只縮短大腿和小腿的長度。用計算確認折返接法的每一段線（1→3、3→4、4→2、跨腿段）都 ≤ 12 cm，
    並確認大腿能夾得下兩顆馬達、膝關節有足夠的可動範圍。算完把腿長給使用者確認後再往下做。
-2. **建立 robot v2 模型**：`hardware/robot_v2/params.yaml`（從 v1 複製，改 `legs.thigh`、`legs.shin`、`electronics.board`）→
+2. **建立 robot v2 模型**（2026-11-18 完成，tag `robot-v2`）：`hardware/robot_v2/params.yaml`（從 v1 複製，改 `legs.thigh`、`legs.shin`、`electronics.board`）→
    generator 產生零件與 URDF → 干涉檢查、靜態站姿 → URDF 轉 USD、模擬健全性檢查 → `core/robots/` 加入 v2 → 打 tag `robot-v2`。
 3. **接續 v1 的模型往下訓練**：觀測和動作維度與 v1 相同（10 DOF），以 v1 sim2real 的模型為起點，在 v2 上微調，不從零訓練。
    rule-based 是否需要重調、teacher 和 student 的微調順序、速度指令範圍，要到這一步讀過 `control/sim2real/PROMPT.md` 再和使用者確認。

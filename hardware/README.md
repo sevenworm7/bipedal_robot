@@ -2,7 +2,7 @@
 
 機構與電子的**設計源頭**：參數檔 `robot_v<N>/params.yaml` 同時產生列印零件（STEP／STL）與 URDF，虛擬與實體都從這裡出發。模擬用的轉檔（URDF → USD）與檢查在 [`simulation/robot_assets/`](../simulation/robot_assets/README.md)；模擬中使用的機器人定義在 [`core/robots/`](../core/robots/README.md)。原 `01_robot_construction/`，2026-10-15 重整為 `hardware/`。
 
-**狀態：v1 已凍結（tag `robot-v1`），實體已列印組裝；v2（縮短腿，因馬達線長）建模完成，尚未凍結（2026-11-18）。** 內容與檢查結果見 [`robot_v1/README.md`](robot_v1/README.md)，相對 v0.1 規劃稿的修改見 `robot_v1/CHANGELOG.md`；互動 3D 圖：本機開 `robot_v1/viewer.html`，或 https://claude.ai/artifact/KMshhxBa9vifvMSXP5GH9q（私人連結）。
+**狀態：v1 已凍結（tag `robot-v1`），實體已列印組裝；v2（縮短腿，因馬達線長）已凍結（2026-11-18，tag `robot-v2`）。** 內容與檢查結果見 [`robot_v1/README.md`](robot_v1/README.md)，相對 v0.1 規劃稿的修改見 `robot_v1/CHANGELOG.md`；互動 3D 圖：本機開 `robot_v1/viewer.html`，或 https://claude.ai/artifact/KMshhxBa9vifvMSXP5GH9q（私人連結）。
 
 實驗二要自行設計一台雙足機器人，用程式參數化的方式產生 URDF → USD → Isaac Lab 可用的 `ArticulationCfg`，
 之後由 `control/`（rule-based 老師 → 訓練）接手。
@@ -19,7 +19,7 @@
 | 版本 | 狀態 | 重點 |
 |---|---|---|
 | [`robot_v1/`](robot_v1/README.md) | **已凍結**（2026-09-30，tag `robot-v1`） | 第一個實際建模的版本：每腿 4 DOF＋2 DOF 尾巴、10 顆 HD-1910、0.69 kg |
-| [`robot_v2/`](robot_v2/README.md) | **建模完成，尚未凍結**（2026-11-18，branch `robot-v2`） | 縮短腿（大腿 70、小腿 55 mm，膝 0–110°），讓馬達線可以用折返接法；只需重印大腿、小腿；0.67 kg |
+| [`robot_v2/`](robot_v2/README.md) | **已凍結**（2026-11-18，tag `robot-v2`） | 縮短腿（大腿 70、小腿 55 mm，膝 0–110°），讓馬達線可以用折返接法；只需重印大腿、小腿；0.67 kg |
 
 新增版本：複製上一版的 `params.yaml` 到 `robot_v<N+1>/`，把 `robot.version` 改成 N+1、修改參數、寫 CHANGELOG，再跑 generator 的步驟。
 
