@@ -67,7 +67,7 @@
 | 機器人 | 紀錄 | 內容 |
 |---|---|---|
 | robot v1 | [`log_robot_v1.md`](log_robot_v1.md) | 階段一～四、第三～五輪訓練（2026-10-06 ～ 10-07）、產出清理 |
-| robot v2 | `log_robot_v2.md`（開始訓練後建立） | 接續 v1 模型的微調，計畫見 [`docs/progress.md`](../../docs/progress.md) |
+| robot v2 | [`log_robot_v2.md`](log_robot_v2.md) | 接續 v1 模型的微調，計畫見 [`docs/progress.md`](../../docs/progress.md) |
 
 ## 結論（2026-10-07，使用者決定模擬測試告一段落）
 

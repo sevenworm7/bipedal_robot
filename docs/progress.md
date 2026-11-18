@@ -17,8 +17,8 @@ v2 的觀測、動作、控制頻率都和 v1 相同（10 DOF、student 210 維�
 
 | 步驟 | 內容 | 起點 | 預估 | 狀態 |
 |---|---|---|---|---|
-| 0 | **零樣本評估**：v1 的 student v5 直接放到 v2 上，跑固定評估集（`flat_v1`、`dr_v1`、`rough_eval_v1`、`dr_rough_eval_v1`、`gait_eval_v1`） | `outputs/robot_v1/control/sim2real/student_v5_20261007_003835/student.pt` | 約 10 分鐘 | 未開始 |
-| 1 | **teacher 微調**：在 v2 上用 v1 最後一輪相同的場景與獎勵接續訓練；若第 0 步已接近門檻就縮短 | `outputs/robot_v1/control/sim2real/teacher_v5_20261006_234626/` | 約 50–80 分鐘 | 未開始 |
+| 0 | **零樣本評估**：v1 的 student v5 直接放到 v2 上，跑固定評估集（`flat_v1`、`dr_v1`、`rough_eval_v1`、`dr_rough_eval_v1`、`gait_eval_v1`） | `outputs/robot_v1/control/sim2real/student_v5_20261007_003835/student.pt` | 約 10 分鐘 | 完成（2026-11-18）：不跌倒但速度比 0.71–0.85，成功 0–36%，需要微調 |
+| 1 | **teacher 微調**：在 v2 上用 v1 最後一輪相同的場景與獎勵接續訓練；若第 0 步已接近門檻就縮短 | `outputs/robot_v1/control/sim2real/teacher_v5_20261006_234626/` | 約 50–80 分鐘 | 進行中（`teacher_v2ft`，1500 iterations） |
 | 2 | **student 蒸餾**（DAgger，含鏡像樣本） | student v5 | 約 10 分鐘 | 未開始 |
 | 3 | **評估**：同一組固定評估集與門檻，產生和 v1 的比較表與影片（`/eval-video`） | — | 約 30 分鐘 | 未開始 |
 
