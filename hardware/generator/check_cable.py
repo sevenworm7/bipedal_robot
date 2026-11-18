@@ -148,6 +148,23 @@ def layout(version, thigh=None, shin=None):
     return load(version, p)
 
 
+def to_board(leg, servo):
+    """Worst distance from either socket of a leg servo (best one) to the control board centre.
+    The board (params electronics.board, z relative to the hip_roll axis) is glued under the torso top lid;
+    its header position is not modelled, so this is only indicative (+- half the board size)."""
+    e = leg.lay.p["electronics"]["board"]
+    c = np.array([e["center"][0], e["center"][1], leg.lay.hip_roll_z + e["center"][2]], float)
+    upto = MOVED_BY[servo]
+    best = None
+    for _, p in leg.sockets[servo]:
+        w = 0.0
+        for q0 in (np.linspace(*leg.limits(0), 9) if upto >= 1 else [0.0]):
+            for q1 in (np.linspace(*leg.limits(1), 13) if upto >= 2 else [0.0]):
+                w = max(w, np.linalg.norm(leg.place(p, [q0, q1, 0, 0], upto) - c))
+        best = w if best is None else min(best, w)
+    return best, c
+
+
 def report(version, thigh, shin):
     lay = layout(version, thigh, shin)
     lg = lay.p["legs"]
@@ -163,6 +180,10 @@ def report(version, thigh, shin):
             ats = ", ".join(f"{k} {v:.0f}" for k, v in at.items()) if at else "fixed"
             print(f"    {a}->{b}  {ta:10s} -> {tb:10s}  zero pose {z:5.0f}  worst {w:5.0f} mm  ({ats})")
     print(f"\n  2 -> other leg's 1 (cross at hip level), worst {cross_to_other_hip(leg):.0f} mm")
+    for n in (1, 2):
+        w, c = to_board(leg, n)
+        print(f"  {n} -> control board centre ({c[0]:.0f}, {c[1]:.0f}, {c[2]:.0f}), worst {w:.0f} mm "
+              f"(header position not modelled)")
 
 
 def sweep(version, thighs, shins, limit):
