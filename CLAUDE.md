@@ -15,7 +15,7 @@
 | `control/flat_pipeline/` | 虛擬 | 平地：Rule-based → BC → PPO → 自我蒸餾 ×3 | `control/flat_pipeline/PROMPT.md` |
 | `control/sim2real/` | 虛擬 | 強健性訓練（使用者 2026-10-06 新增）：隨機化、可部署觀測、步態多樣性、teacher → student 蒸餾；含訓練範圍內的驗收 | `control/sim2real/PROMPT.md` |
 | `evaluation/` | 虛擬 | 不訓練：`generalization/`（訓練範圍以外的壓力測試，2026-10-09）、`load_analysis/`（馬達負載，規劃中） | `evaluation/generalization/CLAUDE.md` |
-| `deploy/` | 實體 | 實機：台架測試、校正、板上控制程式、實地測試（**尚未取得器材，尚未開始**）；不可依賴 Isaac | `deploy/README.md` |
+| `deploy/` | 實體 | 實機：台架測試、校正、板上控制程式、實地測試（**進行中**：v1 實體可走約 8 步，2026-11-18；因線長限制規劃 robot v2）；不可依賴 Isaac | `deploy/README.md` |
 | `archive/exp1_reference/` | — | 實驗一（封存） | `archive/exp1_reference/CLAUDE.md` |
 
 - 依序相依：hardware → simulation → control（rule_based → flat_pipeline → sim2real）→ evaluation → deploy；實機發現的問題回饋到 hardware（v2）或 control（重新訓練）。路線圖與各階段狀態見根目錄 `README.md`。
@@ -85,7 +85,7 @@ core/                   # 虛實共用、不依賴 Isaac：interface.py、interf
 simulation/             # 模擬平台：env/（環境、地形、場景版本）、metrics、rollout、影片；robot_assets/（URDF → USD、模擬檢查、usd/ 不進 git）
 control/                # 產生策略（模擬）：rule_based/（老師）、flat_pipeline/（平地訓練）、sim2real/（強健性訓練，最終 student v5）
 evaluation/             # 不訓練的評估（模擬）：generalization/（壓力測試）、load_analysis/（規劃中）
-deploy/                 # 實機（尚未開始）：actuator_bench/、calibration/、runtime/、field_tests/（拿到器材後建立）
+deploy/                 # 實機（進行中，2026-11-18）：actuator_bench/、calibration/、runtime/、field_tests/（拿到器材後建立）
 archive/exp1_reference/ # 實驗一（已完成，2026-09-29 使用者確認），自成一套
   shared/               #   介面契約、環境、指標、影片 HUD；robots/ref_biped.py、robots/usd/（不進 git）
   scripts/              #   轉檔、機器人檢查、環境煙霧測試
