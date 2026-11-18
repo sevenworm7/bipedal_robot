@@ -24,7 +24,7 @@
 
 ## 發現的模型問題
 
-rule-based 過程中發現的機器人問題記到 `hardware/v2_backlog.md`（v1 已凍結）。
+rule-based 過程中發現的機器人問題記到 `docs/backlog.md`（原 `hardware/v2_backlog.md`，2026-11-18 移過去；v1 已凍結）。
 
 ## 執行方式（專案根目錄）
 

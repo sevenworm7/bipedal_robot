@@ -10,6 +10,6 @@
 
 依序相依：`flat_pipeline` 用 `rule_based` 當老師；`sim2real` 以 `flat_pipeline` 的最終模型為起點，並 import 它的網路、BC 與固定評估集設定。
 匯入方式：腳本把專案根目錄（`core`、`simulation`）與 `control/`（`rule_based`、`flat_pipeline`、`sim2real`）加入 `sys.path`。
-產出：`outputs/robot_v1/control/{rule_based, flat_pipeline, sim2real}/`。
+產出：`outputs/robot_v<N>/control/{rule_based, flat_pipeline, sim2real}/`；進度與下一步見 [`docs/progress.md`](../docs/progress.md)。
 
 沿革：原為 `control/rule_based/`、`control/`（2026-10-15 重整為 `control/`）。

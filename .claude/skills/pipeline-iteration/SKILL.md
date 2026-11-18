@@ -39,7 +39,7 @@ description: Runbook for one round of the training pipeline (exp1 in archive/exp
 - 平均步數與步頻
 
 ## 跨輪比較
-每輪結束後更新 `summary.md`，用表格列出各輪指標，並附上影片路徑。若某輪表現退步，要回報可能原因（例如篩選過嚴、資料分布變窄、BC 過擬合），不可跳過。
+每輪結束後更新比較表：實驗二寫進 `docs/results.md`（進 git，只放數字），影片路徑寫在 `outputs/robot_v<N>/summary.md`；進度同步到 `docs/progress.md`。若某輪表現退步，要回報可能原因（例如篩選過嚴、資料分布變窄、BC 過擬合），不可跳過。
 
 ## 實驗結束
 - 實驗一結束後，在 `archive/exp1_reference/outputs/summary.md` 整理：管線各階段是否有效、需要修正的地方、哪些問題來自參考模型本身的限制。實驗二開始前，先和使用者一起檢視這份整理。

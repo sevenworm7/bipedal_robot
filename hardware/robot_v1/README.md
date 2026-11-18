@@ -1,7 +1,7 @@
 # 機器人模型 v1（2026-09-30）
 
 第一個實際建模的版本。起點是規劃稿 `../../design_refs/architecture_v0_1.md`，相對它的修改與原因見 [`CHANGELOG.md`](CHANGELOG.md)。
-**狀態：已凍結（2026-09-30，tag `robot-v1`、`FROZEN` 檔）。** generator 拒絕重新產生這一版；之後發現的問題記到 [`../v2_backlog.md`](../v2_backlog.md)。
+**狀態：已凍結（2026-09-30，tag `robot-v1`、`FROZEN` 檔）。** generator 拒絕重新產生這一版；之後發現的問題記到 [`docs/backlog.md`](../../docs/backlog.md)。
 
 互動 3D 圖：直接開啟 [`viewer.html`](viewer.html)（資料與 three.js 都已內嵌，完全離線；瀏覽器或 VS Code 的預覽都可以開）。
 整機組裝檔：[`parts/assembly_v1.step`](parts/assembly_v1.step)（零位、每個零件與馬達各是一個具名 body，可在 Fusion 360 拆開檢查）。

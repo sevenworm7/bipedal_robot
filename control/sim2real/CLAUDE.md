@@ -1,7 +1,7 @@
 # control/sim2real：Sim-to-real 強健性訓練（實驗二）
 
 完整需求在 `PROMPT.md`，動工前先讀完；「若有不確定之處」的項目要先問使用者。
-這部分是使用者 2026-10-06 決定新增的（平地訓練完成後，不做 robot v2，直接針對實機部署加強訓練）；原為 `04_sim2real/`，2026-10-09 併入 03。
+這部分是使用者 2026-10-06 決定新增的（平地訓練完成後，當時先不做 robot v2，直接針對實機部署加強訓練；2026-11-18 因馬達線長做了 robot v2，訓練改為接續 v1 的模型）；原為 `04_sim2real/`，2026-10-09 併入 03。
 訓練範圍以外的測試不放這裡，放 `evaluation/generalization/`。
 
 ## 規則
@@ -13,7 +13,7 @@
   - 每個 run 的 config 記錄場景名稱、介面版本、起始 checkpoint 與 git commit。
 - **介面**：新的觀測介面另開版本，`core/interface.py` 現有的 44 維定義不動（`control/rule_based`、`control/flat_pipeline` 依賴它）。
   rule-based 與 `flat_pipeline` 的程式碼不需要因為 sim2real 而修改。
-- **產出**：`outputs/robot_v1/control/sim2real/<stage>_<tag>_<YYYYMMDD_HHMMSS>/`，資料夾已存在時停下來；結果整理進 `outputs/robot_v1/summary.md`。
+- **產出**：`outputs/robot_v<N>/control/sim2real/<stage>_<tag>_<YYYYMMDD_HHMMSS>/`，資料夾已存在時停下來；數字整理進 `docs/results.md`（進 git），過程寫進 `log_robot_v<N>.md`，進度寫進 `docs/progress.md`。
 - **步態多樣性**（使用者 2026-10-06 指出）：目前步態過於單一，是實機失效的主要風險之一；每一輪訓練都要量化步態多樣性與擾動恢復，不只看成功率。
 
 ## `flat_pipeline` 留下的經驗（直接沿用）

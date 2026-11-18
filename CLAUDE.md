@@ -14,16 +14,35 @@
 | `control/rule_based/` | 虛擬 | 規則式行走控制器（老師） | `control/rule_based/PROMPT.md` |
 | `control/flat_pipeline/` | 虛擬 | 平地：Rule-based → BC → PPO → 自我蒸餾 ×3 | `control/flat_pipeline/PROMPT.md` |
 | `control/sim2real/` | 虛擬 | 強健性訓練（使用者 2026-10-06 新增）：隨機化、可部署觀測、步態多樣性、teacher → student 蒸餾；含訓練範圍內的驗收 | `control/sim2real/PROMPT.md` |
-| `evaluation/` | 虛擬 | 不訓練：`generalization/`（訓練範圍以外的壓力測試，2026-10-09）、`load_analysis/`（馬達負載，規劃中） | `evaluation/generalization/CLAUDE.md` |
-| `deploy/` | 實體 | 實機：台架測試、校正、板上控制程式、實地測試（**進行中**：v1 實體可走約 8 步，2026-11-18；因線長限制規劃 robot v2）；不可依賴 Isaac | `deploy/README.md` |
+| `evaluation/` | 虛擬 | 不訓練：`generalization/`（訓練範圍以外的壓力測試，2026-10-09）、`load_analysis/`（馬達負載，2026-10-15） | `evaluation/generalization/CLAUDE.md` |
+| `deploy/` | 實體 | 實機：台架測試、校正、板上控制程式、實地測試（**進行中**，狀態見 `docs/progress.md`）；不可依賴 Isaac | `deploy/README.md` |
+| `docs/` | — | 跨領域文件：進度與計畫（`progress.md`）、待辦（`backlog.md`）、決策（`decisions.md`）、成果總表（`results.md`）、架構（`architecture.md`） | `docs/README.md` |
 | `archive/exp1_reference/` | — | 實驗一（封存） | `archive/exp1_reference/CLAUDE.md` |
 
-- 依序相依：hardware → simulation → control（rule_based → flat_pipeline → sim2real）→ evaluation → deploy；實機發現的問題回饋到 hardware（v2）或 control（重新訓練）。路線圖與各階段狀態見根目錄 `README.md`。
+- 依序相依：hardware → simulation → control（rule_based → flat_pipeline → sim2real）→ evaluation → deploy；實機發現的問題回饋到 hardware（新版模型）或 control（重新訓練）。各階段狀態與下一步見 `docs/progress.md`。
 - 程式資料夾與輸出資料夾一一對應：`outputs/robot_v<N>/{hardware, simulation, control/{rule_based, flat_pipeline, sim2real}, evaluation/generalization, deploy}/`。
 - 沿革：2026-10-09 以前為 `01_robot_construction`、`02_rule_based`、`03_training_pipeline`、`04_sim2real`；2026-10-09 為 `01_`–`04_generalization`；2026-10-15 重整為上表。舊 run 的 `config.yaml`／`stats.json` 中的路徑是歷史紀錄，不改寫。
 
 - 開始實作 rule-based、訓練管線、sim-to-real 或實機部署前（不論是在 `archive/exp1_reference/` 還是 `control/`、`evaluation/`、`deploy/` 中），**必須先完整閱讀對應的 PROMPT.md**；其中「若有不確定之處」列出的項目，不明確時要先問使用者，不可自行假設。
-- 實驗二尚未決定的設計事項（尺寸、質量分配、關節範圍、尾巴參數、訓練目標）記錄在 `hardware/README.md` 的「待決定事項」。這些是阻擋性的決策，遇到時要主動詢問。
+- 尚未決定的事項記錄在 `docs/backlog.md`，已定案的在 `docs/decisions.md`。遇到 backlog 中阻擋性的決策時要主動詢問，不可自行假設。
+
+## 文件分工（使用者 2026-11-18 確認）
+
+**開始一個工作前，先讀 `docs/progress.md`**（目前狀態與下一步）。跨領域、會變動的內容只寫在 `docs/`，各寫一份，不在資料夾 README 重複：
+
+| 內容 | 寫在哪裡 |
+|---|---|
+| 計畫、狀態、下一步 | `docs/progress.md`（完成一個可驗證的步驟就更新；舊內容移到 Archive） |
+| 尚未解決的問題、待實物確認（所有領域） | `docs/backlog.md`（附日期、數字或 run 路徑；解決後改狀態，不刪除） |
+| 使用者確認的決定 | `docs/decisions.md`（一筆一列；推翻時新增一列，舊列標「被 #N 取代」） |
+| 各版本、各階段的數字 | `docs/results.md`（進 git；`outputs/` 內的報告與影片是詳細版） |
+| 資料夾分工、依賴、目錄結構、沿革 | `docs/architecture.md` |
+| 某資料夾的用途、執行方式、該階段紀錄 | 該資料夾的 `README.md`；紀錄太長時拆成 `log_robot_v<N>.md`（例如 `control/sim2real/`） |
+| 某機器人版本的規格、組裝、接線、設計計算 | `hardware/robot_v<N>/`（README、CHANGELOG、ASSEMBLY、design_calc） |
+| 實機測試紀錄 | `deploy/test_log.md` |
+| 原始需求 | 各資料夾的 `PROMPT.md`（不修改） |
+
+commit 前的同步檢查要包含 `docs/`。
 
 ## 兩次實驗
 
@@ -78,24 +97,7 @@
 
 ## 目錄規劃
 
-```
-README.md               # 專案總覽與路線圖（各階段狀態）
-hardware/               # 機構設計（虛實共用的設計源頭）：generator/ 產生程式、robot_v<N>/ 每版的參數、零件、URDF、報告；v2_backlog.md
-core/                   # 虛實共用、不依賴 Isaac：interface.py、interface_v2.py、symmetry.py、robots/custom_biped.py
-simulation/             # 模擬平台：env/（環境、地形、場景版本）、metrics、rollout、影片；robot_assets/（URDF → USD、模擬檢查、usd/ 不進 git）
-control/                # 產生策略（模擬）：rule_based/（老師）、flat_pipeline/（平地訓練）、sim2real/（強健性訓練，最終 student v5）
-evaluation/             # 不訓練的評估（模擬）：generalization/（壓力測試）、load_analysis/（規劃中）
-deploy/                 # 實機（進行中，2026-11-18）：actuator_bench/、calibration/、runtime/、field_tests/（拿到器材後建立）
-archive/exp1_reference/ # 實驗一（已完成，2026-09-29 使用者確認），自成一套
-  shared/               #   介面契約、環境、指標、影片 HUD；robots/ref_biped.py、robots/usd/（不進 git）
-  scripts/              #   轉檔、機器人檢查、環境煙霧測試
-  rule_based/           #   規則式控制器（規格：同資料夾的 PROMPT.md 複本）
-  training_pipeline/    #   訓練管線（規格：同資料夾的 PROMPT.md 複本）
-  outputs/              #   實驗一的產出（不進 git）
-references/             # 參考資料（唯讀）：雙足機器人/ 為舊模型，實驗一使用其中的 URDF
-tools/                  # 開發工具（urdf_inspect.py、isaacpy.cmd），兩次實驗共用
-outputs/                # 實驗二的產出（不進 git），結構對應程式資料夾
-```
+完整的目錄結構、依賴方向與沿革見 `docs/architecture.md`（2026-11-18 從這裡移過去）。
 
 - **匯入方式**：腳本把專案根目錄（`core`、`simulation`）與 `control/`（`rule_based`、`flat_pipeline`、`sim2real`）加入 `sys.path`。
 - **命名**：資料夾與檔案名稱一律使用英文（使用者 2026-10-15 規則）。
@@ -110,7 +112,7 @@ outputs/                # 實驗二的產出（不進 git），結構對應程�
   產生程式共用，但每版記錄產生時的 git commit，並打 git tag `robot-v<N>`，確保舊版可以重建。
 - **下游一律標明機器人版本**：robot 設定、USD、rule-based 參數、訓練產出都帶版本，例如 `outputs/robot_v1/control/rule_based/<run>/`、`outputs/robot_v1/control/flat_pipeline/<run>/`。
 - **run 資料夾不可覆寫**：run 名稱含日期與時間（例如 `iter1_ppo_20261005_1430`），程式遇到已存在的資料夾要停下來，不可覆蓋。
-- 每個機器人版本在 `outputs/robot_v<N>/summary.md` 整理 rule-based 與各輪訓練的比較，跨版本的比較放在根目錄的總表。
+- 各版本、各階段的數字整理在 `docs/results.md`（進 git，含跨版本比較）；`outputs/robot_v<N>/summary.md` 是不進 git 的詳細版（含影片連結），可以同步維護。
 - 資料夾結構以 2026-10-15 使用者確認的分層為準（見上方「專案架構與流程」）。
 
 ## 工作準則

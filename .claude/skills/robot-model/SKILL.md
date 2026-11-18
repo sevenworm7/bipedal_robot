@@ -8,7 +8,7 @@ description: Workflow for turning a URDF into a working Isaac Lab robot — desi
 - **實驗一（`ref_biped`）**：已完成（2026-09-18）。URDF 不可修改，所有修正都寫在 `archive/exp1_reference/shared/robots/ref_biped.py`；轉檔與檢查使用 `archive/exp1_reference/scripts/convert_ref_biped.py` 和 `check_ref_biped.py`。細節見 `archive/exp1_reference/CLAUDE.md`。實驗二可以直接參考這兩個腳本。
 - **實驗二（`custom_biped`）**：完整執行步驟 0–5，robot 設定放在根目錄的 `core/robots/custom_biped.py`。`references/` 只能讀取，不需沿用其中的設計。
 
-## 0. 先確認規格（`00_note.md` 中尚未決定）
+## 0. 先確認規格（尚未決定的項目見 `docs/backlog.md`，已定案的見 `docs/decisions.md`）
 動工前，先向使用者確認或提出建議：
 - 身高／腿長、總重，以及各部位的質量分配（腳掌應 ≤ 總重 5–8%）
 - 每隻腳的自由度：建議 6（hip yaw/roll/pitch、knee、ankle pitch/roll），最少 5；是否需要上半身
@@ -17,19 +17,20 @@ description: Workflow for turning a URDF into a working Isaac Lab robot — desi
 
 ## 1. 檔案結構（`hardware/`）
 ```
-params.yaml        # 唯一的參數來源：尺寸、質量、關節限制、致動器、PD 增益
-build_urdf.py      # params.yaml -> urdf/biped.urdf（基本形狀碰撞體，由形狀和質量計算慣量）
-urdf/biped.urdf    # 產出檔，禁止手動修改
-usd/biped.usd      # 由 URDF 轉換產出
+robot_v<N>/params.yaml                   # 唯一的參數來源：尺寸、質量、關節限制、致動器、PD 增益、接線順序
+generator/                               # 各版共用：build_parts.py、build_urdf.py、check_static.py、check_cable.py、build_viewer.py
+robot_v<N>/urdf/custom_biped_v<N>.urdf   # 產出檔，禁止手動修改
+simulation/robot_assets/usd/custom_biped_v<N>/  # 由 URDF 轉換產出（不進 git）
 ```
+完整的執行順序見 `hardware/generator/README.md`；版本凍結後（`FROZEN` 檔、tag `robot-v<N>`）不可重新產生，要改就開新版本。
 - 慣量由幾何形狀和質量計算（box/cylinder 公式），不要手動填數值。
 - 座標慣例：+X 前進、+Y 左、+Z 上；base 原點在骨盆中心；關節零位代表直立站姿。
 - 關節命名固定且左右對稱：`{left,right}_{hip_yaw,hip_roll,hip_pitch,knee,ankle_pitch,ankle_roll}`，順序與介面模組中的定義一致（實驗二 `core/`）。
 
 ## 2. 驗證
 ```powershell
-tools\isaacpy.cmd hardware\build_urdf.py
-tools\isaacpy.cmd tools\urdf_inspect.py hardware\urdf\biped.urdf
+.venv_cad\Scripts\python.exe hardware\generator\build_urdf.py --version <N>
+tools\isaacpy.cmd tools\urdf_inspect.py hardware\robot_v<N>\urdf\custom_biped_v<N>.urdf
 ```
 要求 warning 為 0（除非使用者同意保留），並檢查總重、腿長、關節範圍是否符合規格。
 
