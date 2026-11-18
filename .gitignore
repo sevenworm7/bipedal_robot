@@ -39,3 +39,6 @@ tools/bin/
 # Robot model versions keep their print files and visual meshes (a few MB, needed to rebuild a tagged version)
 !hardware/robot_v*/parts/stl/*.stl
 !hardware/robot_v*/meshes/*.stl
+
+# Curated, compressed evaluation videos (git LFS, see docs/videos/README.md)
+!docs/videos/**/*.mp4

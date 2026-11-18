@@ -43,7 +43,7 @@
 ```
 README.md               # 專案總覽（一頁）
 CLAUDE.md               # 工作規則
-docs/                   # 跨領域文件：progress、backlog、decisions、results、architecture
+docs/                   # 跨領域文件：progress、backlog、decisions、results、architecture；videos/ 精選影片（git LFS）
 hardware/               # generator/ 產生程式（含 check_cable.py）、robot_v<N>/ 每版的參數、零件、URDF、報告、design_calc；design_refs/ 設計構想與 HD-1910 資料包
 core/                   # interface.py、interface_v2.py、symmetry.py、robots/custom_biped.py
 simulation/             # env/（環境、地形、場景版本）、metrics、rollout、影片；robot_assets/（URDF → USD、模擬檢查、usd/ 不進 git）

@@ -1,0 +1,22 @@
+dest,source,note
+robot_v1/control/exp2_rule_based_medium_eval_20261001.mp4,outputs/robot_v1/control/rule_based/videos_rule_based_20261001_003931/videos/exp2_rule_based_medium_eval_20261001.mp4,規則式老師 100%／0%；尾巴擺動做側向平衡
+robot_v1/control/exp2_iter3_distill_medium_eval_20261001.mp4,outputs/robot_v1/control/flat_pipeline/iter3_videos_distill_20261001_132918/videos/exp2_iter3_distill_medium_eval_20261001.mp4,平地最終蒸餾 99%／1%（需要 base 線速度，不可部署）
+robot_v1/control/exp2_sim2real_student_v5_flat_v1_medium_eval_20261007.mp4,outputs/robot_v1/control/sim2real/videos_flat_v1_student_v5_20261007_010828/videos/exp2_sim2real_student_v5_flat_v1_medium_eval_20261007.mp4,student v5 平地 100%／0%
+robot_v1/control/exp2_sim2real_student_v5_dr_v1_medium_eval_20261007.mp4,outputs/robot_v1/control/sim2real/videos_dr_v1_student_v5_20261007_011525/videos/exp2_sim2real_student_v5_dr_v1_medium_eval_20261007.mp4,student v5 中等隨機化 100%／0%
+robot_v1/control/exp2_sim2real_student_v5_rough_eval_v1_medium_eval_20261007.mp4,outputs/robot_v1/control/sim2real/videos_rough_eval_v1_student_v5_20261007_012237/videos/exp2_sim2real_student_v5_rough_eval_v1_medium_eval_20261007.mp4,student v5 ±8 mm 凸起 94%／1%
+robot_v1/control/exp2_sim2real_student_v5_dr_rough_eval_v1_medium_eval_20261007.mp4,outputs/robot_v1/control/sim2real/videos_dr_rough_eval_v1_student_v5_20261007_012856/videos/exp2_sim2real_student_v5_dr_rough_eval_v1_medium_eval_20261007.mp4,student v5 隨機化＋地形 85.7%／3.2%（504 ep）
+robot_v1/control/exp2_sim2real_student_v5_dr_rough_eval_v1_failure_eval_20261007.mp4,outputs/robot_v1/control/sim2real/videos_dr_rough_eval_v1_student_v5_20261007_012856/videos/exp2_sim2real_student_v5_dr_rough_eval_v1_failure_eval_20261007.mp4,student v5 最難場景的失敗例（方向或速度未達標）
+robot_v1/control/exp2_sim2real_student_v5_gait_eval_v1_medium_eval_20261007.mp4,outputs/robot_v1/control/sim2real/videos_gait_eval_v1_student_v5_20261007_013452/videos/exp2_sim2real_student_v5_gait_eval_v1_medium_eval_20261007.mp4,student v5 站立／原地踏步／啟停 100%／0%
+robot_v1/control/exp2_sim2real_student_v3_dr_rough_eval_v1_medium_eval_20261006.mp4,outputs/robot_v1/control/sim2real/videos_dr_rough_eval_v1_student_v3_20261006_175158/videos/exp2_sim2real_student_v3_dr_rough_eval_v1_medium_eval_20261006.mp4,對照：student v3 跛行步態（左 49／右 14 mm，鏡像對稱訓練前）
+robot_v1/generalization/stress_v1_01_delay_060ms.mp4,outputs/robot_v1/evaluation/generalization/stress_v1_20261009/videos/medium/01_delay_060ms.mp4,伺服延遲 60 ms：通過（訓練範圍 0–40 ms）
+robot_v1/generalization/stress_v1_01_delay_080ms.mp4,outputs/robot_v1/evaluation/generalization/stress_v1_20261009/videos/medium/01_delay_080ms.mp4,伺服延遲 80 ms：開始失效（成功 75%）
+robot_v1/generalization/stress_v1_02_bumps_08mm.mp4,outputs/robot_v1/evaluation/generalization/stress_v1_20261009/videos/medium/02_bumps_08mm.mp4,凸起 8 mm：92%／3%
+robot_v1/generalization/stress_v1_02_bumps_12mm.mp4,outputs/robot_v1/evaluation/generalization/stress_v1_20261009/videos/medium/02_bumps_12mm.mp4,凸起 12 mm：跌倒 18%
+robot_v1/generalization/stress_v1_09_push_35cms.mp4,outputs/robot_v1/evaluation/generalization/stress_v1_20261009/videos/medium/09_push_35cms.mp4,推擠 0.35 m/s：跌倒 12%（訓練 0.25 m/s）
+robot_v1/generalization/stress_v1_05_motor_050pct.mp4,outputs/robot_v1/evaluation/generalization/stress_v1_20261009/videos/medium/05_motor_050pct.mp4,馬達力量 50%：仍通過
+robot_v1/generalization/stress_v2_07_steps_up_10mm.mp4,outputs/robot_v1/evaluation/generalization/stress_v2_20261009/videos/medium/07_steps_up_10mm.mp4,上 10 mm 台階：成功 40%、跌倒 20%（最明顯的弱點）
+robot_v1/generalization/stress_v2_06_slope_down_8deg.mp4,outputs/robot_v1/evaluation/generalization/stress_v2_20261009/videos/medium/06_slope_down_8deg.mp4,下坡 −8°：速度過快 1.36 倍，但幾乎不跌倒
+robot_v1/generalization/stress_v3_13_joint_offset_5deg.mp4,outputs/robot_v1/evaluation/generalization/stress_v3_20261015/videos/medium/13_joint_offset_5deg.mp4,關節零點偏差 5°：39%／跌倒 27%（實機要校正到 ±2°）
+robot_v1/generalization/stress_v3_16_combined_typical.mp4,outputs/robot_v1/evaluation/generalization/stress_v3_20261015/videos/medium/16_combined_typical.mp4,實機常見誤差組合（零點 2°＋IMU 3°＋遺失 5%）：99%／1%
+robot_v1/load_analysis/load_v1_04_flat_medium.mp4,outputs/robot_v1/evaluation/load_analysis/load_v1_20261015/videos/04_flat_medium.mp4,平地中速的馬達出力 HUD（hip pitch RMS 60%）
+robot_v1/load_analysis/load_v1_01_stand.mp4,outputs/robot_v1/evaluation/load_analysis/load_v1_20261015/videos/01_stand.mp4,靜止站立：5% 雙腳卡住，右 hip roll 頂在上限（backlog #1）

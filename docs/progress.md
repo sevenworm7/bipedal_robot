@@ -63,6 +63,7 @@ v2 的觀測、動作、控制頻率都和 v1 相同（10 DOF、student 210 維�
 
 ## Archive
 
+- 2026-11-18：精選影片 21 段（45.8 MB，git LFS）放進 `docs/videos/`。
 - 2026-11-18：文件整理，新增 `docs/`（本檔、`backlog.md`、`decisions.md`、`results.md`、`architecture.md`）；`hardware/v2_backlog.md` 拆到 `docs/backlog.md` 與 `hardware/robot_v2/design_calc.md`；sim2real 的 v1 紀錄拆到 `control/sim2real/log_robot_v1.md`。
 - 2026-11-18：robot v2 建模並凍結（腿長計算 → 產生零件與 URDF → 干涉、靜態、模擬檢查）。
 - 2026-11-18：使用者回報實機測試（2026-10-15 ～ 11-18），見 `deploy/test_log.md`。

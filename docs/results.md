@@ -1,7 +1,7 @@
 # 成果總表（各機器人版本）
 
 > 各階段的數字摘要，**進 git**（2026-11-18 起）。原本只在不進 git 的 `outputs/robot_v1/summary.md`，該檔仍保留影片連結與更多細節。
-> 表中的 run 路徑相對於 `outputs/robot_v<N>/`；每一輪的過程在各資料夾的 README 或 `log_robot_v<N>.md`。
+> 精選影片（壓縮版，git LFS）在 [`videos/`](videos/README.md)。表中的 run 路徑相對於 `outputs/robot_v<N>/`；每一輪的過程在各資料夾的 README 或 `log_robot_v<N>.md`。
 > 新版本的結果加在對應段落，並在「跨版本比較」補一列。
 
 ## 跨版本比較（最終可部署模型，sim-to-real 判定，100 episode、seed 42，成功率／跌倒率）
@@ -32,6 +32,8 @@
 | 第 2 輪蒸餾 | `control/flat_pipeline/iter2_distill_20261001_122314` | 100% | 0% | 1.92 m | 1.003 | 0.034／0.056 m | 2.1／3.5° | 100%／0% |
 | 第 3 輪 PPO | `control/flat_pipeline/iter3_eval_ppo_20261001_130713` | 100% | 0% | 2.01 m | 1.054 | 0.036／0.055 m | 1.8／2.8° | 100%／0% |
 | 第 3 輪蒸餾（最終） | `control/flat_pipeline/iter3_distill_20261001_132024` | 99% | 1% | 1.98 m | 1.053 | 0.034／0.055 m | 1.8／3.1° | 99%／1% |
+
+影片（medium）：[rule-based 老師](videos/robot_v1/control/exp2_rule_based_medium_eval_20261001.mp4)、[平地最終蒸餾](videos/robot_v1/control/exp2_iter3_distill_medium_eval_20261001.mp4)。
 
 篩選（側向門檻／通過率／保留 episode）：第 1 輪 0.05 m／45%／925；第 2 輪 0.05 m／44%／895；第 3 輪 0.04 m／36%／747。
 
@@ -70,6 +72,7 @@
 部署門檻（使用者 2026-10-06 確認）：平地與中等隨機化 ≥ 95%、不規則地形 ≥ 85%、各難度跌倒 ≤ 5%。
 student v3 通過但步態跛行（左右步長 49／14 mm）；v4 加鏡像對稱後對稱（0.003）；**最終採用 student v5**：對稱（0.025）、無自發停頓、
 側向漂移 p50 平地 0.10 m／中等隨機化 0.14 m（v3 為 0.57／0.31 m），組合場景 504 episode 85.7%／跌倒 3.2%。
+影片（student v5，medium）：[`flat_v1`](videos/robot_v1/control/exp2_sim2real_student_v5_flat_v1_medium_eval_20261007.mp4)、[`dr_v1`](videos/robot_v1/control/exp2_sim2real_student_v5_dr_v1_medium_eval_20261007.mp4)、[`rough_eval_v1`](videos/robot_v1/control/exp2_sim2real_student_v5_rough_eval_v1_medium_eval_20261007.mp4)、[`dr_rough_eval_v1`](videos/robot_v1/control/exp2_sim2real_student_v5_dr_rough_eval_v1_medium_eval_20261007.mp4)（[失敗例](videos/robot_v1/control/exp2_sim2real_student_v5_dr_rough_eval_v1_failure_eval_20261007.mp4)）、[`gait_eval_v1`](videos/robot_v1/control/exp2_sim2real_student_v5_gait_eval_v1_medium_eval_20261007.mp4)；對照：[student v3 跛行](videos/robot_v1/control/exp2_sim2real_student_v3_dr_rough_eval_v1_medium_eval_20261006.mp4)。
 已知限制：沒有外部定位，側向位置無法修正（由操作者或上層控制給方向）；馬達參數範圍是未實測的估計值。
 
 ## 泛化與壓力測試（evaluation/generalization，2026-10-09，不重新訓練）
@@ -89,6 +92,8 @@ student v3 通過但步態跛行（左右步長 49／14 mm）；v4 加鏡像對�
 | 上坡（未訓練，stress_v2） | — | **到 5°** | 8° 成功 80%（變慢 0.79 倍，不跌倒） |
 | 下坡（未訓練，stress_v2） | — | **−3°**（97%） | −5° 79%、−8° 9%：速度過快（1.21／1.36 倍），**跌倒僅 1%** |
 | 台階（未訓練，stress_v2） | — | 上下 5 mm、下 10 mm（95%） | **上 10 mm：成功 40%、跌倒 20%** |
+
+代表性影片（通過與失效例子）見 [`videos/README.md`](videos/README.md)。
 
 最明顯的弱點：上 10 mm 台階、超過 10 mm 的凸起、延遲 ≥ 80 ms、推擠 ≥ 0.35 m/s；下坡不會跌倒，但速度控制不住。
 

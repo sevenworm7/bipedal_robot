@@ -36,6 +36,7 @@
 | 尚未解決的問題、待實物確認（所有領域） | `docs/backlog.md`（附日期、數字或 run 路徑；解決後改狀態，不刪除） |
 | 使用者確認的決定 | `docs/decisions.md`（一筆一列；推翻時新增一列，舊列標「被 #N 取代」） |
 | 各版本、各階段的數字 | `docs/results.md`（進 git；`outputs/` 內的報告與影片是詳細版） |
+| 重要的評估影片 | `docs/videos/`（壓縮複本、git LFS；`manifest.csv` ＋ `tools/archive_videos.py`，只新增不覆蓋） |
 | 資料夾分工、依賴、目錄結構、沿革 | `docs/architecture.md` |
 | 某資料夾的用途、執行方式、該階段紀錄 | 該資料夾的 `README.md`；紀錄太長時拆成 `log_robot_v<N>.md`（例如 `control/sim2real/`） |
 | 某機器人版本的規格、組裝、接線、設計計算 | `hardware/robot_v<N>/`（README、CHANGELOG、ASSEMBLY、design_calc） |

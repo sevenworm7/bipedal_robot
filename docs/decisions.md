@@ -27,3 +27,4 @@
 | 19 | 2026-11-18 | hardware | 模型要規定關節範圍，且要和實體一致（等於或略小於實體極限），同時用在 URDF、模擬、訓練與 viewer；兩腳互撞由模擬的自我碰撞擋住 | 訓練出的動作本來就在合理範圍，模型和實體要一致才不會有落差 | 本檔；實測待辦見 `backlog.md` #13 | 有效 |
 | 20 | 2026-11-18 | control | v2 訓練接續 v1 的 sim2real 模型（零樣本評估 → teacher 微調 → student 蒸餾 → 評估），不重跑 rule-based、BC、平地訓練；門檻同 v1 | 觀測、動作、控制頻率都沒變 | [`progress.md`](progress.md) | 有效 |
 | 21 | 2026-11-18 | 專案 | 文件整理：計畫與狀態只寫 `docs/progress.md`，待辦寫 `docs/backlog.md`，決策寫本檔，數字寫 `docs/results.md`（進 git）；資料夾 README 只寫用途、執行方式和該階段的紀錄 | 計畫原本散在 6 份 README，成果總表在不進 git 的 `outputs/` | [`README.md`](README.md) | 有效 |
+| 22 | 2026-11-18 | 專案 | 重要影片壓縮後放進 `docs/videos/`，用 git LFS 追蹤（只限 `docs/videos/**/*.mp4`）；方案 A：以 medium 為主，加代表性失效例子，每版約 50 MB；只新增不覆蓋 | `outputs/` 不進 git；專案之後要放到 GitHub，趁影片還沒 commit 時用 LFS，避免日後改寫歷史 | [`videos/README.md`](videos/README.md) | 有效 |

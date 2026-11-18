@@ -11,6 +11,7 @@
 | 還沒解決的問題、待實物確認的項目 | [`backlog.md`](backlog.md) |
 | 為什麼這樣決定 | [`decisions.md`](decisions.md) |
 | 各版本、各階段的數字 | [`results.md`](results.md) |
+| 重要的評估影片（壓縮版，git LFS） | [`videos/`](videos/README.md) |
 | 資料夾分工、依賴方向、目錄結構 | [`architecture.md`](architecture.md) |
 | 工作規則（給 Claude 與協作者） | 根目錄 [`CLAUDE.md`](../CLAUDE.md) |
 | 某個機器人版本的規格、組裝、接線 | `hardware/robot_v<N>/`（README、CHANGELOG、ASSEMBLY） |
@@ -26,4 +27,5 @@
 - **新發現的問題**：加到 `backlog.md`（不論領域），附日期、現象的數字或 run 路徑；解決後改狀態，不刪除。
 - **使用者確認的決定**：加一列到 `decisions.md`；推翻時新增一列並標記舊列被取代。
 - **數字**：每個階段完成後，把固定評估集的結果加到 `results.md`（進 git）。`outputs/` 裡的報告和影片仍是詳細版。
+- **影片**：重要的影片在 `videos/manifest.csv` 加一列，跑 `tools\isaacpy.cmd tools\archive_videos.py`；只新增不覆蓋，每版約 50 MB 以內。
 - **資料夾 README**：只寫用途、內容、執行方式和該階段的紀錄，連到這裡的文件，不寫「下一步」。
