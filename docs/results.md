@@ -9,29 +9,51 @@
 | 機器人 | 模型 | `flat_v1` | `dr_v1` | `rough_eval_v1` | `dr_rough_eval_v1` | `gait_eval_v1` |
 |---|---|---|---|---|---|---|
 | robot v1（0.696 kg） | student v5 | 100%／0% | 100%／0% | 94%／1% | 83%／2%（504 ep：85.7%／3.2%） | 100%／0% |
-| robot v2（0.670 kg） | v1 student v5 零樣本 | 10%／0% | 3%／0% | 0%／0% | 0%／0% | 36%／0% |
-| robot v2 | v2 student（微調後） | — | — | — | — | — |
+| robot v2（0.670 kg） | v1 student v5 零樣本 | 92%／0% | 66%／0% | 75%／0% | 23%／0% | 100%／0% |
+| robot v2 | **student v2ft**（微調後） | **100%／0%** | **100%／0%** | **99%／0%** | **93%／1%（504 ep：92.7%／0.4%）** | **100%／0%** |
 
 門檻：`flat_v1` 與 `dr_v1` ≥ 95%、`rough_eval_v1` ≥ 85%，各難度跌倒率 ≤ 5%。
 
 # robot v2
 
-機器人：`custom_biped` v2（tag `robot-v2`，0.670 kg；大腿 70、小腿 55 mm，膝 0–110°；其他同 v1）。評估集、判定與 v1 相同。過程見 [`control/sim2real/log_robot_v2.md`](../control/sim2real/log_robot_v2.md)。
+機器人：`custom_biped` v2（tag `robot-v2`，0.670 kg；大腿 70、小腿 55 mm，膝 0–110°；其他同 v1）。評估集、判定與 v1 相同（sim-to-real 判定，`rescore.py`）。過程見 [`control/sim2real/log_robot_v2.md`](../control/sim2real/log_robot_v2.md)。
+run 路徑相對於 `outputs/robot_v2/control/sim2real/`。
 
-## 第 0 步：v1 student v5 零樣本（2026-11-18）
+## v2 訓練（接續 v1 模型，2026-11-18）
 
-run：`control/sim2real/eval_<場景>_v1s5_zeroshot_20261118_*`。
+| 步驟 | run | 內容 |
+|---|---|---|
+| 0 零樣本 | `eval_<場景>_v1s5_zeroshot_20261118_*` | v1 student v5 直接放到 v2 |
+| 1 teacher 微調 | `teacher_v2ft_20261118_221706`（`model_1499.pt`） | 從 v1 teacher v5 接續 1500 iterations，`dr_rough_gait_train_v2`、`obs_lateral`、鏡像對稱；49 分鐘 |
+| 2 student 蒸餾 | `student_v2ft_20261118_230657`（`student.pt`） | DAgger 120 輪、含鏡像樣本；val_mse 0.0028；13 分鐘 |
+| 3 評估 | `eval_<場景>_v2s1_20261118_*`、`eval_dr_rough_eval_v1_v2s1_504_*`、`eval_dr_rough_eval_v1_v2t1_*` | 固定評估集 |
 
-| 場景 | 成功 | 跌倒 | 平均距離 | 速度比 p50 | 側向偏移 p50 | 方向誤差 p50 | 推擠 成功／跌倒 |
-|---|---|---|---|---|---|---|---|
-| `flat_v1` | 10% | 0% | 1.58 m | 0.85 | 0.107 m | 0.9° | 1%／0% |
-| `dr_v1` | 3% | 0% | 1.46 m | 0.78 | 0.231 m | 2.8° | 1%／0% |
-| `rough_eval_v1` | 0% | 0% | 1.48 m | 0.78 | 0.142 m | 4.5° | 0%／1% |
-| `dr_rough_eval_v1` | 0% | 0% | 1.33 m | 0.71 | 0.199 m | 9.6° | 0%／4% |
-| `gait_eval_v1` | 36% | 0% | 1.38 m | 0.83 | 0.056 m | 1.7° | 47%／0% |
+每格為成功率／跌倒率（100 episode、seed 42）：
 
-- 對照：同一模型在 v1 上 `flat_v1` 速度比 p50 1.09（本次重跑 8 episode）。
-- **不跌倒，但走不夠快**：腿變短，同樣的關節擺幅步幅變小，速度只有指令的 71–85%，超出 ±25% 的成功判定。結論：需要微調（第 1 步）。
+| 模型 | `flat_v1` | `dr_v1` | `rough_eval_v1` | `dr_rough_eval_v1` | `gait_eval_v1` |
+|---|---|---|---|---|---|
+| v1 student v5 零樣本 | 92%／0% | 66%／0% | 75%／0% | 23%／0% | 100%／0% |
+| teacher v2ft（特權，參考） | — | — | — | 95%／0% | — |
+| **student v2ft（v2 最終）** | **100%／0%** | **100%／0%** | **99%／0%** | **93%／1%（504 ep：92.7%／0.4%）** | **100%／0%** |
+
+student v2ft 的細項（未跌倒的 episode）：
+
+| 場景 | 平均距離 | 速度比 p50 | 最大側向偏移 p50 | 最大方向誤差 p50 | 推擠 0.15 m/s 跌倒 |
+|---|---|---|---|---|---|
+| `flat_v1` | 2.05 m | 1.07 | 0.161 m | 1.4° | 0% |
+| `dr_v1` | 1.98 m | 1.04 | 0.103 m | 2.1° | 0% |
+| `rough_eval_v1` | 2.01 m | 1.05 | 0.125 m | 3.5° | 0% |
+| `dr_rough_eval_v1` | 1.96 m | 1.02 | 0.158 m | 6.0° | 1% |
+| `gait_eval_v1` | 1.78 m | 1.08 | 0.133 m | 1.7° | 0% |
+
+- **零樣本**：不跌倒，失敗主要來自速度。v2 的腿較短，同樣的關節擺幅步幅較小，所以速度比 p50 只有 0.71–0.85（v1 上是 1.09）；速度在 ±25% 內的比例在 `dr_rough_eval_v1` 只有 30%，方向誤差 < 10° 的比例也只有 56%。
+- **微調後**：速度比回到 1.02–1.08，全部通過門檻，而且比 v1 student v5 更好（`rough_eval_v1` 94 → 99%、組合場景 504 episode 85.7 → 92.7%、跌倒 3.2 → 0.4%）。
+- 和 v1 相同的弱點：沒有外部定位，側向位置無法修正（側向偏移 p50 0.10–0.16 m，和 v1 同級）。
+- **步態**（`gait_symmetry.py`，平地 0.10 m/s、1.6 Hz）：左右步長 p50 30.6／30.6 mm（名目 31.2 mm），不對稱度 0.00（v1 student v5 0.025）；左腳仍有少量修正小碎步（步長 p10 −24 mm）。
+- **自發停頓**（`stop_analysis.py`）：`dr_rough_eval_v1` 0%；`gait_eval_v1` 有行走指令時停住 1.0%（0.28–0.32 s，站立後重新起步），和 v1 student v4 的 1.5% 同級。
+- 組合場景的失敗幾乎都是方向誤差 > 10°（不跌倒、速度合格的 episode 占 99%）。
+
+影片（student v2ft，medium）：[`flat_v1`](videos/robot_v2/control/exp2_sim2real_student_v2ft_flat_v1_medium_eval_20261118.mp4)、[`dr_v1`](videos/robot_v2/control/exp2_sim2real_student_v2ft_dr_v1_medium_eval_20261118.mp4)、[`rough_eval_v1`](videos/robot_v2/control/exp2_sim2real_student_v2ft_rough_eval_v1_medium_eval_20261118.mp4)、[`dr_rough_eval_v1`](videos/robot_v2/control/exp2_sim2real_student_v2ft_dr_rough_eval_v1_medium_eval_20261118.mp4)（[失敗例](videos/robot_v2/control/exp2_sim2real_student_v2ft_dr_rough_eval_v1_failure_eval_20261118.mp4)）、[`gait_eval_v1`](videos/robot_v2/control/exp2_sim2real_student_v2ft_gait_eval_v1_medium_eval_20261119.mp4)。完整三種速度在 `outputs/robot_v2/control/sim2real/videos_<場景>_student_v2ft_*`。
 
 # robot v1
 

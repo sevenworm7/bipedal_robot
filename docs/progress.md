@@ -3,36 +3,33 @@
 > **計畫、狀態、下一步只寫在這裡**（2026-11-18 文件整理後的規則）。各資料夾的 README 只寫用途、執行方式與該階段的紀錄，不再寫「下一步」。
 > 待辦問題見 [`backlog.md`](backlog.md)，決策見 [`decisions.md`](decisions.md)，數字見 [`results.md`](results.md)。
 
-## 目前狀態（2026-11-18）
+## 目前狀態（2026-11-19）
 
 - 分支 `robot-v2`（已 push 到 GitHub `origin`；合併回 `master` 等使用者決定）；robot v2 已凍結（tag `robot-v2`：大腿 70、小腿 55 mm、膝 0–110°，接線方案 B）。
-- 進行中：**robot v2 接續訓練**（下方「下一步」）。
+- **robot v2 訓練完成（2026-11-19）**：最終模型 **student v2ft**（`outputs/robot_v2/control/sim2real/student_v2ft_20261118_230657/student.pt`），通過全部部署門檻，詳見下方與 [`results.md`](results.md)「robot v2」。
 - 實機：v1 實體可走約 8 步後腿軟跌倒（電流問題由其他成員處理）；v2 的大腿、小腿尚未重印。
 
-## 下一步：robot v2 接續訓練（使用者 2026-11-18 同意）
+## 下一步
 
-v2 的觀測、動作、控制頻率都和 v1 相同（10 DOF、student 210 維），所以**不重跑 rule-based、BC 和平地訓練**，直接接續 v1 的 sim2real 模型。
-執行時設 `CUSTOM_BIPED_VERSION=2`，產出放在 `outputs/robot_v2/control/sim2real/`，過程寫進 `control/sim2real/log_robot_v2.md`，數字寫進 [`results.md`](results.md)。
-執行方式見 [`control/sim2real/README.md`](../control/sim2real/README.md)「程式與執行方式」。
-
-| 步驟 | 內容 | 起點 | 預估 | 狀態 |
-|---|---|---|---|---|
-| 0 | **零樣本評估**：v1 的 student v5 直接放到 v2 上，跑固定評估集（`flat_v1`、`dr_v1`、`rough_eval_v1`、`dr_rough_eval_v1`、`gait_eval_v1`） | `outputs/robot_v1/control/sim2real/student_v5_20261007_003835/student.pt` | 約 10 分鐘 | 完成（2026-11-18）：不跌倒但速度比 0.71–0.85，成功 0–36%，需要微調 |
-| 1 | **teacher 微調**：在 v2 上用 v1 最後一輪相同的場景與獎勵接續訓練；若第 0 步已接近門檻就縮短 | `outputs/robot_v1/control/sim2real/teacher_v5_20261006_234626/` | 約 50–80 分鐘 | 進行中（`teacher_v2ft`，1500 iterations） |
-| 2 | **student 蒸餾**（DAgger，含鏡像樣本） | student v5 | 約 10 分鐘 | 未開始 |
-| 3 | **評估**：同一組固定評估集與門檻，產生和 v1 的比較表與影片（`/eval-video`） | — | 約 30 分鐘 | 未開始 |
-
-- **沿用 v1 的決定**（`control/sim2real/README.md`「開始前確認的事項」）：觀測（5 步歷史）、隨機化範圍、指令範圍（最高 0.15 m/s）、sim-to-real 判定（`scoring.py`）。
-- **部署門檻不變**：`flat_v1` 與中等隨機化成功率 ≥ 95%、不規則地形 ≥ 85%，各難度跌倒率 ≤ 5%。
-- **風險**：v2 的原地抬腳上限從 56 mm 降到 24 mm，不規則地形（最難 ±8 mm）可能比 v1 差。若過不了門檻，要先和使用者確認是降低地形難度還是繼續加強訓練。
-- 和高度有關的設定：`fall_com_height` 由 `NOMINAL_COM_HEIGHT` 自動推導；`fall_foot_height` 0.026（踝高不變，可沿用）。
-  `control/sim2real/config.py` 的 `init_checkpoint`、`control/flat_pipeline/config.py` 的 teacher_params 是 v1 專用，跑 v2 時要用參數指定。
-
-## 之後的步驟
-
-1. v2 訓練通過門檻 → 匯出 student（TorchScript／ONNX）與實機說明（`backlog.md` #9）。
+1. 匯出 v2 student（TorchScript／ONNX）與實機說明：輸入正規化、觀測歷史順序、動作換算成伺服位置值（`SERVO_MAP`）（`backlog.md` #9）。**開始前和使用者確認格式與板上執行環境。**
 2. 重印 v2 的大腿、小腿，依 `hardware/robot_v2/ASSEMBLY.md` 改裝與接線（先在實物上比對最長的幾段線）。
 3. 實機校正與測試（下表）。
+4. （可選）v2 的泛化／壓力測試（`evaluation/generalization/`）與馬達負載分析，確認 v1 的結論在 v2 上仍成立。
+
+## robot v2 接續訓練（使用者 2026-11-18 同意；2026-11-19 完成）
+
+v2 的觀測、動作、控制頻率都和 v1 相同（10 DOF、student 210 維），所以不重跑 rule-based、BC 和平地訓練，直接接續 v1 的 sim2real 模型。
+過程見 [`control/sim2real/log_robot_v2.md`](../control/sim2real/log_robot_v2.md)。成功率一律用 `rescore.py` 的 sim-to-real 判定（`evaluate.py` 印出的是舊判定，見 log）。
+
+| 步驟 | 內容 | run（`outputs/robot_v2/control/sim2real/`） | 耗時 | 結果 |
+|---|---|---|---|---|
+| 0 | 零樣本評估：v1 student v5 直接放到 v2 | `eval_<場景>_v1s5_zeroshot_20261118_*` | 6 分鐘 | 不跌倒，但速度比 0.71–0.85；`flat_v1` 92%、`dr_v1` 66%、`rough_eval_v1` 75%、組合 23% → 需要微調 |
+| 1 | teacher 微調（v1 第五輪相同設定，1500 iterations） | `teacher_v2ft_20261118_221706` | 49 分鐘 | 組合場景 95%／0%（特權） |
+| 2 | student 蒸餾（DAgger 120 輪，含鏡像樣本） | `student_v2ft_20261118_230657` | 13 分鐘 | val_mse 0.0028 |
+| 3 | 評估、對稱、停頓、影片 | `eval_<場景>_v2s1_*`、`videos_<場景>_student_v2ft_*` | 約 50 分鐘 | **`flat_v1` 100%／0%、`dr_v1` 100%／0%、`rough_eval_v1` 99%／0%、組合 92.7%／0.4%（504 ep）、`gait_eval_v1` 100%／0%**；對稱 0.00、無自發停頓 |
+
+- 和 v1 student v5 相比，不規則地形 94 → 99%、組合場景 85.7 → 92.7%、跌倒 3.2 → 0.4%。原本擔心的風險（原地抬腳上限 56 → 24 mm）沒有出現。
+- 剩下的弱點和 v1 相同：沒有外部定位，側向偏移 p50 0.10–0.16 m／20 秒；組合場景的失敗主要是方向誤差 > 10°。
 
 ## 各階段狀態
 
@@ -47,7 +44,7 @@ v2 的觀測、動作、控制頻率都和 v1 相同（10 DOF、student 210 維�
 | 馬達負載分析 | `evaluation/load_analysis/` | 完成（2026-10-15） | 各關節 RMS ≤ 額定 70%；整機平均約 3 A、峰值 8.8 A |
 | 實機部署（v1） | `deploy/` | **進行中** | 實體已列印組裝、芒果磚控制；可走約 8 步後腿軟跌倒 |
 | 機器人模型 v2 | `hardware/robot_v2/` | 凍結（2026-11-18，tag `robot-v2`） | 縮短腿讓馬達線夠長；只需重印大腿、小腿；模擬站立通過 |
-| **v2 訓練（接續 v1 模型）** | `control/sim2real/` | **下一步** | — |
+| v2 訓練（接續 v1 模型） | `control/sim2real/` | 完成（2026-11-19） | **student v2ft**：平地與隨機化 100%、凹凸 99%、組合 92.7%／跌倒 0.4%（504 ep） |
 
 ### 實機部署的子步驟（定義見 [`deploy/README.md`](../deploy/README.md)）
 
@@ -63,6 +60,7 @@ v2 的觀測、動作、控制頻率都和 v1 相同（10 DOF、student 210 維�
 
 ## Archive
 
+- 2026-11-19：robot v2 接續訓練完成（零樣本 → teacher 微調 → student 蒸餾 → 評估），student v2ft 通過全部門檻；v2 影片 6 段（18.6 MB）放進 `docs/videos/robot_v2/`。
 - 2026-11-18：精選影片 21 段（45.8 MB，git LFS）放進 `docs/videos/`。
 - 2026-11-18：文件整理，新增 `docs/`（本檔、`backlog.md`、`decisions.md`、`results.md`、`architecture.md`）；`hardware/v2_backlog.md` 拆到 `docs/backlog.md` 與 `hardware/robot_v2/design_calc.md`；sim2real 的 v1 紀錄拆到 `control/sim2real/log_robot_v1.md`。
 - 2026-11-18：robot v2 建模並凍結（腿長計算 → 產生零件與 URDF → 干涉、靜態、模擬檢查）。

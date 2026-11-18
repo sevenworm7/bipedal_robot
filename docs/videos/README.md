@@ -33,3 +33,14 @@
 | [`generalization/stress_v3_16_combined_typical.mp4`](robot_v1/generalization/stress_v3_16_combined_typical.mp4) | 實機常見誤差組合（零點 2°＋IMU 3°＋遺失 5%）：99%／1% |
 | [`load_analysis/load_v1_04_flat_medium.mp4`](robot_v1/load_analysis/load_v1_04_flat_medium.mp4) | 平地中速的馬達出力 HUD（hip pitch RMS 60%） |
 | [`load_analysis/load_v1_01_stand.mp4`](robot_v1/load_analysis/load_v1_01_stand.mp4) | 靜止站立：5% 雙腳卡住，右 hip roll 頂在上限（backlog #1） |
+
+## robot v2（6 段，共 18.6 MB）
+
+| 影片 | 內容 |
+|---|---|
+| [`control/exp2_sim2real_student_v2ft_flat_v1_medium_eval_20261118.mp4`](robot_v2/control/exp2_sim2real_student_v2ft_flat_v1_medium_eval_20261118.mp4) | v2 student v2ft 平地 100%／0% |
+| [`control/exp2_sim2real_student_v2ft_dr_v1_medium_eval_20261118.mp4`](robot_v2/control/exp2_sim2real_student_v2ft_dr_v1_medium_eval_20261118.mp4) | v2 student v2ft 中等隨機化 100%／0% |
+| [`control/exp2_sim2real_student_v2ft_rough_eval_v1_medium_eval_20261118.mp4`](robot_v2/control/exp2_sim2real_student_v2ft_rough_eval_v1_medium_eval_20261118.mp4) | v2 student v2ft 不規則地形 ±8 mm 99%／0% |
+| [`control/exp2_sim2real_student_v2ft_dr_rough_eval_v1_medium_eval_20261118.mp4`](robot_v2/control/exp2_sim2real_student_v2ft_dr_rough_eval_v1_medium_eval_20261118.mp4) | v2 student v2ft 隨機化＋地形 93%／1% |
+| [`control/exp2_sim2real_student_v2ft_dr_rough_eval_v1_failure_eval_20261118.mp4`](robot_v2/control/exp2_sim2real_student_v2ft_dr_rough_eval_v1_failure_eval_20261118.mp4) | v2 student v2ft 隨機化＋地形的失敗例（不跌倒，方向誤差超過 10°） |
+| [`control/exp2_sim2real_student_v2ft_gait_eval_v1_medium_eval_20261119.mp4`](robot_v2/control/exp2_sim2real_student_v2ft_gait_eval_v1_medium_eval_20261119.mp4) | v2 student v2ft 步態多樣性（站立／原地／變速）100%／0% |

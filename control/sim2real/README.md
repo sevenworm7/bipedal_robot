@@ -1,6 +1,6 @@
 # control/sim2real：sim-to-real 強健性訓練（實驗二）
 
-**狀態：robot v1 完成（2026-10-07），最終模型 student v5，通過全部部署門檻；robot v2 的接續訓練即將開始（計畫與進度只寫在 [`docs/progress.md`](../../docs/progress.md)）。** 起點：`control/flat_pipeline` 的最終蒸餾模型。
+**狀態：robot v1 完成（2026-10-07，最終模型 student v5）；robot v2 接續訓練完成（2026-11-19，最終模型 student v2ft），兩者都通過全部部署門檻（進度只寫在 [`docs/progress.md`](../../docs/progress.md)）。** 起點：`control/flat_pipeline` 的最終蒸餾模型。
 產出：`outputs/robot_v<N>/control/sim2real/`（`CUSTOM_BIPED_VERSION` 環境變數選機器人版本）；各模型的數字總表在 [`docs/results.md`](../../docs/results.md)。
 
 **2026-10-09 起**：原 `04_sim2real/` 併入這裡（訓練屬於 03「產生學生」），訓練範圍以外的壓力測試移到 [`evaluation/generalization/`](../../evaluation/generalization/README.md)。
@@ -37,7 +37,7 @@
 | student 蒸餾 | `tools\isaacpy.cmd control\sim2real\student_distill.py --teacher <teacher model_*.pt> --tag <名稱> --symmetry --reward_preset obs_lateral --scenario dr_rough_gait_train_v2` |
 | 固定集評估 | `tools\isaacpy.cmd control\sim2real\evaluate.py --scenario <場景> --agent student:<student.pt>`（`policy:<ckpt>` 也可；`--episodes 504` 加大樣本） |
 | 回歸檢查 | `evaluate.py --scenario flat_v1 --agent policy:<flat_pipeline 最終 model.pt> --compare <參考 stats.json>`（修改 `simulation/env` 後必跑，必須完全一致） |
-| 重新計分 | `tools\isaacpy.cmd control\sim2real\rescore.py <eval 資料夾…>`（sim-to-real 成功判定，不需要模擬） |
+| 重新計分 | `tools\isaacpy.cmd control\sim2real\rescore.py <eval 資料夾…>`（sim-to-real 成功判定，不需要模擬；**門檻一律看這個**，`evaluate.py` 印出的 success 是 02／03 的舊判定） |
 | 評估影片 | `tools\isaacpy.cmd control\sim2real\record_videos.py --scenario <場景> --agent student:<student.pt> --tag <名稱> --enable_cameras` |
 | 左右對稱 | `tools\isaacpy.cmd control\sim2real\gait_symmetry.py --agent <agent> --tag <名稱>` |
 | 自發停頓 | `tools\isaacpy.cmd control\sim2real\stop_analysis.py --scenario <場景> --agent <agent> --tag <名稱>` |
@@ -60,14 +60,14 @@
 | `evaluate.py`、`record_videos.py` | 固定集評估、評估影片（`/eval-video` 格式，指令會變時 HUD 顯示 `cmd now`） |
 | `gait_symmetry.py`、`stop_analysis.py`、`check_symmetry.py`、`check_env_v2.py` | 診斷：左右步長、自發停頓、鏡像映射、v2 觀測 |
 
-最終模型：`outputs/robot_v1/control/sim2real/student_v5_20261007_003835/student.pt`（210 維輸入，介面 `core/interface_v2.py` 的 `student`）。
+最終模型：v1 `outputs/robot_v1/control/sim2real/student_v5_20261007_003835/student.pt`；v2 `outputs/robot_v2/control/sim2real/student_v2ft_20261118_230657/student.pt`（都是 210 維輸入，介面 `core/interface_v2.py` 的 `student`）。
 
 ## 執行紀錄
 
 | 機器人 | 紀錄 | 內容 |
 |---|---|---|
 | robot v1 | [`log_robot_v1.md`](log_robot_v1.md) | 階段一～四、第三～五輪訓練（2026-10-06 ～ 10-07）、產出清理 |
-| robot v2 | [`log_robot_v2.md`](log_robot_v2.md) | 接續 v1 模型的微調，計畫見 [`docs/progress.md`](../../docs/progress.md) |
+| robot v2 | [`log_robot_v2.md`](log_robot_v2.md) | 接續 v1 模型：零樣本 → teacher 微調 → student 蒸餾 → 評估（2026-11-18 ～ 11-19），最終 student v2ft |
 
 ## 結論（2026-10-07，使用者決定模擬測試告一段落）
 
