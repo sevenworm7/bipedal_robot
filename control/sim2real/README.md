@@ -317,3 +317,20 @@
 所有 `config.yaml`、`stats.json`、`history.json`、`episodes.pt`、TensorBoard log 與 logs 都保留；刪除後重新載入 30 個保留模型，全部正常。
 
 訓練範圍以外的壓力測試見 [`evaluation/generalization/`](../../evaluation/generalization/README.md)。
+
+## robot v2 接續訓練（計畫，使用者 2026-11-18 同意）
+
+起因與 v2 的規格見 [`hardware/robot_v2/`](../../hardware/robot_v2/README.md)（tag `robot-v2`：大腿 70、小腿 55 mm、膝 0–110°）。
+v2 的觀測、動作、控制頻率都和 v1 相同（10 DOF、student 210 維），所以**不重跑 rule-based、BC 和平地訓練**，直接接續 v1 的 sim2real 模型。
+執行時設 `CUSTOM_BIPED_VERSION=2`，產出放在 `outputs/robot_v2/control/sim2real/`，比較表寫入 `outputs/robot_v2/summary.md`。
+
+| 步驟 | 內容 | 起點 | 預估 |
+|---|---|---|---|
+| 0 | **零樣本評估**：v1 的 student v5 直接放到 v2 上，跑固定評估集（`flat_v1`、`dr_v1`、`rough_eval_v1`、`dr_rough_eval_v1`、`gait_eval_v1`） | `outputs/robot_v1/control/sim2real/student_v5_20261007_003835/student.pt` | 約 10 分鐘 |
+| 1 | **teacher 微調**：在 v2 上用 v1 最後一輪相同的場景與獎勵接續訓練；若第 0 步已接近門檻就縮短 | `outputs/robot_v1/control/sim2real/teacher_v5_20261006_234626/` | 約 50–80 分鐘 |
+| 2 | **student 蒸餾**（DAgger，含鏡像樣本） | student v5 | 約 10 分鐘 |
+| 3 | **評估**：同一組固定評估集與門檻，產生和 v1 的比較表與影片（`/eval-video`） | — | 約 30 分鐘 |
+
+- **沿用 v1 的決定**（本檔「開始前確認的事項」）：觀測（5 步歷史）、隨機化範圍、指令範圍（最高 0.15 m/s）、sim-to-real 判定（`scoring.py`）。
+- **部署門檻不變**：`flat_v1` 與中等隨機化成功率 ≥ 95%、不規則地形 ≥ 85%，各難度跌倒率 ≤ 5%。
+- **風險**：v2 的原地抬腳上限從 56 mm 降到 24 mm，不規則地形（最難 ±8 mm）可能比 v1 差。若過不了門檻，要先和使用者確認是降低地形難度還是繼續加強訓練。
