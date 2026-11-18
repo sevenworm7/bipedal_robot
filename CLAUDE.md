@@ -122,6 +122,7 @@ commit 前的同步檢查要包含 `docs/`。
 - 耗時的模擬或訓練使用 `run_in_background` 執行，不要一直輪詢。
 - 回報結果時，要附上實際數字（跌倒率、平均行走距離、側向偏移），不可只寫「看起來正常」。
 - 使用者要求時才 commit；commit 前確認沒有把 `outputs/` 或大型二進位檔加進去。
+- **GitHub**（2026-11-18）：remote `origin` = https://github.com/sevenworm7/bipedal_robot（影片走 git LFS）。**使用者授權：每次 commit 後直接 push 目前的 branch 到 origin**，不用再問；其他遠端操作（force push、刪 branch、改 tag、merge 回 `master`）仍要先問。`robot-v2` 合併回 `master` 等使用者決定。branch 和 tag 同名（`robot-v2`）時，push 要寫完整 refspec（`refs/heads/…`、`refs/tags/…`）。
 - **每個新增的資料夾都要有 `README.md`**，說明用途、內容、做了哪些事、如何執行；內容有變動時同步更新。
 - **CAD 用的 Python 環境（實驗二，2026-09-30 使用者同意）**：build123d 不能裝進 Isaac Lab 的環境，改用 uv 建立獨立環境，**全部放在專案目錄內**：
   `tools/bin/uv.exe`（uv 執行檔）、`.uv/`（uv 下載的 Python 與快取，設 `UV_PYTHON_INSTALL_DIR`、`UV_CACHE_DIR`）、`.venv_cad/`（build123d 環境）。三者都不進 git。
