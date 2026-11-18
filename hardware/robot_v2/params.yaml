@@ -136,3 +136,20 @@ servo_bus:
   - {id: 8,  joint: right_ankle_pitch, bus: right}
   - {id: 9,  joint: tail_yaw,          bus: tail}
   - {id: 10, joint: tail_pitch,        bus: tail}
+
+# ---------------------------------------------------------------- bus wiring (real robot, v2)
+# One daisy chain from the control board through every servo; the last servo's spare socket stays empty.
+# User decision 2026-11-18 ("plan B"): only the right leg folds back (1-3-4-2); the left leg ends at its ankle,
+# so no cable runs between the shins. Checked by generator/check_cable.py --chain (reports/cable_check.md).
+wiring:
+  - board
+  - left_hip_roll
+  - tail_yaw
+  - tail_pitch
+  - right_hip_roll
+  - right_knee
+  - right_ankle_pitch
+  - right_hip_pitch
+  - left_hip_pitch
+  - left_knee
+  - left_ankle_pitch

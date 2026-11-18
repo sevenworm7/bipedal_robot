@@ -13,6 +13,11 @@ Usage (project root, CAD env or any Python with numpy + PyYAML):
     python hardware/generator/check_cable.py --version 1
     python hardware/generator/check_cable.py --version 1 --thigh 60 --shin 55
     python hardware/generator/check_cable.py --version 1 --sweep          # table over thigh x shin
+    python hardware/generator/check_cable.py --version 2 --chain          # the whole bus in params `wiring`
+
+`--chain` checks the complete daisy chain of params.yaml `wiring` (board -> ... -> last servo): legs, tail and
+the board, with each leg and the tail joint swept independently, and picks the socket each servo uses in and out
+so that the longest segment is as short as possible. The board is the centre point of params `electronics.board`.
 """
 from __future__ import annotations
 
@@ -165,6 +170,131 @@ def to_board(leg, servo):
     return best, c
 
 
+# ---------------------------------------------------------------- whole bus (params `wiring`)
+GRID = {"hip_roll": 7, "hip_pitch": 11, "knee": 12, "tail_yaw": 13}
+LEG_JOINTS = ("hip_roll", "hip_pitch", "knee")
+
+
+def _leg_n(role):
+    return next(i for i, r in ROLES.items() if r == role)
+
+
+class Bus:
+    """Socket positions of every servo on the bus (and the board) as functions of the joint angles (deg).
+    Node names are the joint names of params `servo_bus`, plus "board"."""
+
+    def __init__(self, lay):
+        self.lay = lay
+        self.leg = Leg(lay)
+        p = lay.p
+        sv = p["servo"]
+        cn = sv["connector"]
+        xs, zs, hw = sum(cn["x"]) / 2, sum(cn["z"]) / 2, sv["body"]["half_width"]
+
+        self.faces = {}
+
+        def socks(o, hd, bd, node):                # same frames as parts.Builder._tail
+            xS, zS = np.array(bd, float), np.array(hd, float)
+            yS = np.cross(zS, xS)
+            self.faces[node] = ["+-"[int(s * yS[i] < 0)] + "XYZ"[i] for s in (1, -1) for i in range(3) if abs(yS[i]) > 0.5]
+            return [np.array(o, float) + xs * xS + s * hw * yS + zs * zS for s in (1, -1)]
+
+        self.ty = lay.joint("tail_yaw")
+        self.tail = {"tail_yaw": socks(self.ty.origin, (0, 0, -1), (1, 0, 0), "tail_yaw"),
+                     "tail_pitch": socks(lay.joint("tail_pitch").origin, (0, 1, 0), (1, 0, 0), "tail_pitch")}
+        e = p["electronics"]["board"]
+        self.board = np.array([e["center"][0], e["center"][1], lay.hip_roll_z + e["center"][2]], float)
+
+    def joints_of(self, node):
+        """Joints that move this node's sockets."""
+        if node in ("board", "tail_yaw"):
+            return []
+        if node == "tail_pitch":
+            return ["tail_yaw"]
+        side, role = node.split("_", 1)
+        return [f"{side}_{r}" for r in LEG_JOINTS[:MOVED_BY[_leg_n(role)]]]
+
+    def grid(self, joint):
+        j = self.lay.joint(joint)
+        role = "tail_yaw" if joint == "tail_yaw" else joint.split("_", 1)[1]
+        return np.linspace(j.lower, j.upper, GRID[role])
+
+    def pos(self, node, k, q):
+        if node == "board":
+            return self.board
+        if node == "tail_yaw":
+            return self.tail[node][k]
+        if node == "tail_pitch":
+            o = np.array(self.ty.origin, float)
+            return rot(self.ty.axis, q["tail_yaw"]) @ (self.tail[node][k] - o) + o
+        side, role = node.split("_", 1)
+        n = _leg_n(role)
+        qq = [q.get(f"{side}_{r}", 0.0) for r in LEG_JOINTS] + [0.0]
+        if side == "right":                        # right leg = mirror image of the left leg
+            qq[0] = -qq[0]
+        p = self.leg.place(self.leg.sockets[n][k][1], qq, MOVED_BY[n])
+        return p if side == "left" else np.array([p[0], -p[1], p[2]])
+
+    def name(self, node, k):
+        if node == "board":
+            return "board"
+        if node.startswith(("left_", "right_")):
+            tag = self.leg.sockets[_leg_n(node.split("_", 1)[1])][k][0]
+            if node.startswith("right_"):              # mirrored: a +Y face becomes -Y
+                tag = tag.replace("+Y", "#").replace("-Y", "+Y").replace("#", "-Y")
+            return tag
+        return f"{'ab'[k]}({self.faces[node][k]})"   # tail_pitch faces are at tail_yaw = 0
+
+    def worst(self, a, ka, b, kb):
+        joints = sorted(set(self.joints_of(a)) | set(self.joints_of(b)))
+        best, at = -1.0, {}
+        for vals in itertools.product(*(self.grid(j) for j in joints)):
+            q = dict(zip(joints, vals))
+            d = float(np.linalg.norm(self.pos(a, ka, q) - self.pos(b, kb, q)))
+            if d > best:
+                best, at = d, q
+        return best, at
+
+
+def check_chain(lay, wiring, limit):
+    """Worst distance of every segment of the bus, with the socket assignment that minimises the longest one.
+    The board has one socket; every servo uses one socket in and the other out; the last servo's spare stays empty."""
+    bus = Bus(lay)
+    cache = {}
+
+    def seg(i, ka, kb):
+        if (i, ka, kb) not in cache:
+            cache[(i, ka, kb)] = bus.worst(wiring[i], ka, wiring[i + 1], kb)
+        return cache[(i, ka, kb)]
+
+    n_servo = len(wiring) - 1
+    best = None
+    for out in itertools.product((0, 1), repeat=n_servo - 1):   # outgoing socket of every servo except the last
+        segs, k_out = [], 0
+        for i in range(n_servo):
+            if i < n_servo - 1:
+                k_in = 1 - out[i]
+            else:
+                k_in = min((0, 1), key=lambda k: seg(i, k_out, k)[0])
+            segs.append((i, k_out, k_in, *seg(i, k_out, k_in)))
+            if i < n_servo - 1:
+                k_out = out[i]
+        m = max(s[3] for s in segs)
+        if best is None or m < best[0]:
+            best = (m, segs)
+    m, segs = best
+    print(f"bus wiring (params `wiring`), limit {limit:.0f} mm: longest segment {m:.0f} mm")
+    print("socket names: the world direction the servo side face points to at zero pose;")
+    print("the board is its centre point (header position not modelled).")
+    for i, ka, kb, w, at in segs:
+        a, b = wiring[i], wiring[i + 1]
+        ats = ", ".join(f"{k} {v:.0f}" for k, v in at.items()) if at else "fixed"
+        flag = "ok" if w <= limit else "TOO LONG"
+        print(f"  {i + 1:2d}. {a:17s} [{bus.name(a, ka):5s}] -> {b:17s} [{bus.name(b, kb):5s}]"
+              f"  worst {w:5.0f} mm  {flag:8s} ({ats})")
+    return m
+
+
 def report(version, thigh, shin):
     lay = layout(version, thigh, shin)
     lg = lay.p["legs"]
@@ -204,9 +334,15 @@ if __name__ == "__main__":
     ap.add_argument("--thigh", type=float)
     ap.add_argument("--shin", type=float)
     ap.add_argument("--sweep", action="store_true")
+    ap.add_argument("--chain", action="store_true", help="check the whole bus listed in params `wiring`")
     ap.add_argument("--limit", type=float, default=120.0)
     a = ap.parse_args()
-    if a.sweep:
+    if a.chain:
+        lay = layout(a.version, a.thigh, a.shin)
+        if "wiring" not in lay.p:
+            sys.exit("params.yaml has no `wiring` list")
+        check_chain(lay, lay.p["wiring"], a.limit)
+    elif a.sweep:
         sweep(a.version, list(range(50, 95, 5)), list(range(40, 95, 5)), a.limit)
     else:
         report(a.version, a.thigh, a.shin)
