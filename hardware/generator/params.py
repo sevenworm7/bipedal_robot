@@ -65,9 +65,11 @@ class Layout:
         return out
 
 
-def load(version: int) -> Layout:
+def load(version: int, p: dict | None = None) -> Layout:
+    """Layout of params.yaml of this version, or of an already-loaded (possibly edited) params dict `p`."""
     path = version_dir(version) / "params.yaml"
-    p = yaml.safe_load(path.read_text(encoding="utf-8"))
+    if p is None:
+        p = yaml.safe_load(path.read_text(encoding="utf-8"))
     if p["robot"]["version"] != version:
         raise ValueError(f"{path}: robot.version is {p['robot']['version']}, expected {version}")
     lg, tl, jt = p["legs"], p["tail"], p["joints"]

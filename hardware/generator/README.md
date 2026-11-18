@@ -28,6 +28,7 @@ CAD 環境的建立方式見根目錄 `CLAUDE.md`「工作準則」（uv 裝在 
 | `build_parts.py` | 匯出列印檔與每個連桿的外觀 mesh、計算質量性質、關節干涉掃描 |
 | `build_urdf.py` | 產生 URDF：外觀用 mesh、碰撞用 box／cylinder、慣量取自 CAD |
 | `check_static.py` | 離線檢查：站姿（重心在腳掌上方）、靜態扭矩、步長與抬腳高度、尾巴造成的重心側移 |
+| `check_cable.py` | 腿部馬達線長檢查（2026-11-18，robot v2 的起因）：每顆馬達兩個插座的位置，掃描關節範圍，求各接線順序每一段的最壞直線距離；`--thigh`、`--shin` 試算、`--sweep` 列表。純 Python，不需 CAD |
 | （`simulation/robot_assets/convert_usd.py`） | URDF → USD（Isaac Lab `UrdfConverter`），2026-10-15 移到模擬那一側 |
 | （`simulation/robot_assets/check_sim.py`） | 模擬檢查：10 個關節的正方向、5 秒站立、截圖 |
 | `build_viewer.py`、`viewer_template.html` | 互動 3D 圖（three.js）：可調關節、即時重心與支撐面、檢查報表 |
