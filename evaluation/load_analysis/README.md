@@ -50,3 +50,23 @@ tools\isaacpy.cmd evaluation\load_analysis\run_load.py --out outputs\robot_v1\ev
 
 **限制**：模擬的扭矩來自 PD 模型（kp 8、kd 0.3），真實伺服的內部控制器更硬，著地尖峰可能更大；電流是由扭矩線性估計。
 這些數字要在實機台架測試時用伺服回讀的電流與負載校正。
+
+## 負載分析 robot v2（2026-11-19）
+
+- 對象 student v2ft，情境同 `CASES_V1`。`run_load.py` 2026-11-19 新增 `--agent`（不填時仍是 v1 student v5），報告標題與模型路徑取自它：
+  ```
+  set CUSTOM_BIPED_VERSION=2
+  tools\isaacpy.cmd evaluation\load_analysis\run_load.py --out outputs\robot_v2\evaluation\load_analysis\load_v1_20261119 --stage stats --agent student:<student.pt>
+  ```
+- 結果與 v1 對照：[`docs/results.md`](../../docs/results.md)「v2 泛化、壓力測試與馬達負載」。走路時 knee、ankle 變輕、hip pitch 約重 10%（最高指令 RMS 82%），整機電流同級（平均約 3.1 A、最大 7.4 A）。
+- **站立時兩腳互頂**（128 台全部）：左 hip roll 持續 0.41 N·m（額定 141%）。實機改用固定站姿，要走時才交給模型（`docs/decisions.md` #24）。
+
+| 檔案 | 內容 |
+|---|---|
+| `stand_handover.py` | 部署檢查：固定站姿（action 0）站 `--stand_s` 秒，再給隨機行走指令交給模型走 `--walk_s` 秒；印出站立時的扭矩、腳距與交接後的成功率 |
+
+```
+set CUSTOM_BIPED_VERSION=2
+tools\isaacpy.cmd evaluation\load_analysis\stand_handover.py --agent student:<student.pt> --scenario flat_v1
+```
+結果（2026-11-19，128 台）：`flat_v1` 與 `dr_v1` 都是站立 0 跌倒、交接後 100%／0%，站立時 hip roll RMS 0.06–0.09 N·m、腳距 p50 59–60 mm。

@@ -96,3 +96,16 @@ student v5 在訓練範圍外仍有相當大的餘裕（各項 ≥ 95% 成功、
 3. **延遲 ≥ 80 ms**：80 ms 成功 75%、100 ms 跌倒 48%。實機的伺服通訊延遲要量測並控制在 60 ms 以內。
 4. **推擠 ≥ 0.35 m/s**：跌倒 12%（0.45 m/s 跌倒 36%）。
 5. **下坡速度控制**：−5° 起速度超出指令 20% 以上（不跌倒），8° 上坡則變慢；策略觀測不到坡度，若實機要走坡道，下一版訓練應加入斜坡。
+
+## robot v2（2026-11-19）：student v2ft，精簡版 stress_v1／v2／v3
+
+- 對象：`outputs/robot_v2/control/sim2real/student_v2ft_20261118_230657/student.pt`；設 `CUSTOM_BIPED_VERSION=2`，條件與 v1 相同，只跑和實機相關的 33 個（使用者 2026-11-19 選擇）：
+  ```
+  set CUSTOM_BIPED_VERSION=2
+  tools\isaacpy.cmd evaluation\generalization\stress_test.py --suite v1 --out outputs\robot_v2\evaluation\generalization\stress_v1_20261119 --stage stats --agent student:<student.pt> --only 01_ 02_ 03_
+  tools\isaacpy.cmd evaluation\generalization\stress_test.py --suite v2 --out outputs\robot_v2\evaluation\generalization\stress_v2_20261119 --stage stats --agent student:<student.pt> --only 02_ 07_
+  tools\isaacpy.cmd evaluation\generalization\stress_test.py --suite v3 --out outputs\robot_v2\evaluation\generalization\stress_v3_20261119 --stage stats --agent student:<student.pt> --only 13_ 14_ 16_
+  ```
+  `--stage report` 也要帶 `--agent`（2026-11-19 起報告標題與模型路徑取自 `--agent`，不再固定寫 student v5）。
+- 結果與 v1 對照：[`docs/results.md`](../../docs/results.md)「v2 泛化、壓力測試與馬達負載」。重點：凸起、零點偏差、IMU 傾斜都比 v1 好；**延遲 60 ms 只剩 46%**（不跌倒但走太快，實機要 ≤ 40 ms）。
+- **台階地形的出生點異常**：`stress_v2` 的台階條件中，固定 5 台（env 6、13、20、32、40）出生時一隻腳高 3–8 mm，0.1–0.2 s 內傾斜超過 40° 被判跌倒（v1 也有 env 20）。結果解讀時要扣除，見 `docs/backlog.md` #16。

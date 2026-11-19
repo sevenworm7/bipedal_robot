@@ -55,6 +55,51 @@ student v2ft 的細項（未跌倒的 episode）：
 
 影片（student v2ft，medium）：[`flat_v1`](videos/robot_v2/control/exp2_sim2real_student_v2ft_flat_v1_medium_eval_20261118.mp4)、[`dr_v1`](videos/robot_v2/control/exp2_sim2real_student_v2ft_dr_v1_medium_eval_20261118.mp4)、[`rough_eval_v1`](videos/robot_v2/control/exp2_sim2real_student_v2ft_rough_eval_v1_medium_eval_20261118.mp4)、[`dr_rough_eval_v1`](videos/robot_v2/control/exp2_sim2real_student_v2ft_dr_rough_eval_v1_medium_eval_20261118.mp4)（[失敗例](videos/robot_v2/control/exp2_sim2real_student_v2ft_dr_rough_eval_v1_failure_eval_20261118.mp4)）、[`gait_eval_v1`](videos/robot_v2/control/exp2_sim2real_student_v2ft_gait_eval_v1_medium_eval_20261119.mp4)。完整三種速度在 `outputs/robot_v2/control/sim2real/videos_<場景>_student_v2ft_*`。
 
+## v2 泛化、壓力測試與馬達負載（evaluation，2026-11-19，不重新訓練）
+
+對象 student v2ft；條件、seed、episode 數和 v1 完全相同（使用者 2026-11-19 選擇精簡版：只跑和實機相關的條件）。
+產出：`outputs/robot_v2/evaluation/generalization/stress_v{1,2,3}_20261119/`、`outputs/robot_v2/evaluation/load_analysis/load_v1_20261119/`。共 33 個壓力條件＋12 個負載情境，統計 27 分鐘。
+
+### 壓力測試（成功率／跌倒率，100 episode）
+
+| 條件 | v1 student v5 | v2 student v2ft | 比較 |
+|---|---|---|---|
+| 延遲 0–40 ms（訓練範圍） | 100%／0% | 99–100%／0% | 相同 |
+| **延遲 60 ms** | 100%／0% | **46%／0%**（速度比 1.26） | **v2 較差**：不跌倒，但走太快超出 ±25% |
+| 延遲 80／100 ms | 75%／2%、0%／48% | 27%／0%、27%／0% | v2 不跌倒，但速度失控 |
+| 凸起 8／10／12／16 mm | 92／86／58／9%（跌倒 3／4／18／69%） | 98／96／85／23%（跌倒 0／1／3／44%） | v2 較好 |
+| 凸起間距 5 cm（8 mm） | 71%／4% | 95%／0% | v2 較好 |
+| 上台階 5 mm／下台階 5、10 mm（`stress_v2`） | 99／99／95%（跌倒 1%） | 原始 95%／5%；扣除出生點異常 100%／0% | 相同 |
+| 上台階 10 mm（`stress_v2`） | 40%／20% | 原始 70%／10%；扣除出生點異常 74%／5% | v2 較好 |
+| 關節零點偏差 1／2／3／5° | 100／100／93／39%（5° 跌倒 27%） | 100／99／98／59%（5° 跌倒 10%） | v2 較好；側向漂移 2° 時 0.22 m |
+| IMU 安裝傾斜 2／5／8／12° | 100／100／99／49%（12° 跌倒 13%） | 100／100／99／79%（12° 跌倒 0%） | v2 較好 |
+| 組合（零點 2°＋IMU 3°＋遺失 5%） | 99%／1% | 99%／0% | 相同 |
+
+- **出生點異常**（台階地形，和模型無關）：固定 5 台（env 6、13、20、32、40，y = −45.5、−38.5、−31.5、−19.5、−11.5 m）出生時一隻腳高 3–8 mm，0.1–0.2 s 內傾斜超過 40° 判定跌倒，一步都沒走；v1 也有 1 台（env 20）。見 `backlog.md` #16。
+- **延遲**：v2 的餘裕比 v1 小，實機「指令到伺服動作」要 **≤ 40 ms**（`decisions.md` #25）；超過時是速度失控，不是跌倒。
+- 影片：[延遲 60 ms](videos/robot_v2/generalization/stress_v1_01_delay_060ms.mp4)、[上台階 10 mm](videos/robot_v2/generalization/stress_v2_07_steps_up_10mm.mp4)、[零點偏差 5°](videos/robot_v2/generalization/stress_v3_13_joint_offset_5deg.mp4)；其他條件的影片在各 `outputs` 資料夾。
+
+### 馬達負載（128 台 × 20 s；RMS 扭矩 N·m，額定 0.294）
+
+| 情境 | hip pitch v1 → v2 | knee v1 → v2 | ankle v1 → v2 | hip roll v1 → v2 | 整機電流平均／最大 v1 → v2 |
+|---|---|---|---|---|---|
+| **靜止站立** | 0.186 → 0.125 | 0.146 → 0.092 | 0.098 → 0.085 | **0.194 → 0.415（141%）** | 2.9／4.6 → 3.2／6.3 A |
+| 平地中速 0.10 m/s | 0.175 → 0.191 | 0.145 → 0.141 | 0.103 → 0.081 | 0.146 → 0.152 | 3.1／5.9 → 3.1／5.6 A |
+| 最高指令 0.15 m/s、2 Hz | 0.206 → **0.240（82%）** | 0.163 → 0.187 | 0.123 → 0.118 | 0.172 → 0.152 | 3.3／5.6 → 3.3／5.8 A |
+| ±8 mm 凹凸 | 0.173 → 0.191 | 0.150 → 0.140 | 0.106 → 0.089 | 0.153 → 0.146 | 3.2／**8.8** → 3.1／6.5 A |
+| 整機質量 ×1.5 | 0.233 → 0.234 | 0.214 → 0.186 | 0.127 → 0.103 | 0.204 → 0.201 | 3.7／5.7 → 3.5／6.4 A |
+| 中等隨機化 | 0.170 → 0.187 | 0.208 → 0.226 | 0.120 → 0.105 | 0.153 → 0.165 | 3.3／7.8 → 3.3／7.4 A |
+
+- 走路時：knee、ankle 多數情境變輕，hip pitch 約重 10%（最高指令時 RMS 82%、26% 的時間超過額定）；整機電流和 v1 同級，最大值反而較低。電源建議不變（2S、可持續 ≥ 10 A）。
+- **新問題：靜止站立時兩腳互頂**（128 台全部）。站立指令下模型把左 hip roll 推到 −14.7°，實際停在 −11.7°；兩腳 foot body 間距固定 55.8 mm（v1 61–67 mm），左 hip roll 持續 0.41 N·m（額定 141%，99% 的時間超過額定）。走路、原地踏步正常。[影片](videos/robot_v2/load_analysis/load_v1_01_stand.mp4)。
+- **對策（使用者 2026-11-19 決定，`decisions.md` #24）：實機站立時不跑模型，改用固定站姿（action 0 ＝預設關節角），要走時才交給模型。**
+  模擬驗證（`evaluation/load_analysis/stand_handover.py`，128 台，站 3 s → 隨機行走指令 20 s）：
+
+| 場景 | 站立時 hip roll RMS | 站立時腳距 p50 | 交接後成功／跌倒 | 速度比 p50 | 方向誤差 p50 |
+|---|---|---|---|---|---|
+| `flat_v1` | 0.062／0.069 N·m | 59.7 mm | 100%／0% | 1.06 | 1.4° |
+| `dr_v1` | 0.070／0.093 N·m | 59.0 mm | 100%／0% | 1.01 | 2.3° |
+
 # robot v1
 
 機器人：`custom_biped` v1（tag `robot-v1`，0.696 kg，每腿 4 DOF ＋ 2 DOF 尾巴）。平地、直線、0.05–0.15 m/s、1.2–2.0 Hz、20 秒 episode。

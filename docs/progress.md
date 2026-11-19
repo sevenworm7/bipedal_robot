@@ -7,14 +7,14 @@
 
 - 分支 `robot-v2`（已 push 到 GitHub `origin`；合併回 `master` 等使用者決定）；robot v2 已凍結（tag `robot-v2`：大腿 70、小腿 55 mm、膝 0–110°，接線方案 B）。
 - **robot v2 訓練完成（2026-11-19）**：最終模型 **student v2ft**（`outputs/robot_v2/control/sim2real/student_v2ft_20261118_230657/student.pt`），通過全部部署門檻，詳見下方與 [`results.md`](results.md)「robot v2」。
+- **v2 壓力測試與負載分析完成（2026-11-19）**：多數條件比 v1 好；兩個實機要求：**站立時改用固定站姿**（模型站立時兩腳互頂，`decisions.md` #24）、**伺服延遲 ≤ 40 ms**（#25）。詳見 [`results.md`](results.md)「v2 泛化、壓力測試與馬達負載」。
 - 實機：v1 實體可走約 8 步後腿軟跌倒（電流問題由其他成員處理）；v2 的大腿、小腿尚未重印。
 
 ## 下一步
 
-1. 匯出 v2 student（TorchScript／ONNX）與實機說明：輸入正規化、觀測歷史順序、動作換算成伺服位置值（`SERVO_MAP`）（`backlog.md` #9）。**開始前和使用者確認格式與板上執行環境。**
+1. 匯出 v2 student（TorchScript／ONNX）與實機說明：輸入正規化、觀測歷史順序、動作換算成伺服位置值（`SERVO_MAP`）、**站立用固定站姿、行走才交給模型的切換方式**（`backlog.md` #9、`decisions.md` #24）。**開始前和使用者確認格式與板上執行環境。**
 2. 重印 v2 的大腿、小腿，依 `hardware/robot_v2/ASSEMBLY.md` 改裝與接線（先在實物上比對最長的幾段線）。
 3. 實機校正與測試（下表）。
-4. （可選）v2 的泛化／壓力測試（`evaluation/generalization/`）與馬達負載分析，確認 v1 的結論在 v2 上仍成立。
 
 ## robot v2 接續訓練（使用者 2026-11-18 同意；2026-11-19 完成）
 
@@ -45,6 +45,7 @@ v2 的觀測、動作、控制頻率都和 v1 相同（10 DOF、student 210 維�
 | 實機部署（v1） | `deploy/` | **進行中** | 實體已列印組裝、芒果磚控制；可走約 8 步後腿軟跌倒 |
 | 機器人模型 v2 | `hardware/robot_v2/` | 凍結（2026-11-18，tag `robot-v2`） | 縮短腿讓馬達線夠長；只需重印大腿、小腿；模擬站立通過 |
 | v2 訓練（接續 v1 模型） | `control/sim2real/` | 完成（2026-11-19） | **student v2ft**：平地與隨機化 100%、凹凸 99%、組合 92.7%／跌倒 0.4%（504 ep） |
+| v2 泛化／壓力測試與負載分析 | `evaluation/` | 完成（2026-11-19） | 凸起、零點、IMU 傾斜都比 v1 好；延遲 60 ms 46%（實機要 ≤ 40 ms）；站立時兩腳互頂 → 實機用固定站姿（交接模擬 100%／0%） |
 
 ### 實機部署的子步驟（定義見 [`deploy/README.md`](../deploy/README.md)）
 
@@ -60,6 +61,7 @@ v2 的觀測、動作、控制頻率都和 v1 相同（10 DOF、student 210 維�
 
 ## Archive
 
+- 2026-11-19：robot v2 壓力測試（33 條件）與負載分析（12 情境），和 v1 對照；發現站立互頂（backlog #15）與台階出生點異常（#16）；決定實機站立用固定站姿（decisions #24）、延遲 ≤ 40 ms（#25）；影片 4 段放進 `docs/videos/robot_v2/`。
 - 2026-11-19：robot v2 接續訓練完成（零樣本 → teacher 微調 → student 蒸餾 → 評估），student v2ft 通過全部門檻；v2 影片 6 段（18.6 MB）放進 `docs/videos/robot_v2/`。
 - 2026-11-18：精選影片 21 段（45.8 MB，git LFS）放進 `docs/videos/`。
 - 2026-11-18：文件整理，新增 `docs/`（本檔、`backlog.md`、`decisions.md`、`results.md`、`architecture.md`）；`hardware/v2_backlog.md` 拆到 `docs/backlog.md` 與 `hardware/robot_v2/design_calc.md`；sim2real 的 v1 紀錄拆到 `control/sim2real/log_robot_v1.md`。

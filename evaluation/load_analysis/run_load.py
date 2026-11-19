@@ -32,6 +32,8 @@ from cases import CASES_V1, SERVO_6V  # noqa: E402
 
 ISAACPY = str(ROOT / "tools" / "isaacpy.cmd")
 SETTLE_S = 0.5
+AGENT = "student:outputs/robot_v1/control/sim2real/student_v5_20261007_003835/student.pt"
+"""Model under test (``--agent``); default = robot v1 final model student v5."""
 
 
 def run(cmd, log):
@@ -49,7 +51,8 @@ def stage_record(out: Path, ids, mode: str):
             continue
         if d.exists():
             shutil.rmtree(d)
-        cmd = [ISAACPY, "evaluation/load_analysis/record_load.py", "--case", i, "--mode", mode, "--out_dir", str(d)]
+        cmd = [ISAACPY, "evaluation/load_analysis/record_load.py", "--case", i, "--mode", mode, "--out_dir", str(d),
+               "--agent", AGENT]
         if mode == "video":
             cmd.append("--enable_cameras")
         t0 = time.time()
@@ -168,8 +171,9 @@ def stage_report(out: Path, ids):
     fig.savefig(plots / "current.png", dpi=110)
     plt.close(fig)
 
-    L = ["# 馬達負載分析 v1：student v5 在各情境下的伺服出力", "",
-         "- 模型：`outputs/robot_v1/control/sim2real/student_v5_20261007_003835/student.pt`（不重新訓練）。",
+    model = AGENT.split(":", 1)[1]
+    L = [f"# 馬達負載分析 v1：{Path(model).parent.name} 在各情境下的伺服出力", "",
+         f"- 模型：`{model}`（不重新訓練）。",
          "- 每個情境 128 台 × 20 s、seed 42，所有機器人同一個指令；統計每台的第一個 episode，略過前 0.5 s。",
          f"- 伺服 HD-1910（6 V 保守值）：額定 {rated} N·m／{SERVO_6V['rated_current']} A、模擬上限 {limit} N·m、"
          f"堵轉 {SERVO_6V['stall_torque']} N·m／{SERVO_6V['stall_current']} A、空載 {SERVO_6V['noload_current']} A。",
@@ -205,11 +209,14 @@ def stage_report(out: Path, ids):
 
 
 def main():
+    global AGENT
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--out", required=True)
     ap.add_argument("--stage", required=True, choices=("stats", "videos", "report"))
     ap.add_argument("--only", nargs="*", default=[])
+    ap.add_argument("--agent", default=AGENT, help="kind:path of the model under test (default: robot v1 student v5).")
     a = ap.parse_args()
+    AGENT = a.agent
     out = ROOT / a.out
     (out / "logs").mkdir(parents=True, exist_ok=True)
     ids = [i for i in CASES_V1 if not a.only or any(i.startswith(p) for p in a.only)]

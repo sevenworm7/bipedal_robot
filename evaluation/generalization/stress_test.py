@@ -93,7 +93,7 @@ def stage_videos(out: Path, ids: list[str], agent: str):
         print(f"[stress] video {i}: rc {rc}, medium {'ok' if med else 'MISSING'} ({time.time() - t0:.0f} s)", flush=True)
 
 
-def stage_report(out: Path, ids: list[str]):
+def stage_report(out: Path, ids: list[str], agent: str = DEFAULT_AGENT):
     import matplotlib
 
     matplotlib.use("Agg")
@@ -133,8 +133,9 @@ def stage_report(out: Path, ids: list[str]):
     tests = {}
     for i, r in rows.items():
         tests.setdefault(r["test"], []).append((i, r))
-    lines = [f"# Stress tests {SUITE}：student v5 在訓練範圍內外的表現", "",
-             f"- 模型：`{DEFAULT_AGENT.split(':', 1)[1]}`（不重新訓練）",
+    model = agent.split(":", 1)[1]
+    lines = [f"# Stress tests {SUITE}：{Path(model).parent.name} 在訓練範圍內外的表現", "",
+             f"- 模型：`{model}`（不重新訓練）",
              "- 方法：每次只改一個條件，其餘為理想平地（`flat_v1`）；每個條件 100 episode × 20 s、seed 42、指令 0.05–0.15 m/s、1.2–2.0 Hz。",
              "- 成功＝未跌倒、走完、平均速度在指令 ±25% 內、最大方向誤差 < 10°（`sim2real/scoring.py`）。推擠測試：第 5、10、15 秒各推一次。",
              "- 部署門檻：平地與中等隨機化成功率 ≥ 95%、不規則地形 ≥ 85%、跌倒 ≤ 5%。",
@@ -202,7 +203,7 @@ def main():
     elif a.stage == "videos":
         stage_videos(out, ids, a.agent)
     else:
-        stage_report(out, ids)
+        stage_report(out, ids, a.agent)
 
 
 if __name__ == "__main__":

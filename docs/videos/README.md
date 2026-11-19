@@ -44,3 +44,12 @@
 | [`control/exp2_sim2real_student_v2ft_dr_rough_eval_v1_medium_eval_20261118.mp4`](robot_v2/control/exp2_sim2real_student_v2ft_dr_rough_eval_v1_medium_eval_20261118.mp4) | v2 student v2ft 隨機化＋地形 93%／1% |
 | [`control/exp2_sim2real_student_v2ft_dr_rough_eval_v1_failure_eval_20261118.mp4`](robot_v2/control/exp2_sim2real_student_v2ft_dr_rough_eval_v1_failure_eval_20261118.mp4) | v2 student v2ft 隨機化＋地形的失敗例（不跌倒，方向誤差超過 10°） |
 | [`control/exp2_sim2real_student_v2ft_gait_eval_v1_medium_eval_20261119.mp4`](robot_v2/control/exp2_sim2real_student_v2ft_gait_eval_v1_medium_eval_20261119.mp4) | v2 student v2ft 步態多樣性（站立／原地／變速）100%／0% |
+
+## robot v2 評估（4 段，共 4.8 MB）
+
+| 影片 | 內容 |
+|---|---|
+| [`load_analysis/load_v1_01_stand.mp4`](robot_v2/load_analysis/load_v1_01_stand.mp4) | v2 靜止站立：兩腳互頂，左 hip roll 持續 0.41 N·m（額定 141%）→ 實機改用固定站姿 |
+| [`generalization/stress_v1_01_delay_060ms.mp4`](robot_v2/generalization/stress_v1_01_delay_060ms.mp4) | v2 延遲 60 ms：46%／0%（不跌倒但走太快；v1 100%）→ 實機延遲要 ≤ 40 ms |
+| [`generalization/stress_v2_07_steps_up_10mm.mp4`](robot_v2/generalization/stress_v2_07_steps_up_10mm.mp4) | v2 上台階 10 mm：74%／5%（扣除出生點異常；v1 40%／20%） |
+| [`generalization/stress_v3_13_joint_offset_5deg.mp4`](robot_v2/generalization/stress_v3_13_joint_offset_5deg.mp4) | v2 關節零點偏差 5°：59%／10%（v1 39%／27%；實機仍要校正到 ±2°） |
