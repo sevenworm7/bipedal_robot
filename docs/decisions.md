@@ -28,3 +28,4 @@
 | 20 | 2026-11-18 | control | v2 訓練接續 v1 的 sim2real 模型（零樣本評估 → teacher 微調 → student 蒸餾 → 評估），不重跑 rule-based、BC、平地訓練；門檻同 v1 | 觀測、動作、控制頻率都沒變 | [`progress.md`](progress.md) | 有效 |
 | 21 | 2026-11-18 | 專案 | 文件整理：計畫與狀態只寫 `docs/progress.md`，待辦寫 `docs/backlog.md`，決策寫本檔，數字寫 `docs/results.md`（進 git）；資料夾 README 只寫用途、執行方式和該階段的紀錄 | 計畫原本散在 6 份 README，成果總表在不進 git 的 `outputs/` | [`README.md`](README.md) | 有效 |
 | 22 | 2026-11-18 | 專案 | 重要影片壓縮後放進 `docs/videos/`，用 git LFS 追蹤（只限 `docs/videos/**/*.mp4`）；方案 A：以 medium 為主，加代表性失效例子，每版約 50 MB；只新增不覆蓋 | `outputs/` 不進 git；專案之後要放到 GitHub，趁影片還沒 commit 時用 LFS，避免日後改寫歷史 | [`videos/README.md`](videos/README.md) | 有效 |
+| 23 | 2026-11-19 | control | robot v2 的最終模型 = **student v2ft**（`outputs/robot_v2/control/sim2real/student_v2ft_20261118_230657/student.pt`），作為實機部署的模型 | 通過全部門檻（`flat_v1`／`dr_v1` 100%、`rough_eval_v1` 99%、組合 92.7%／跌倒 0.4%）；使用者看過影片，步態良好 | [`results.md`](results.md)「robot v2」、`control/sim2real/log_robot_v2.md` | 有效 |
