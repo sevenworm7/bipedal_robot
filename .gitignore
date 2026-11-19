@@ -35,6 +35,7 @@ hardware/design_refs/hd1910/vendor/fddebug/
 tools/bin/
 .uv/
 .venv_cad/
+.venv_fw/
 
 # Robot model versions keep their print files and visual meshes (a few MB, needed to rebuild a tagged version)
 !hardware/robot_v*/parts/stl/*.stl
@@ -42,3 +43,6 @@ tools/bin/
 
 # Curated, compressed evaluation videos (git LFS, see docs/videos/README.md)
 !docs/videos/**/*.mp4
+
+# Teammate MANGO X4 handoff (4.1 GB, read-only reference; copy needed files into deploy/ with provenance)
+references/mango_x4_handoff_20261117/

@@ -63,6 +63,7 @@ commit 前的同步檢查要包含 `docs/`。
 ## 機器人模型
 
 - `references/` **僅供參考，不可修改**（權限設定已禁止寫入）。實驗一直接讀取其中的 URDF；實驗二的新模型不需沿用它的設計。
+- `references/mango_x4_handoff_20261117/`：組員的芒果磚（RP2350）交接包，robot v1 的懸空回放韌體與實測的伺服 ID／方向／零點（4.1 GB，不進 git，`docs/decisions.md` #26）。要用時**複製**到 `deploy/` 並註明來源與 SHA256；包內改 ID、校零、改 EEPROM 的維護腳本**不可執行**。
 - 實驗二的新模型採**程式參數化 URDF**：由單一參數檔（尺寸、質量、關節限制、致動器）產生 URDF，再轉成 USD。流程見 `/robot-model` skill。
 - **實驗二的機器人之後會 3D 列印成實體，在真實環境測試**：設計時就要考慮零件可列印性、馬達固定方式、組裝順序、線材走向與維修性，不能只做「模擬能跑」的幾何。模擬中的質量、扭矩上限、關節範圍都要對應真實零件。
 - **零件分開、組裝方式要特別留意**（使用者 2026-09-30 強調）：每個列印件是獨立檔案；零件之間怎麼接（螺絲規格與位置、熱熔螺母、卡榫、定位銷、公差）要在設計時就定義清楚，並寫進該版的組裝說明。
@@ -127,4 +128,5 @@ commit 前的同步檢查要包含 `docs/`。
 - **CAD 用的 Python 環境（實驗二，2026-09-30 使用者同意）**：build123d 不能裝進 Isaac Lab 的環境，改用 uv 建立獨立環境，**全部放在專案目錄內**：
   `tools/bin/uv.exe`（uv 執行檔）、`.uv/`（uv 下載的 Python 與快取，設 `UV_PYTHON_INSTALL_DIR`、`UV_CACHE_DIR`）、`.venv_cad/`（build123d 環境）。三者都不進 git。
   CAD 程式一律用這個環境執行，模擬與訓練仍用 `tools\isaacpy.cmd`。
+- **韌體與實機工具的 Python 環境（2026-11-19）**：`.venv_fw/`（uv 建立，不進 git），裝 CMake、Ninja（編譯芒果磚韌體）與 pyserial（`deploy/host/`）。ARM 工具鏈、Pico SDK、picotool 直接用交接包 `.tools/` 內的版本。做法見 `deploy/firmware/README.md`。
 - Isaac Lab 3.0 的 API 與舊版差異很大（四元數 XYZW、`.torch`、`_index` 寫入方法、巢狀的 URDF 匯入結果），動手前先看 `/isaac-run` skill 的陷阱清單。

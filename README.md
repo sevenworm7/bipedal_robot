@@ -16,14 +16,14 @@
 | [`deploy/`](deploy/README.md) | 實體 | 實機：馬達台架測試、校正、板上控制程式、實地測試（進行中） |
 | [`archive/`](archive/README.md) | — | 封存的實驗一（參考模型，驗證管線可行） |
 | [`tools/`](tools/README.md) | — | 開發工具（`isaacpy.cmd`、URDF 檢查） |
-| `references/` | — | 參考資料（唯讀） |
+| `references/` | — | 參考資料（唯讀）；`mango_x4_handoff_20261117/` 是組員的芒果磚交接包（不進 git） |
 | `outputs/` | — | 所有產出（不進 git），結構對應上表：`outputs/robot_v<N>/{hardware, simulation, control, evaluation, deploy}/`；數字總表在 [`docs/results.md`](docs/results.md) |
 
-## 目前狀態（2026-11-18）
+## 目前狀態（2026-11-19）
 
-- **robot v1**：模擬訓練出的 student v5 在實機上有效，可以走約 8 步，之後腿軟跌倒（電流問題由其他成員處理）。
-- **robot v2**：因為腿部馬達線太短，縮短大腿（70 mm）與小腿（55 mm），已凍結（tag `robot-v2`）。
-- **下一步**：在 v2 上接續 v1 的模型往下訓練。
+- **robot v1**：實體已組裝；組員以開迴路回放 student v5 的模擬軌跡，在桌上走約 8 步後跌倒（不是模型在板上閉迴路推論）。
+- **robot v2**：縮短大腿（70 mm）與小腿（55 mm）讓馬達線夠長，已凍結（tag `robot-v2`）；最終模型 student v2ft 通過全部模擬門檻與壓力測試。
+- **v2 板上程式**：模型匯出成 int8、芒果磚（RP2350）50 Hz 閉迴路韌體、PC 指令工具已離線完成並驗證（`deploy/`）；等 v2 大腿、小腿列印完成後上實機。
 
 完整的計畫、各階段狀態與重點結果見 [`docs/progress.md`](docs/progress.md)，各階段的數字見 [`docs/results.md`](docs/results.md)。
 
@@ -37,4 +37,4 @@
 ## 執行環境
 
 Windows、RTX 5080 Laptop；Isaac Sim 6.0.1、Isaac Lab 3.0.0。模擬與訓練一律用 `tools\isaacpy.cmd <script>`（專案根目錄執行）；
-CAD（build123d）用 `.venv_cad\Scripts\python.exe`。細節見 `CLAUDE.md` 與 `/isaac-run` skill。
+CAD（build123d）用 `.venv_cad\Scripts\python.exe`；韌體建置（CMake、Ninja）與 PC 指令工具（pyserial）用 `.venv_fw\`，見 `deploy/firmware/README.md`。細節見 `CLAUDE.md` 與 `/isaac-run` skill。

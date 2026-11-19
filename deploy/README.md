@@ -1,24 +1,33 @@
 # deploy：實體機器人（實驗二，進行中）
 
-把模擬中訓練好的策略（`control/sim2real` 的 student v5）放到 3D 列印的實體機器人上走起來。
-這裡的程式在實機上執行，**不可依賴 Isaac Lab**，只能使用 `core/`（介面、機器人定義、伺服對照）。
-控制板已改用「芒果磚」（台灣的開發板），不是原本暫定的 Pi Zero 2 W。
-目前板上程式還沒有放進這個資料夾，下列子資料夾仍是預定。
+把模擬中訓練好的策略（robot v2：`control/sim2real` 的 student v2ft，`docs/decisions.md` #23）放到 3D 列印的實體機器人上走起來。
+這裡的程式在實機或 PC 上執行，**不可依賴 Isaac Lab**（`export/` 的匯出程式例外：只在 PC 上用來產生檔案）。
+控制板是「芒果磚」MANGO X4（RP2350，台灣的開發板）；板上程式由本專案負責（使用者 2026-11-19 決定）。
 
-- **實機測試紀錄**：[`test_log.md`](test_log.md)（2026-10-15 ～ 11-18：v1 可走約 8 步；腿部馬達線太短 → robot v2）。
+- **實機測試紀錄**：[`test_log.md`](test_log.md)。
 - **各步驟的狀態**：[`docs/progress.md`](../docs/progress.md)「實機部署的子步驟」；待辦問題在 [`docs/backlog.md`](../docs/backlog.md)。
 - **馬達資料**：通訊協定、暫存器表、上機前檢查表在 [`hardware/design_refs/hd1910/docs/`](../hardware/design_refs/hd1910/README.md)。
+- **組員的 v1 交接包**（懸空回放韌體、實測的 ID／方向／零點、IMU 與供電紀錄）：`references/mango_x4_handoff_20261117/`，唯讀、不進 git（4.1 GB）。要用其中的程式或資料時複製到這裡，並註明來源路徑與 SHA256（`docs/decisions.md` #26）。
 
-## 預定的步驟（草案，開始前會再和使用者確認）
+## 子資料夾
 
-| 步驟 | 預定子資料夾 | 內容 | 通過條件 |
+| 資料夾 | 內容 |
+|---|---|
+| [`export/`](export/README.md) | 把學生模型匯出成 C 標頭檔（int8 權重放 SRAM）＋標準答案測試資料 |
+| [`firmware/`](firmware/README.md) | 芒果磚上的 50 Hz 閉迴路程式（C，Pico SDK）與 PC 單元測試 |
+| [`host/`](host/README.md) | PC 端 USB 指令與遙測記錄工具 |
+| [`calibration/`](calibration/README.md) | 實機校正檔（伺服 ID、方向、零點、IMU 軸向）；目前是暫定值 |
+
+## 步驟
+
+| 步驟 | 子資料夾 | 內容 | 通過條件 |
 |---|---|---|---|
 | 1. 採購與試印 | — | 依 `hardware/robot_v1/reports/parts_bom.md` 備料、試印關鍵件、秤重、確認孔位與馬達轉向（`docs/backlog.md` #3、#4） | 實測密度回填 |
-| 2. 單顆馬達台架測試 | `actuator_bench/` | 量測反應延遲（要求 ≤ 40 ms，`docs/decisions.md` #25）、追隨能力、受力偏移、回讀電流，和模擬的馬達模型（kp、kd、延遲範圍 0–40 ms）比對 | 落在訓練的隨機化範圍內；否則回到 `control/sim2real` 微調 |
-| 3. 組裝與校正 | `calibration/` | 零點、轉向（`SERVO_MAP`）、IMU 軸向；量總重與重心；站姿和模擬比對 | 校正檔 |
-| 4. 控制程式 | `runtime/` | 在板上執行最終模型（robot v2：student v2ft；輸出和 PyTorch 完全相同）、50 Hz 控制迴圈、開機站起、**站立用固定站姿、行走才交給模型**（`docs/decisions.md` #24）、安全停止 | 迴圈延遲 < 40 ms |
-| 5. 懸吊測試 | `field_tests/` | 吊起來、腳不著地，確認方向與步態；再加安全繩放到地上 | 方向正確、不抖動 |
-| 6. 平地行走 | `field_tests/` | 正式走路，和模擬比較速度、直線度、步頻、馬達負載與溫度 | 直線走完 2 m |
-| 7. 進階測試 | `field_tests/` | 凹凸地面、推擠、長時間溫升 | — |
+| 2. 單顆馬達台架測試 | `actuator_bench/`（預定） | 量測反應延遲（要求 ≤ 40 ms，`docs/decisions.md` #25）、追隨能力、受力偏移、回讀電流，和模擬的馬達模型（kp、kd、延遲範圍 0–40 ms）比對 | 落在訓練的隨機化範圍內；否則回到 `control/sim2real` 微調 |
+| 3. 組裝與校正 | `calibration/` | 零點、轉向、IMU 軸向；量總重與重心；站姿和模擬比對 | 校正檔 `verified: true` |
+| 4. 控制程式 | `export/`、`firmware/`、`host/` | 在板上執行 student v2ft（int8）、50 Hz 控制迴圈、**站立用固定站姿、行走才交給模型**（`docs/decisions.md` #24）、安全停止 | 板上推論和 PC 一致；讀取＋推論＋寫入 < 20 ms |
+| 5. 懸吊測試 | `field_tests/`（預定） | 吊起來、腳不著地，確認方向與步態；再加安全繩放到地上 | 方向正確、不抖動 |
+| 6. 平地行走 | `field_tests/`（預定） | 正式走路，和模擬比較速度、直線度、步頻、馬達負載與溫度 | 直線走完 2 m |
+| 7. 進階測試 | `field_tests/`（預定） | 凹凸地面、推擠、長時間溫升 | — |
 
-步驟 2 之前的模擬準備（馬達負載分析、`stress_v3`）在 [`evaluation/`](../evaluation/README.md)。產出預定放在 `outputs/robot_v<N>/deploy/`。
+步驟 2 之前的模擬準備（馬達負載分析、`stress_v3`）在 [`evaluation/`](../evaluation/README.md)。產出放在 `outputs/robot_v<N>/deploy/`（匯出、韌體建置、實機 session 紀錄）。

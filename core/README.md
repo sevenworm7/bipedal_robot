@@ -2,6 +2,7 @@
 
 **模擬與實機都會用到、而且不依賴 Isaac Lab 的程式**放在這裡：觀測／動作的介面契約、左右鏡像、機器人定義（關節順序、站姿、致動器、伺服 ID 對照）。
 rule-based、訓練、評估與之後的實機控制程式（`deploy/`）**只能**從這裡取得介面定義，不可各自定義（見根目錄 `CLAUDE.md`「跨流程介面契約」）。
+芒果磚韌體是 C 程式，不能 import Python：`deploy/export/export_policy.py` 從這裡讀出關節順序、站姿、動作縮放等，產生 `robot_config.h`；觀測組裝（`deploy/firmware/src/obs.c`）照 `interface_v2.py` 實作，並用模擬錄下的資料逐步比對一致。改了這裡的介面就要重新匯出、重跑 `deploy/firmware/build_host_tests.sh`。
 2026-10-15 從原 `shared/` 拆出；模擬專用的部分在 [`simulation/`](../simulation/README.md)。
 
 | 檔案 | 內容 |

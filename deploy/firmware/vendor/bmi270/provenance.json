@@ -1,0 +1,30 @@
+{
+  "source": "Bosch Sensortec BMI270_SensorAPI, official C driver",
+  "download_method": "HTTPS only; no Git executable or UI",
+  "files": {
+    "bmi2.c": {
+      "url": "https://raw.githubusercontent.com/boschsensortec/BMI270_SensorAPI/master/bmi2.c",
+      "sha256": "8d42ba3281b8448f674a4df616a7e176a259ad3c38c53b6d2c49bfdbdb0a82db"
+    },
+    "bmi2.h": {
+      "url": "https://raw.githubusercontent.com/boschsensortec/BMI270_SensorAPI/master/bmi2.h",
+      "sha256": "a86c53c480974a0c56e24d9d4e736445c61ebc07addec6d3eaceddb8a2c97cd3"
+    },
+    "bmi270.c": {
+      "url": "https://raw.githubusercontent.com/boschsensortec/BMI270_SensorAPI/master/bmi270.c",
+      "sha256": "f6446867378bbcc90ea97ef6593555de8767ca20b799355c1b37c2cabb7b7b41"
+    },
+    "bmi270.h": {
+      "url": "https://raw.githubusercontent.com/boschsensortec/BMI270_SensorAPI/master/bmi270.h",
+      "sha256": "7979ec4c943e2825351bd9d3d267b63abc6f8314c1f13f1c37e95cabc3fc82c8"
+    },
+    "bmi2_defs.h": {
+      "url": "https://raw.githubusercontent.com/boschsensortec/BMI270_SensorAPI/master/bmi2_defs.h",
+      "sha256": "39c2cf19bfbf735cb0ed209efd975a731be50dff71b432b24a6a2625b2b14304"
+    },
+    "LICENSE": {
+      "url": "https://raw.githubusercontent.com/boschsensortec/BMI270_SensorAPI/master/LICENSE",
+      "sha256": "56df116398e0b72a12ae353d93002d29175583590283ced2c2510e3d8075546f"
+    }
+  }
+}

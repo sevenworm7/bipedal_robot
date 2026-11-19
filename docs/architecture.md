@@ -20,7 +20,7 @@
 | `docs/` | — | 跨領域文件：進度與計畫、待辦、決策、成果總表、本檔 | [`README.md`](README.md) |
 | `archive/exp1_reference/` | — | 實驗一（封存，自成一套） | `archive/exp1_reference/CLAUDE.md` |
 | `tools/` | — | 開發工具（`isaacpy.cmd`、`urdf_inspect.py`），兩次實驗共用 | `tools/README.md` |
-| `references/` | — | 參考資料（唯讀）：實驗一使用其中的 URDF | — |
+| `references/` | — | 參考資料（唯讀）：實驗一使用其中的 URDF；`mango_x4_handoff_20261117/` 是組員的芒果磚交接包（不進 git，decisions #26） | — |
 | `outputs/` | — | 實驗二的產出（不進 git），結構對應程式資料夾 | — |
 
 ## 資料流 / 依賴方向
@@ -33,7 +33,7 @@
 ```
 
 - 依序相依：hardware → simulation → control（rule_based → flat_pipeline → sim2real）→ evaluation → deploy。
-- `core/` 被所有虛擬與實體程式 import；`core/` 和 `deploy/` **不可依賴 Isaac**。
+- `core/` 被所有虛擬與實體程式 import；`core/` 和 `deploy/` **不可依賴 Isaac**（例外：`deploy/export/` 在 PC 上產生韌體標頭與標準答案，會用到 torch 與模擬）。芒果磚韌體（C）透過匯出的 `robot_config.h` 取得 `core/` 的定義。
 - `control/sim2real` import `flat_pipeline` 的網路、BC 與固定評估集設定；`flat_pipeline` 用 `rule_based` 當老師。
 - `archive/exp1_reference/` 和實驗二互不相依。
 - 機器人版本用環境變數 `CUSTOM_BIPED_VERSION` 切換（預設 1）。
@@ -49,7 +49,7 @@ core/                   # interface.py、interface_v2.py、symmetry.py、robots/
 simulation/             # env/（環境、地形、場景版本）、metrics、rollout、影片；robot_assets/（URDF → USD、模擬檢查、usd/ 不進 git）
 control/                # rule_based/、flat_pipeline/、sim2real/（README ＋ log_robot_v<N>.md）
 evaluation/             # generalization/、load_analysis/
-deploy/                 # README（步驟定義）、test_log.md（實機紀錄）；預定 actuator_bench/、calibration/、runtime/、field_tests/
+deploy/                 # README（步驟）、test_log.md（實機紀錄）、export/（模型 → C 標頭）、firmware/（芒果磚 RP2350 韌體）、host/（PC 指令工具）、calibration/（校正檔）；預定 actuator_bench/、field_tests/
 archive/exp1_reference/ # 實驗一：shared/、scripts/、rule_based/、training_pipeline/、outputs/（不進 git）
 references/             # 唯讀
 tools/                  # isaacpy.cmd、urdf_inspect.py、bin/uv.exe（不進 git）

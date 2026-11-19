@@ -100,6 +100,30 @@ student v2ft 的細項（未跌倒的 episode）：
 | `flat_v1` | 0.062／0.069 N·m | 59.7 mm | 100%／0% | 1.06 | 1.4° |
 | `dr_v1` | 0.070／0.093 N·m | 59.0 mm | 100%／0% | 1.01 | 2.3° |
 
+## v2 板上部署準備（deploy，2026-11-19，尚未上實機）
+
+student v2ft 匯出給芒果磚（`deploy/export/`），權重改用 int8 放 SRAM（`decisions.md` #28）。
+
+**int8 量化後的模擬閉迴路**（`student_int8.pt`，100 episode，sim-to-real 判定，成功率／跌倒率）：
+
+| 場景 | float32（原模型） | int8 |
+|---|---|---|
+| `flat_v1` | 100%／0% | **100%／0%** |
+| `dr_v1` | 100%／0% | **100%／0%** |
+| `rough_eval_v1` | 99%／0% | **100%／0%** |
+| 組合（`dr_rough_eval_v1`） | 93%／1% | **94%／0%** |
+
+run：`outputs/robot_v2/control/sim2real/eval_<場景>_v2s1_int8_20261119_*`。int8 和 float32 的動作差最大 0.025（關節目標 0.36°）。
+
+**C 程式和 PyTorch／模擬的一致性**（PC 單元測試，`deploy/firmware/build_host_tests.sh`）：
+
+| 項目 | 結果 |
+|---|---|
+| float32 推論 vs PyTorch（256 組） | 最大差 1.6e-6 |
+| 觀測重建 vs 模擬（4 台 × 252 步，站 1 s → 走 4 s） | 最大差 6e-8 |
+| int8 推論 vs Python 參考 | 最大差 1.2e-6 |
+| 韌體 | 編譯 0 警告；SRAM 使用約 300 KB／512 KB（權重 281 KB） |
+
 # robot v1
 
 機器人：`custom_biped` v1（tag `robot-v1`，0.696 kg，每腿 4 DOF ＋ 2 DOF 尾巴）。平地、直線、0.05–0.15 m/s、1.2–2.0 Hz、20 秒 episode。
