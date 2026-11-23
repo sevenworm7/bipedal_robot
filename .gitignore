@@ -43,6 +43,8 @@ tools/bin/
 
 # Curated, compressed evaluation videos (git LFS, see docs/videos/README.md)
 !docs/videos/**/*.mp4
+# Meeting report videos (H.264, git LFS, see meeting/README.md)
+!meeting/**/*.mp4
 
 # Teammate MANGO X4 handoff (4.1 GB, read-only reference; copy needed files into deploy/ with provenance)
 references/mango_x4_handoff_20261117/

@@ -18,6 +18,7 @@
 | `evaluation/` | 虛擬 | 不訓練：`generalization/`（訓練範圍以外的壓力測試）、`load_analysis/`（馬達負載） | `evaluation/generalization/CLAUDE.md` |
 | `deploy/` | 實體 | 實機：台架測試、校正、板上控制程式、實地測試；不可依賴 Isaac | `deploy/README.md` |
 | `docs/` | — | 跨領域文件：進度與計畫、待辦、決策、成果總表、本檔 | [`README.md`](README.md) |
+| `meeting/` | — | 會議報告（2026-11-23 起），一次報告一個資料夾 `<YYYYMMDD>_<主題>/`（`report.html`、影片走 git LFS） | `meeting/README.md` |
 | `archive/exp1_reference/` | — | 實驗一（封存，自成一套） | `archive/exp1_reference/CLAUDE.md` |
 | `tools/` | — | 開發工具（`isaacpy.cmd`、`urdf_inspect.py`），兩次實驗共用 | `tools/README.md` |
 | `references/` | — | 參考資料（唯讀）：實驗一使用其中的 URDF；`mango_x4_handoff_20261117/` 是組員的芒果磚交接包（不進 git，decisions #26） | — |
@@ -44,6 +45,7 @@
 README.md               # 專案總覽（一頁）
 CLAUDE.md               # 工作規則
 docs/                   # 跨領域文件：progress、backlog、decisions、results、architecture；videos/ 精選影片（git LFS）
+meeting/                # 會議報告：<YYYYMMDD>_<主題>/report.html、videos/（git LFS）
 hardware/               # generator/ 產生程式（含 check_cable.py）、robot_v<N>/ 每版的參數、零件、URDF、報告、design_calc；design_refs/ 設計構想與 HD-1910 資料包
 core/                   # interface.py、interface_v2.py、symmetry.py、robots/custom_biped.py
 simulation/             # env/（環境、地形、場景版本）、metrics、rollout、影片；robot_assets/（URDF → USD、模擬檢查、usd/ 不進 git）

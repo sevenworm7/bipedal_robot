@@ -8,7 +8,7 @@
 #
 # Safety: the robot must hang free (feet and tail touching nothing) and someone must hold it. STOP at the end switches
 # torque off: legs and tail drop. -VStop below 6.5 V is for hanging tests only (2026-11-23: with the HW-133A 3 A buck
-# the supply swings 6.1-7.5 V while walking; at 6.5 V the guard stops WALK after 0.34 s).
+# the supply swings 6.1-7.7 V while walking; at 6.5 V the guard stops WALK after 0.34 s).
 # Logs: outputs/robot_v2/deploy/sessions/<time>/ (console.log, telemetry.csv for walk).
 param(
     [ValidateSet('play', 'walk')][string]$Mode = 'play',
