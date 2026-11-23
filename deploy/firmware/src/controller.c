@@ -140,7 +140,7 @@ static void safety(controller *c, const ctl_sensors *s) {
     bool bad_track = false;
     int track_joint = -1;
     for (int j = 0; j < NUM_JOINTS; ++j) {
-        if (s->q[j] < JOINT_LOWER[j] - tol || s->q[j] > JOINT_UPPER[j] + tol) { fault(c, FAULT_JOINT_RANGE, j); return; }
+        if (s->q[j] < RANGE_LOWER[j] - tol || s->q[j] > RANGE_UPPER[j] + tol) { fault(c, FAULT_JOINT_RANGE, j); return; }
         if (c->have_target && fabsf(s->q[j] - c->last_target[j]) > c->p.track_limit_deg * DEG) {
             bad_track = true;
             track_joint = j;
@@ -234,7 +234,8 @@ void ctl_step(controller *c, const ctl_sensors *s, float dt, ctl_output *out) {
         for (int j = 0; j < NUM_JOINTS; ++j) {
             const float ac = fminf(fmaxf(a[j], -ACTION_CLIP), ACTION_CLIP);
             c->last_action[j] = ac;
-            out->target[j] = DEFAULT_POS[j] + ACTION_SCALE * ac;
+            /* policy targets stay inside the training limits (the servo-side clamp uses the wider RANGE_*) */
+            out->target[j] = fminf(fmaxf(DEFAULT_POS[j] + ACTION_SCALE * ac, JOINT_LOWER[j]), JOINT_UPPER[j]);
         }
         out->policy_ran = true;
         c->phase = fmodf(c->phase + c->gait_freq * dt, 1.0f);

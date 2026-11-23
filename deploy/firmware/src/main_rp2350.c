@@ -319,7 +319,11 @@ static void telemetry_line(const ctl_sensors *s, const ctl_output *o) {
     for (int j = 0; j < NUM_JOINTS; ++j) printf(" %.4f", s->q[j]);
     for (int j = 0; j < NUM_JOINTS; ++j) printf(" %.4f", o->target[j]);
     for (int j = 0; j < NUM_JOINTS; ++j) printf(" %ld", (long)fb[j].speed_raw);
-    printf(" %.1f %d\n", s->v_min, s->temp_max);
+    printf(" %.1f %d", s->v_min, s->temp_max);
+    /* 2026-11-23: per-servo load (60-61) and current (69-70) registers, raw (units not verified) */
+    for (int j = 0; j < NUM_JOINTS; ++j) printf(" %ld", (long)fb[j].load_raw);
+    for (int j = 0; j < NUM_JOINTS; ++j) printf(" %ld", (long)fb[j].current_raw);
+    printf("\n");
 }
 
 static void bench(void) {
@@ -390,9 +394,9 @@ static void jog(const char *name, float delta_deg, float speed_deg_s) {
     ft_decode_feedback(d, &f);
     const float q0 = joints_count_to_rad(&jmap, j, f.position);
     const float q1 = q0 + delta_deg * 0.0174533f;
-    if (q1 < JOINT_LOWER[j] || q1 > JOINT_UPPER[j]) {
-        printf("ERROR JOG target %.1f deg outside [%.1f, %.1f]\n", q1 * 57.2958f, JOINT_LOWER[j] * 57.2958f,
-               JOINT_UPPER[j] * 57.2958f);
+    if (q1 < RANGE_LOWER[j] || q1 > RANGE_UPPER[j]) {
+        printf("ERROR JOG target %.1f deg outside [%.1f, %.1f]\n", q1 * 57.2958f, RANGE_LOWER[j] * 57.2958f,
+               RANGE_UPPER[j] * 57.2958f);
         return;
     }
     const int32_t c0 = f.position, c1 = joints_rad_to_count(&jmap, j, q1);
@@ -488,7 +492,7 @@ static void dispatch(char *line, const ctl_sensors *s) {
         if (read_feedback()) {
             int32_t counts[NUM_JOINTS];
             for (int j = 0; j < NUM_JOINTS; ++j) counts[j] = fb[j].position;
-            joints_align_turns(&jmap, counts, 10.0f * 0.0174533f, &bad);
+            joints_align_turns(&jmap, counts, RANGE_TOL_RAD, &bad);
         }
         printf("ALIGN aligned=%d bad_joint=%s\n", jmap.aligned, bad >= 0 ? JOINT_NAMES[bad] : "none");
         return;
@@ -503,7 +507,7 @@ static void dispatch(char *line, const ctl_sensors *s) {
         if (!read_feedback()) { puts("ERROR INIT feedback"); return; }
         for (int j = 0; j < NUM_JOINTS; ++j) counts[j] = fb[j].position;
         int bad;
-        if (!joints_align_turns(&jmap, counts, 10.0f * 0.0174533f, &bad)) {
+        if (!joints_align_turns(&jmap, counts, RANGE_TOL_RAD, &bad)) {
             printf("ERROR INIT joint %s outside its range (check calibration / pose)\n", JOINT_NAMES[bad]);
             return;
         }
@@ -533,7 +537,7 @@ int main(void) {
         int32_t counts[NUM_JOINTS];
         int bad;
         for (int j = 0; j < NUM_JOINTS; ++j) counts[j] = fb[j].position;
-        joints_align_turns(&jmap, counts, 10.0f * 0.0174533f, &bad);
+        joints_align_turns(&jmap, counts, RANGE_TOL_RAD, &bad);
     }
     gyro_calibrate(2.0f);
 

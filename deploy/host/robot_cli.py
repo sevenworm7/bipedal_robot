@@ -27,7 +27,7 @@ JOINTS = ["left_hip_roll", "left_hip_pitch", "left_knee", "left_ankle_pitch", "r
           "right_knee", "right_ankle_pitch", "tail_yaw", "tail_pitch"]
 HEADER = (["t_ms", "state", "loop_us", "bus_us", "ctl_us", "wx", "wy", "wz", "gx", "gy", "gz", "heading", "phase"]
           + [f"q_{j}" for j in JOINTS] + [f"target_{j}" for j in JOINTS] + [f"speed_raw_{j}" for j in JOINTS]
-          + ["v_min", "temp_max"])
+          + ["v_min", "temp_max"] + [f"load_raw_{j}" for j in JOINTS] + [f"current_raw_{j}" for j in JOINTS])
 
 
 def find_port() -> str:

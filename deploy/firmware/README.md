@@ -63,6 +63,11 @@ powershell -ExecutionPolicy Bypass -File deploy\firmware\flash_firmware.ps1 [-Uf
 
 ## 紀錄
 
+### 2026-11-23（下午）：第一次開扭矩
+
+- `JOG` 單顆延遲 25–35 ms、靜止誤差 ≤ 0.26°；懸空與桌上的固定站姿誤差 ≤ 0.5°，電壓 7.6–7.8 V（細節見 `deploy/test_log.md`）。
+- 新增：`ALIGN`、`JOG`；安全範圍 `RANGE_LOWER/UPPER`（匯出時由校正檔的 `range_check_deg` 決定，尾巴 ±170°），寫入目標時截在安全範圍 ± 10°，模型輸出在控制器截在訓練範圍；遙測加上每顆的負載與電流暫存器（表頭見 `deploy/host/robot_cli.py`，共 65 欄）。
+
 ### 2026-11-23：第一次上實機（robot v2，只讀）
 
 - `BENCH`：板上推論結果和 PC 一致，但 int8 權重 × float activation 要 **15.5 ms**（每次乘加約 8.5 個 cycle），加上讀取會超過 20 ms。

@@ -101,6 +101,8 @@ def main() -> None:
     ids = [int(by_joint[n]["id"]) for n in names]
     assert sorted(ids) == list(range(1, J + 1)), f"servo IDs must be 1..{J}: {ids}"
     lim = {**{f"{s}_{r}": v for s in ("left", "right") for r, v in rb.LEG_JOINT_LIMITS.items()}, **rb.TAIL_JOINT_LIMITS}
+    rng = {n: ([math.radians(x) for x in by_joint[n]["range_check_deg"]] if "range_check_deg" in by_joint[n] else lim[n])
+           for n in lim}
     default = [rb.DEFAULT_JOINT_POS[n] for n in names]
     imu = calib["imu"]["sensor_to_body"]
     vel_src = {"finite_difference": 0, "servo_speed": 1}[calib["joint_velocity_source"]]
@@ -129,6 +131,10 @@ def main() -> None:
         "static const float DEFAULT_POS[NUM_JOINTS] = " + arr(default, lambda v: f"{v:.9e}f") + ";",
         "static const float JOINT_LOWER[NUM_JOINTS] = " + arr([lim[n][0] for n in names], lambda v: f"{v:.9e}f") + ";",
         "static const float JOINT_UPPER[NUM_JOINTS] = " + arr([lim[n][1] for n in names], lambda v: f"{v:.9e}f") + ";",
+        "/* safety range checks (turn alignment, INIT, runtime fault, JOG); = training limits unless the calibration gives",
+        "   range_check_deg (2026-11-23: tail, which has no collision risk). Targets are still clamped to JOINT_LOWER/UPPER. */",
+        "static const float RANGE_LOWER[NUM_JOINTS] = " + arr([rng[n][0] for n in names], lambda v: f"{v:.9e}f") + ";",
+        "static const float RANGE_UPPER[NUM_JOINTS] = " + arr([rng[n][1] for n in names], lambda v: f"{v:.9e}f") + ";",
         "static const float IMU_SENSOR_TO_BODY[3][3] = {" + ", ".join(arr(r, lambda v: f"{float(v):.1f}f") for r in imu) + "};",
         "",
     ]

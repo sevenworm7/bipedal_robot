@@ -22,5 +22,7 @@ void joints_init(joint_map *m);
  * ranges are within +-180 deg). Returns false if any resulting angle is outside its limits by more than tol_rad. */
 bool joints_align_turns(joint_map *m, const int32_t counts[NUM_JOINTS], float tol_rad, int *bad_joint);
 float joints_count_to_rad(const joint_map *m, int j, int32_t count);
-/* Clamps to [JOINT_LOWER, JOINT_UPPER]; returns the goal count. */
+#define RANGE_TOL_RAD (10.0f * 0.017453293f) /* = the turn-alignment / INIT tolerance */
+/* Clamps to [RANGE_LOWER - tol, RANGE_UPPER + tol] (safety range; policy targets are clamped to the training limits in the
+ * controller); returns the goal count. */
 int32_t joints_rad_to_count(const joint_map *m, int j, float rad);

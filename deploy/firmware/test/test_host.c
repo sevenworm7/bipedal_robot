@@ -191,8 +191,8 @@ static void test_joints(void) {
     now[2] = m.zero[2] + 2048; /* half a turn away: outside every joint range */
     CHECK(!joints_align_turns(&m, now, 0.17f, &bad) && bad == 2, "out-of-range pose not rejected");
     joints_init(&m);
-    CHECK(joints_rad_to_count(&m, 0, 10.0f) == joints_rad_to_count(&m, 0, JOINT_UPPER[0]), "target clamp");
-    CHECK(joints_rad_to_count(&m, 0, NAN) == joints_rad_to_count(&m, 0, JOINT_LOWER[0]), "NaN target");
+    CHECK(joints_rad_to_count(&m, 0, 10.0f) == joints_rad_to_count(&m, 0, RANGE_UPPER[0] + RANGE_TOL_RAD), "target clamp");
+    CHECK(joints_rad_to_count(&m, 0, NAN) == joints_rad_to_count(&m, 0, RANGE_LOWER[0] - RANGE_TOL_RAD), "NaN target");
 }
 
 static void test_attitude(void) {
