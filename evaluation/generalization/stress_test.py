@@ -32,9 +32,11 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(ROOT), str(ROOT / "control")]  # core / simulation, sim2real (scoring)
 
 from simulation.env.scenarios import (STRESS_V1, STRESS_V1_META, STRESS_V2, STRESS_V2_META, STRESS_V3,  # noqa: E402
+                                       STRESS_V4, STRESS_V4_META,
                                        STRESS_V3_META)
 
-SUITES = {"v1": (STRESS_V1, STRESS_V1_META), "v2": (STRESS_V2, STRESS_V2_META), "v3": (STRESS_V3, STRESS_V3_META)}
+SUITES = {"v1": (STRESS_V1, STRESS_V1_META), "v2": (STRESS_V2, STRESS_V2_META), "v3": (STRESS_V3, STRESS_V3_META),
+          "v4": (STRESS_V4, STRESS_V4_META)}
 SUITE = "v1"  # set from --suite in main()
 
 DEFAULT_AGENT = "student:outputs/robot_v1/control/sim2real/student_v5_20261007_003835/student.pt"
@@ -146,6 +148,9 @@ def stage_report(out: Path, ids: list[str], agent: str = DEFAULT_AGENT):
     elif SUITE == "v2":
         lines += ["- v2：重做 v1 的斜坡（06）與台階（07），跌倒高度改以腳下地面為基準（`fall_height_ref=\"feet\"`）；"
                   "`02_bumps_00mm` 為平地對照。其餘條件見 [`stress_v1_20261009`](../stress_v1_20261009/README.md)。"]
+    elif SUITE == "v4":
+        lines += ["- v4（2026-11-23）：實機慢步態。步頻固定 1.2（訓練下限）／1.0／0.8 Hz，速度固定 0.05 或 0.10 m/s；"
+                  "`18_` 在中等隨機化（`dr_v1`）上，是刻意的組合條件。指令不在上方「0.05–0.15 m/s、1.2–2.0 Hz」的範圍內抽樣。"]
     else:
         lines += ["- v3：實機常見、但訓練沒有隨機化的誤差：伺服零點偏差（每個關節固定 ±值、正負號隨機，回讀與指令都偏移）、"
                   "IMU 安裝傾斜（重力方向與角速度在傾斜的座標系中量測）、伺服指令遺失（每個控制步以該機率沿用上一個目標）。"

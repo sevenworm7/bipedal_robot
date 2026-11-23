@@ -28,7 +28,8 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 sys.path.insert(0, str(HERE))
 
-from cases import CASES_V1, SERVO_6V  # noqa: E402
+from cases import CASE_SETS, SERVO_6V  # noqa: E402
+CASES_V1 = CASE_SETS["v1"]  # replaced by --cases in main()
 
 ISAACPY = str(ROOT / "tools" / "isaacpy.cmd")
 SETTLE_S = 0.5
@@ -209,14 +210,16 @@ def stage_report(out: Path, ids):
 
 
 def main():
-    global AGENT
+    global AGENT, CASES_V1
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--out", required=True)
     ap.add_argument("--stage", required=True, choices=("stats", "videos", "report"))
     ap.add_argument("--only", nargs="*", default=[])
+    ap.add_argument("--cases", default="v1", choices=tuple(CASE_SETS), help="case set of cases.py (v2: slow gait, 2026-11-23).")
     ap.add_argument("--agent", default=AGENT, help="kind:path of the model under test (default: robot v1 student v5).")
     a = ap.parse_args()
     AGENT = a.agent
+    CASES_V1 = CASE_SETS[a.cases]
     out = ROOT / a.out
     (out / "logs").mkdir(parents=True, exist_ok=True)
     ids = [i for i in CASES_V1 if not a.only or any(i.startswith(p) for p in a.only)]

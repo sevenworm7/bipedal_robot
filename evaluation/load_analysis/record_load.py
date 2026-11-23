@@ -32,7 +32,8 @@ app = AppLauncher(args_cli).app
 import numpy as np  # noqa: E402
 import torch  # noqa: E402
 
-from cases import CASES_V1, SERVO_6V  # noqa: E402
+from cases import CASE_SETS, SERVO_6V  # noqa: E402
+CASES_ALL = {k: v for s in CASE_SETS.values() for k, v in s.items()}  # every case id is unique across sets
 from flat_pipeline.config import PipelineCfg  # noqa: E402
 from sim2real.agents import load_agent_v2  # noqa: E402
 from sim2real.common import dump_config, git_commit, make_env  # noqa: E402
@@ -56,7 +57,7 @@ def set_command(env, case):
 
 
 def main():
-    case = CASES_V1[args_cli.case]
+    case = CASES_ALL[args_cli.case]
     out = Path(args_cli.out_dir)
     out.mkdir(parents=True, exist_ok=False)
     video = args_cli.mode == "video"

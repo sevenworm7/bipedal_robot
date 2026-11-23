@@ -99,6 +99,8 @@ def apply_scenario(env_cfg, name: str) -> None:
         overrides = STRESS_V2[name.split("/", 1)[1]]
     elif name.startswith("stress_v3/"):
         overrides = STRESS_V3[name.split("/", 1)[1]]
+    elif name.startswith("stress_v4/"):
+        overrides = STRESS_V4[name.split("/", 1)[1]]
     else:
         overrides = SCENARIOS[name]
     for k, v in overrides.items():
@@ -214,3 +216,27 @@ for p in (0, 5, 10, 20, 40):
 _add3("16_combined", "組合（零點 2°＋IMU 3°＋遺失 5%）", 1, "-",
       {"dr": {"joint_offset": (float(np.radians(2)), float(np.radians(2))), "imu_tilt": (float(np.radians(3)),) * 2,
               "action_drop_prob": 0.05}}, "typical")
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Stress tests v4 (evaluation/generalization, 2026-11-23): slow gait for the real robot (the 1.6 Hz gait asks the
+# servos for ~300-400 deg/s, too fast for the current power supply). Fixed gait frequency 1.2 (training minimum) /
+# 1.0 / 0.8 Hz x fixed speed 0.05 / 0.10 m/s on flat_v1, plus the slow speed on dr_v1 (moderate randomisation;
+# a combined condition by design). Names "stress_v4/<id>". Frozen once used.
+# ----------------------------------------------------------------------------------------------------------------------
+STRESS_V4: dict[str, dict] = {}
+STRESS_V4_META: dict[str, dict] = {}
+
+
+def _add4(test: str, title: str, freq: float, vx: float, base: dict, tag: str):
+    key = f"{test}_{tag}"
+    STRESS_V4[key] = {**base, "gait_freq_range": (freq, freq), "cmd_vx_range": (vx, vx), "_video_cmd": vx,
+                      "_video_freq": freq}
+    STRESS_V4_META[key] = {"test": test, "title": title, "value": freq, "unit": "Hz", "in_training": freq >= 1.2}
+
+
+for _vx in (0.05, 0.10):
+    for _f in (1.2, 1.0, 0.8):
+        _add4(f"17_freq_flat_{int(_vx * 100):02d}cms", f"步頻（平地，{_vx:.2f} m/s）", _f, _vx, {},
+              f"{int(_f * 10):02d}")
+for _f in (1.2, 1.0, 0.8):
+    _add4("18_freq_dr_05cms", "步頻（中等隨機化 dr_v1，0.05 m/s）", _f, 0.05, {"dr": _MODERATE_DR}, f"{int(_f * 10):02d}")

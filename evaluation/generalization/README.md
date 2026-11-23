@@ -109,3 +109,11 @@ student v5 在訓練範圍外仍有相當大的餘裕（各項 ≥ 95% 成功、
   `--stage report` 也要帶 `--agent`（2026-11-19 起報告標題與模型路徑取自 `--agent`，不再固定寫 student v5）。
 - 結果與 v1 對照：[`docs/results.md`](../../docs/results.md)「v2 泛化、壓力測試與馬達負載」。重點：凸起、零點偏差、IMU 傾斜都比 v1 好；**延遲 60 ms 只剩 46%**（不跌倒但走太快，實機要 ≤ 40 ms）。
 - **台階地形的出生點異常**：`stress_v2` 的台階條件中，固定 5 台（env 6、13、20、32、40）出生時一隻腳高 3–8 mm，0.1–0.2 s 內傾斜超過 40° 被判跌倒（v1 也有 env 20）。結果解讀時要扣除，見 `docs/backlog.md` #16。
+
+## robot v2 慢步態 stress_v4（2026-11-23）
+
+- 目的：實機步態太快（`deploy/test_log.md` 2026-11-23），評估 student v2ft 在步頻 1.2／1.0／0.8 Hz、速度 0.05／0.10 m/s 下的表現；`18_` 在 `dr_v1` 上（刻意的組合條件）。場景定義在 `simulation/env/scenarios.py` 的 `STRESS_V4`。
+  ```
+  tools\isaacpy.cmd evaluation\generalization\stress_test.py --suite v4 --out outputs\robot_v2\evaluation\generalization\stress_v4_20261123 --stage stats --agent student:<student.pt>
+  ```
+- 結果見 [`docs/results.md`](../../docs/results.md)「v2 慢步態評估」：平地幾乎不跌倒，`dr_v1` 0.8 Hz 跌倒 12%；關節速度不隨步頻下降（見 `load_analysis` 的 `CASES_V2`）。

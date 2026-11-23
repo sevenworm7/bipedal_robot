@@ -70,3 +70,11 @@ set CUSTOM_BIPED_VERSION=2
 tools\isaacpy.cmd evaluation\load_analysis\stand_handover.py --agent student:<student.pt> --scenario flat_v1
 ```
 結果（2026-11-19，128 台）：`flat_v1` 與 `dr_v1` 都是站立 0 跌倒、交接後 100%／0%，站立時 hip roll RMS 0.06–0.09 N·m、腳距 p50 59–60 mm。
+
+## 負載分析 v2 案例：慢步態（2026-11-23）
+
+- `cases.py` 新增 `CASES_V2`（0.05 m/s，步頻 1.6／1.2／1.0／0.8 Hz，平地與 `dr_v1`）；`run_load.py` 用 `--cases v2` 選擇（預設 v1，舊結果不受影響）。
+  ```
+  tools\isaacpy.cmd evaluation\load_analysis\run_load.py --cases v2 --out outputs\robot_v2\evaluation\load_analysis\load_v2_20261123 --stage stats --agent student:<student.pt>
+  ```
+- 結果：膝、髖 pitch 速度 p95 與整機電流幾乎不隨步頻改變，見 [`docs/results.md`](../../docs/results.md)「v2 慢步態評估」。

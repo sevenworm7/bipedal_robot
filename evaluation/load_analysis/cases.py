@@ -26,3 +26,13 @@ CASES_V1: dict[str, dict] = {
 # HD-1910-C001 at 6 V (conservative numbers used by the simulation; hardware/design_refs/hd1910/README.md)
 SERVO_6V = {"stall_torque": 1.18, "rated_torque": 0.294, "sim_limit": 0.8,
             "stall_current": 1.6, "rated_current": 0.69, "noload_current": 0.18}
+
+# Cases v2 (2026-11-23): slow gait for the real robot. Same slow speed 0.05 m/s (the real-robot WALK command), gait
+# frequency 1.6 (what the robot ran on 2026-11-23) / 1.2 / 1.0 / 0.8 Hz -> joint speed and current vs frequency.
+CASES_V2: dict[str, dict] = {
+    **{f"21_flat_f{int(f * 10):02d}": {"title": f"平地 0.05 m/s、{f} Hz", "scenario": "flat_v1", "vx": 0.05, "freq": f}
+       for f in (1.6, 1.2, 1.0, 0.8)},
+    **{f"22_dr_f{int(f * 10):02d}": {"title": f"中等隨機化 0.05 m/s、{f} Hz", "scenario": "dr_v1", "vx": 0.05, "freq": f}
+       for f in (1.6, 1.0, 0.8)},
+}
+CASE_SETS = {"v1": CASES_V1, "v2": CASES_V2}
