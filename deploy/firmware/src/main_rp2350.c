@@ -12,6 +12,7 @@
  *   SCAN [max_id] (read-only bus scan of IDs 0..max_id, default 253, OFF only)
  *   ALIGN (redo the turn alignment, OFF only)
  *   PLAY <rate> [loops] (slow open-loop preview of the simulated gait, STAND only)
+ *   VSTOP <volts> (voltage stop threshold 5.5..7.0 V, default 6.5, OFF only, not saved)
  *   JOG <joint_name> <delta_deg> [speed_deg_s] (one servo, +-15 deg, <= 20 deg/s, out-hold-back-hold, OFF only)
  * Torque is switched off on STOP, any fault and USB disconnect: the robot is then NOT held. */
 #include <math.h>
@@ -580,6 +581,13 @@ static void dispatch(char *line, const ctl_sensors *s) {
         return;
     }
     if (!strcmp(c, "BENCH")) { bench(); return; }
+    if (!strcmp(c, "VSTOP") && argc == 2) { /* OFF only, RAM only (6.5 V again after reboot); for hanging tests */
+        const float v = strtof(argv[1], NULL);
+        if (!(v >= 5.5f && v <= 7.0f)) { puts("ERROR VSTOP 5.5..7.0 V"); return; }
+        ctl.p.v_min_stop = v;
+        printf("ACK VSTOP %.2f\n", v);
+        return;
+    }
     if (!strcmp(c, "BUSTEST")) { bustest(argc == 2 ? atoi(argv[1]) : 100); return; }
     if (!strcmp(c, "SCAN")) { scan(argc == 2 ? atoi(argv[1]) : 253); return; }
     if (!strcmp(c, "ALIGN")) { /* redo the boot-time turn alignment (OFF only), e.g. after moving a joint into range */

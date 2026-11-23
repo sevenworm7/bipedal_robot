@@ -38,7 +38,7 @@
 
 ### USB 指令
 
-`PING`、`STATUS`、`TELEM 0|1`、`BENCH`（板上推論自我測試＋計時）、`BUSTEST <次數>`（只讀，比較 sync read 和逐顆讀取的時間）、`IMUCAL`（陀螺儀偏置，需靜止）、`SCAN [max_id]`（只讀掃描匯流排：每個有回應的 ID 的型號、模式、扭矩、位置、電壓、溫度；2026-11-23 新增）、`ALIGN`（重新對準多圈零點，關節移回範圍內後使用）、`JOG <關節名稱> <角度> [速度]`（只開一顆的扭矩：±15° 內、≤ 20°/s，出去 → 停 1 s → 回來 → 停 1 s，100 Hz 回報目標與實際位置；PC 送任何字元就關扭矩）、`INIT`、`WALK <vx> <freq> [clearance]`、`SET <vx> <freq>`、`STAND`、`STOP`。
+`PING`、`STATUS`、`TELEM 0|1`、`BENCH`（板上推論自我測試＋計時）、`BUSTEST <次數>`（只讀，比較 sync read 和逐顆讀取的時間）、`IMUCAL`（陀螺儀偏置，需靜止）、`SCAN [max_id]`（只讀掃描匯流排：每個有回應的 ID 的型號、模式、扭矩、位置、電壓、溫度；2026-11-23 新增）、`ALIGN`（重新對準多圈零點，關節移回範圍內後使用）、`PLAY <倍速> [次數]`（站姿下慢速播放模擬步態）、`VSTOP <V>`（暫時調整電壓停機門檻，懸空測試用）、`JOG <關節名稱> <角度> [速度]`（只開一顆的扭矩：±15° 內、≤ 20°/s，出去 → 停 1 s → 回來 → 停 1 s，100 Hz 回報目標與實際位置；PC 送任何字元就關扭矩）、`INIT`、`WALK <vx> <freq> [clearance]`、`SET <vx> <freq>`、`STAND`、`STOP`。
 PC 端用 [`deploy/host/robot_cli.py`](../host/README.md) 送指令並記錄遙測。
 
 ## 建置
@@ -68,6 +68,7 @@ powershell -ExecutionPolicy Bypass -File deploy\firmware\flash_firmware.ps1 [-Uf
 - 新增 `PLAY <倍速> [次數]`：站姿下開迴路播放模擬步態（`playback.h`，由 `deploy/export/make_playback.py` 產生；沒有這個檔案時指令回報錯誤），中止條件和控制器相同。
 - 主迴圈的 dt 超過 0.1 s（阻塞指令之後）改用一個週期，避免姿態濾波器誤判傾斜。
 - 閉迴路 `WALK` 控制週期 13.9 ms；0.34 秒後因供電壓降停機（`deploy/test_log.md`）。
+- 新增 `VSTOP <V>`（電壓停機門檻 5.5–7.0 V，只在 OFF、只存在 RAM，重開機回到 6.5 V；只用於懸空測試）。門檻 5.5 V 時懸空 WALK 走完 6 秒。
 
 ### 2026-11-23（下午）：第一次開扭矩
 
