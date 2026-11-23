@@ -1,24 +1,25 @@
 {
   "robot": "custom_biped_v2",
-  "verified": false,
-  "note": "PROVISIONAL. IDs = TOPDOWN_V1 already written into the servos by the teammate (2026-11-10). Signs and zero counts are the teammate's robot v1 measurements; zero counts of every joint whose horn or link was remounted for v2 must be re-measured before any motion. The firmware refuses torque-on while verified is false. Joint angle [rad] = sign * (count - zero_count) * 2*pi/4096, model convention of core/robots/custom_biped.py.",
-  "source": "references/mango_x4_handoff_20261117/MANGO_X4_HANDOFF/mango_feetech: friend_policy_c/full_gait_export.json (signs), live_mirror/parallel-reference.json (leg zeros), live_mirror/tail-reference.json (tail zeros)",
+  "verified": true,
+  "verified_on": "2026-11-23: IDs, signs, knee/ankle zeros and IMU axes measured on the reassembled robot (torque off); hip roll and tail zeros still flagged per joint (zero_verified false)",
+  "note": "2026-11-23 robot v2 as reassembled. IDs and signs measured by hand-moving each joint with torque off (joint_probe.py); the knee and ankle servos of the two legs were swapped in the reassembly (right leg 1,2,7,8; left leg 5,6,3,4) and both knee signs are opposite to v1. Knee and ankle zeros measured in the zero pose (legs straight and parallel, soles level, body level within 2.1 deg). Hip and tail zeros kept from v1 (horns not remounted, user 2026-11-23); hip pitch agrees with the zero pose within 1.5 deg after removing the body tilt, hip roll differs by -3.7 / -2.9 deg in both captures (check the foot spacing in the first powered stance). The firmware refuses torque-on while verified is false. Joint angle [rad] = sign * (count - zero_count) * 2*pi/4096, model convention of core/robots/custom_biped.py.",
+  "source": "IDs/signs: outputs/robot_v2/deploy/calibration/probe_20261123_094006 + probe_20261123_094229; zeros: capture_20261123_095320_pose_a_zero_level (knee/ankle), capture_20261123_095652_pose_b_knees90 (knee sign check: right +91.1 deg, left +83.4 deg); hip/tail zeros: v1 values from references/mango_x4_handoff_20261117 (live_mirror/parallel-reference.json, tail-reference.json)",
   "joints": [
-    {"joint": "left_hip_roll",     "id": 5,  "sign":  1, "zero_count": 1319, "zero_verified": false},
-    {"joint": "left_hip_pitch",    "id": 6,  "sign": -1, "zero_count": 729,  "zero_verified": false},
-    {"joint": "left_knee",         "id": 7,  "sign":  1, "zero_count": 294,  "zero_verified": false},
-    {"joint": "left_ankle_pitch",  "id": 8,  "sign":  1, "zero_count": 678,  "zero_verified": false},
-    {"joint": "right_hip_roll",    "id": 1,  "sign":  1, "zero_count": 3074, "zero_verified": false},
-    {"joint": "right_hip_pitch",   "id": 2,  "sign":  1, "zero_count": 3967, "zero_verified": false},
-    {"joint": "right_knee",        "id": 3,  "sign": -1, "zero_count": 2825, "zero_verified": false},
-    {"joint": "right_ankle_pitch", "id": 4,  "sign": -1, "zero_count": 1123, "zero_verified": false},
-    {"joint": "tail_yaw",          "id": 9,  "sign": -1, "zero_count": 2048, "zero_verified": false},
-    {"joint": "tail_pitch",        "id": 10, "sign": -1, "zero_count": 475,  "zero_verified": false}
+    {"joint": "left_hip_roll",     "id": 5,  "sign":  1, "zero_count": 1319, "zero_verified": false, "zero_source": "v1; zero pose read 1286 (-2.9 deg)"},
+    {"joint": "left_hip_pitch",    "id": 6,  "sign": -1, "zero_count": 729,  "zero_verified": true,  "zero_source": "v1; zero pose agrees within 0.4 deg"},
+    {"joint": "left_knee",         "id": 3,  "sign": -1, "zero_count": 752,  "zero_verified": true,  "zero_source": "zero pose 2026-11-23"},
+    {"joint": "left_ankle_pitch",  "id": 4,  "sign":  1, "zero_count": 1202, "zero_verified": true,  "zero_source": "zero pose 2026-11-23"},
+    {"joint": "right_hip_roll",    "id": 1,  "sign":  1, "zero_count": 3074, "zero_verified": false, "zero_source": "v1; zero pose read 3032 (-3.7 deg)"},
+    {"joint": "right_hip_pitch",   "id": 2,  "sign":  1, "zero_count": 3967, "zero_verified": true,  "zero_source": "v1; zero pose agrees within 1.5 deg"},
+    {"joint": "right_knee",        "id": 7,  "sign":  1, "zero_count": 310,  "zero_verified": true,  "zero_source": "zero pose 2026-11-23"},
+    {"joint": "right_ankle_pitch", "id": 8,  "sign": -1, "zero_count": 578,  "zero_verified": true,  "zero_source": "zero pose 2026-11-23"},
+    {"joint": "tail_yaw",          "id": 9,  "sign": -1, "zero_count": 2048, "zero_verified": false, "zero_source": "v1 (electronic zero); tail not fixed during the zero pose"},
+    {"joint": "tail_pitch",        "id": 10, "sign": -1, "zero_count": 475,  "zero_verified": false, "zero_source": "v1; tail not fixed during the zero pose"}
   ],
   "imu": {
-    "note": "Body (canonical +X forward, +Y left, +Z up) = R * sensor. Teammate's provisional map body = (-sensorY, sensorX, sensorZ); only forward lean was checked on v1.",
+    "note": "Body (canonical +X forward, +Y left, +Z up) = R * sensor. Teammate's provisional map body = (-sensorY, sensorX, sensorZ); only forward lean was checked on v1. Level zero pose 2026-11-23: gravity (-0.037, -0.003, -0.999). Verified 2026-11-23: body pitched nose-up (frame height difference) -> gravity x -0.195 while both hip pitch read +10 deg (legs hanging behind the body axis); left side down -> gravity y +0.564 while both hip rolls read +24 deg (capture_20261123_095913_pose_c_left_down).",
     "sensor_to_body": [[0, -1, 0], [1, 0, 0], [0, 0, 1]],
-    "verified": false
+    "verified": true
   },
   "joint_velocity_source": "finite_difference",
   "servo_gains": {"p": 32, "d": 40, "i": 0, "note": "Teammate's confirmed settings, read back on the bench; not written by this firmware."}

@@ -9,6 +9,9 @@
  * USB commands (one per line):
  *   PING | STATUS | TELEM 0|1 | INIT | WALK <vx> <freq> [clearance] | SET <vx> <freq> | STAND | STOP (also ESC / Ctrl-C)
  *   BENCH (policy self-test + timing, OFF only) | BUSTEST <rounds> (read timing, OFF only) | IMUCAL (gyro bias, OFF / STAND)
+ *   SCAN [max_id] (read-only bus scan of IDs 0..max_id, default 253, OFF only)
+ *   ALIGN (redo the turn alignment, OFF only)
+ *   JOG <joint_name> <delta_deg> [speed_deg_s] (one servo, +-15 deg, <= 20 deg/s, out-hold-back-hold, OFF only)
  * Torque is switched off on STOP, any fault and USB disconnect: the robot is then NOT held. */
 #include <math.h>
 #include <stdio.h>
@@ -334,7 +337,7 @@ static void bench(void) {
     float err = 0.0f;
     for (int j = 0; j < POLICY_ACT_DIM; ++j) err = fmaxf(err, fabsf(a[j] - policy_test_act()[j]));
     printf("BENCH policy=%s ok=%d max_abs_err=%.3g mean_us=%lu max_us=%lu %s\n", policy_kind(), ok, err,
-           (unsigned long)(total / n), (unsigned long)worst, ok && err < 1e-4f ? "PASS" : "FAIL");
+           (unsigned long)(total / n), (unsigned long)worst, ok && err < POLICY_REF_TOL ? "PASS" : "FAIL");
 }
 
 static void bustest(int rounds) {
@@ -355,6 +358,98 @@ static void bustest(int rounds) {
                fails, (unsigned long)(total / rounds), (unsigned long)worst);
         use_sync_read = saved;
     }
+}
+
+/* Single-joint bench move (2026-11-23): torque on ONE servo only, goal ramps current -> current + delta -> back.
+ * Safety: OFF state only, calibration aligned, |delta| <= 15 deg, speed <= 20 deg/s, the target inside the joint
+ * limits, goal set to the present position before torque-on, any byte from the host aborts with torque off.
+ * Prints "JOG t_ms goal_count pos_count speed_raw load_raw volt_raw" at 100 Hz for tracking / latency analysis. */
+#define JOG_MAX_DEG 15.0f
+#define JOG_MAX_SPEED 20.0f
+static bool write_goal_one(uint8_t id, int32_t goal) {
+    uint8_t tx[16], d[2];
+    ft_encode_signed(goal, &d[0], &d[1]);
+    bus_send(tx, ft_build_write(tx, id, FT_REG_GOAL, d, 2));
+    sleep_us(400); /* status reply of the write, dropped by the next flush */
+    return true;
+}
+
+static void jog(const char *name, float delta_deg, float speed_deg_s) {
+    int j = -1;
+    for (int k = 0; k < NUM_JOINTS; ++k)
+        if (!strcmp(name, JOINT_NAMES[k])) j = k;
+    if (j < 0) { puts("ERROR JOG unknown joint"); return; }
+    if (!jmap.aligned) { puts("ERROR JOG calibration not aligned"); return; }
+    if (fabsf(delta_deg) > JOG_MAX_DEG || fabsf(delta_deg) < 0.5f) { puts("ERROR JOG |delta| must be 0.5..15 deg"); return; }
+    if (speed_deg_s <= 0.0f || speed_deg_s > JOG_MAX_SPEED) { puts("ERROR JOG speed must be 0..20 deg/s"); return; }
+    const uint8_t id = SERVO_ID[j];
+    uint8_t d[FT_FEEDBACK_LEN], torque = 1;
+    if (!read_reg(id, FT_REG_TORQUE, 1, &torque) || torque) { puts("ERROR JOG torque already on / no reply"); return; }
+    if (!read_reg(id, FT_REG_FEEDBACK, FT_FEEDBACK_LEN, d)) { puts("ERROR JOG feedback"); return; }
+    ft_feedback f;
+    ft_decode_feedback(d, &f);
+    const float q0 = joints_count_to_rad(&jmap, j, f.position);
+    const float q1 = q0 + delta_deg * 0.0174533f;
+    if (q1 < JOINT_LOWER[j] || q1 > JOINT_UPPER[j]) {
+        printf("ERROR JOG target %.1f deg outside [%.1f, %.1f]\n", q1 * 57.2958f, JOINT_LOWER[j] * 57.2958f,
+               JOINT_UPPER[j] * 57.2958f);
+        return;
+    }
+    const int32_t c0 = f.position, c1 = joints_rad_to_count(&jmap, j, q1);
+    write_goal_one(id, c0);
+    const uint8_t on = 1, off = 0;
+    if (!write_verify(id, FT_REG_TORQUE, &on, 1)) { (void)write_verify(id, FT_REG_TORQUE, &off, 1); puts("ERROR JOG torque on"); return; }
+    printf("JOG start joint=%s id=%u q0=%.2fdeg target=%.2fdeg c0=%ld c1=%ld speed=%.1fdeg/s\n", name, id, q0 * 57.2958f,
+           q1 * 57.2958f, (long)c0, (long)c1, speed_deg_s);
+    const float ramp_s = fabsf(delta_deg) / speed_deg_s, hold_s = 1.0f;
+    const float phases[4] = {ramp_s, hold_s, ramp_s, hold_s}; /* out, hold, back, hold */
+    const uint64_t t0 = time_us_64();
+    bool aborted = false;
+    int fails = 0;
+    float t_end = 0.0f;
+    for (int p = 0; p < 4 && !aborted; ++p) {
+        const float tp0 = t_end;
+        t_end += phases[p];
+        for (;;) {
+            const uint64_t tick = time_us_64();
+            const float t = (float)(tick - t0) * 1e-6f;
+            if (t >= t_end) break;
+            if (getchar_timeout_us(0) >= 0) { aborted = true; break; }
+            float a = (t - tp0) / phases[p];
+            float frac = p == 0 ? a : p == 1 ? 1.0f : p == 2 ? 1.0f - a : 0.0f;
+            const int32_t goal = c0 + (int32_t)lrintf((float)(c1 - c0) * frac);
+            write_goal_one(id, goal);
+            if (read_reg(id, FT_REG_FEEDBACK, FT_FEEDBACK_LEN, d)) {
+                ft_decode_feedback(d, &f);
+                printf("JOG %lu %ld %ld %ld %ld %u\n", (unsigned long)((tick - t0) / 1000), (long)goal, (long)f.position,
+                       (long)f.speed_raw, (long)f.load_raw, f.voltage_raw);
+            } else if (++fails >= 5) { aborted = true; break; }
+            sleep_until(from_us_since_boot(tick + 10000));
+        }
+    }
+    const bool off_ok = write_verify(id, FT_REG_TORQUE, &off, 1);
+    printf("JOG done %s fails=%d torque_off=%s\n", aborted ? "ABORTED" : "OK", fails, off_ok ? "VERIFIED" : "UNCONFIRMED");
+}
+
+/* read-only bus scan: every responding ID with identity, mode, torque flag and feedback (no writes) */
+static void scan(int max_id) {
+    int found = 0;
+    if (max_id < 0 || max_id > 253) max_id = 253;
+    for (int id = 0; id <= max_id; ++id) {
+        uint8_t ident[3], mode = 255, torque = 255, d[FT_FEEDBACK_LEN];
+        if (!read_reg((uint8_t)id, FT_REG_MODEL_L, 3, ident)) continue;
+        ft_feedback f;
+        memset(&f, 0, sizeof(f));
+        (void)read_reg((uint8_t)id, FT_REG_MODE, 1, &mode);
+        (void)read_reg((uint8_t)id, FT_REG_TORQUE, 1, &torque);
+        const bool fok = read_reg((uint8_t)id, FT_REG_FEEDBACK, FT_FEEDBACK_LEN, d);
+        if (fok) ft_decode_feedback(d, &f);
+        printf("SCAN id=%d model=%u/%u reg_id=%u mode=%u torque=%u pos=%ld speed=%ld volt=%.1f temp=%u status=%u%s\n",
+               id, ident[0], ident[1], ident[2], mode, torque, (long)f.position, (long)f.speed_raw,
+               f.voltage_raw * 0.1f, f.temp_c, f.status, fok ? "" : " feedback=FAIL");
+        ++found;
+    }
+    printf("SCAN done found=%d range=0..%d\n", found, max_id);
 }
 
 static void dispatch(char *line, const ctl_sensors *s) {
@@ -387,6 +482,21 @@ static void dispatch(char *line, const ctl_sensors *s) {
     }
     if (!strcmp(c, "BENCH")) { bench(); return; }
     if (!strcmp(c, "BUSTEST")) { bustest(argc == 2 ? atoi(argv[1]) : 100); return; }
+    if (!strcmp(c, "SCAN")) { scan(argc == 2 ? atoi(argv[1]) : 253); return; }
+    if (!strcmp(c, "ALIGN")) { /* redo the boot-time turn alignment (OFF only), e.g. after moving a joint into range */
+        int bad = -1;
+        if (read_feedback()) {
+            int32_t counts[NUM_JOINTS];
+            for (int j = 0; j < NUM_JOINTS; ++j) counts[j] = fb[j].position;
+            joints_align_turns(&jmap, counts, 10.0f * 0.0174533f, &bad);
+        }
+        printf("ALIGN aligned=%d bad_joint=%s\n", jmap.aligned, bad >= 0 ? JOINT_NAMES[bad] : "none");
+        return;
+    }
+    if (!strcmp(c, "JOG") && (argc == 3 || argc == 4)) {
+        jog(argv[1], strtof(argv[2], NULL), argc == 4 ? strtof(argv[3], NULL) : 10.0f);
+        return;
+    }
     if (!strcmp(c, "INIT")) {
         if (!precheck()) { puts("ERROR INIT precheck failed"); return; }
         int32_t counts[NUM_JOINTS];

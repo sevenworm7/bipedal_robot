@@ -2,6 +2,26 @@
 
 實機測試的結果依日期記錄，新紀錄加在最上面。從 `README.md` 拆出（2026-11-18）。發現的問題同步記到 [`docs/backlog.md`](../docs/backlog.md)，進度記到 [`docs/progress.md`](../docs/progress.md)。
 
+## 2026-11-23：robot v2 實機第一次接上 v2 韌體（只讀，扭矩全程關閉）
+
+v2 已組裝、接線完成，芒果磚以 USB 接 PC（COM3）。紀錄在 `outputs/robot_v2/deploy/sessions/20261123_*`、`outputs/robot_v2/deploy/calibration/`。
+
+**1. 燒錄與板上量測**
+- 組員韌體 `mango_servo_command.uf2` 備份到 `outputs/robot_v2/deploy/teammate_fw_backup_20261123/`（SHA256 `f3e889be…`，和交接包 MANIFEST 相同）；以 `deploy/firmware/flash_firmware.ps1`（1200 baud 進 BOOTSEL）燒錄 v2 韌體。
+- `SCAN`（新增的只讀指令，ID 0–253）：剛好 10 顆，ID 1–10，型號 10/31（HD-1910）、位置模式、扭矩關；電壓 7.8–8.0 V、溫度 26–31 °C。
+- `BENCH`：板上推論和 PC 一致，但原本的 int8×float 要 **15.5 ms**，加上讀取超過 20 ms → 改用 Cortex-M33 DSP 整數運算（int16 activation、`SXTB16`／`SMLAD`）後 **6.8 ms**，和 Python int8 參考差 2.3e-4，和 fp32 差 0.018（改前 0.018）。
+- `BUSTEST 100`：**sync read 支援**，10 顆 6.35 ms、0 失敗；逐顆讀 30.8 ms。一個控制週期預估約 13.7 ms（< 20 ms）。
+
+**2. 線路中斷一次**：第一次手扳測試時匯流排約 87 秒完全沒有回應（`bus_fail` 累計 16,347），使用者重新整理線路後恢復，之後 100 次 0 失敗。接觸不良的可能性還在，後續測試持續看 `bus_fail`（`docs/backlog.md` #23）。
+
+**3. ID 與方向（手扳，`deploy/calibration/joint_probe.py`）**：髖 4 顆（1、2、5、6）和尾巴 2 顆（9、10）不變；**膝、踝 4 顆左右對調**：右腿 1、2、7、8，左腿 5、6、3、4。兩個膝蓋的方向和 v1 相反（右 +1、左 −1），以膝彎 90° 的姿勢再確認（右 +91.1°、左 +83.4°）。hip roll 兩邊靠得很近，往內扳會互撞，改成兩邊都往外扳。
+
+**4. 零點與 IMU**
+- 第一次零點姿勢時架子有高低差，機身後仰 11°（IMU 重力 x −0.195），兩邊 hip pitch 也都顯示 +10° → IMU 前後軸和關節讀值吻合；放平後（後仰 2.1°）重量。
+- 膝、踝用新零點（兩次量測差 ≤ 1.5°）；髖、尾巴的擺臂沒拆過，沿用 v1 零點：hip pitch 扣掉機身傾斜後和 v1 差 0.4–1.5°；**hip roll 兩次都是兩腳一起偏右約 3.3°**，待有扭矩的站姿量腳距（`docs/backlog.md` #18）。
+- 左側往下傾斜：重力 y +0.564，兩邊 hip roll 讀 +24° → IMU 左右軸正確。
+- 校正檔改為 `verified: true`（hip roll、尾巴零點仍個別標 `zero_verified: false`），重新匯出（`export_student_v2ft_20261118_230657_20261123_095946`）、編譯、燒錄；開機 `aligned=1`，目前姿勢換算的角度都在範圍內。
+
 ## 2026-11-19：組員交接包調查（v1 實機，2026-11-02 ～ 11-17 的工作）
 
 交接包放在 `references/mango_x4_handoff_20261117/`（唯讀、不進 git）。重點：

@@ -64,13 +64,13 @@ static void test_golden_mlp(const char *dir) {
         for (int j = 0; j < POLICY_ACT_DIM; ++j) max_err = fmax(max_err, fabs(a[j] - want[j]));
     }
     printf("  %d vectors, max |C - reference| = %.3g\n", n, max_err);
-    CHECK(max_err < 1e-4, "max error %.3g", max_err);
+    CHECK(max_err < POLICY_REF_TOL, "max error %.3g", max_err);
     /* self-test vector used by the BENCH command */
     float a[POLICY_ACT_DIM];
     policy_forward(policy_test_obs(), a);
     double e = 0;
     for (int j = 0; j < POLICY_ACT_DIM; ++j) e = fmax(e, fabs(a[j] - policy_test_act()[j]));
-    CHECK(e < 1e-4, "BENCH self-test vector error %.3g", e);
+    CHECK(e < POLICY_REF_TOL, "BENCH self-test vector error %.3g", e);
     /* NaN input is rejected without touching the output */
     float bad[POLICY_OBS_DIM];
     memcpy(bad, d, sizeof(bad));

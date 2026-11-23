@@ -38,7 +38,7 @@
 
 ### USB 指令
 
-`PING`、`STATUS`、`TELEM 0|1`、`BENCH`（板上推論自我測試＋計時）、`BUSTEST <次數>`（只讀，比較 sync read 和逐顆讀取的時間）、`IMUCAL`（陀螺儀偏置，需靜止）、`INIT`、`WALK <vx> <freq> [clearance]`、`SET <vx> <freq>`、`STAND`、`STOP`。
+`PING`、`STATUS`、`TELEM 0|1`、`BENCH`（板上推論自我測試＋計時）、`BUSTEST <次數>`（只讀，比較 sync read 和逐顆讀取的時間）、`IMUCAL`（陀螺儀偏置，需靜止）、`SCAN [max_id]`（只讀掃描匯流排：每個有回應的 ID 的型號、模式、扭矩、位置、電壓、溫度；2026-11-23 新增）、`ALIGN`（重新對準多圈零點，關節移回範圍內後使用）、`JOG <關節名稱> <角度> [速度]`（只開一顆的扭矩：±15° 內、≤ 20°/s，出去 → 停 1 s → 回來 → 停 1 s，100 Hz 回報目標與實際位置；PC 送任何字元就關扭矩）、`INIT`、`WALK <vx> <freq> [clearance]`、`SET <vx> <freq>`、`STAND`、`STOP`。
 PC 端用 [`deploy/host/robot_cli.py`](../host/README.md) 送指令並記錄遙測。
 
 ## 建置
@@ -52,9 +52,25 @@ bash deploy/firmware/build_firmware.sh "" -DALLOW_UNVERIFIED_CALIB=ON   # 台架
 ```
 
 工具：CMake／Ninja 裝在專案內的 `.venv_fw/`（uv，不進 git）；ARM GCC 14.2、Pico SDK 2.1、picotool 直接用交接包 `.tools/` 裡的版本（唯讀）。
-燒錄還沒做，要和使用者一起進行：按住 BOOT 接上 USB，把 `.uf2` 複製到 RP2350 磁碟。燒錄前先備份組員韌體（交接包 `build/mango_servo_command.uf2` 已有一份）。
+燒錄（2026-11-23 起）：
+
+```powershell
+# 預設燒最新的 firmware_build；1200 baud 讓板子進 BOOTSEL，再複製 UF2（做法取自組員的 flash.ps1）
+powershell -ExecutionPolicy Bypass -File deploy\firmware\flash_firmware.ps1 [-Uf2 <file.uf2>] [-Port COM3]
+```
+
+燒錄不會寫馬達 EEPROM，也不會開扭矩。組員韌體的備份：`outputs/robot_v2/deploy/teammate_fw_backup_20261123/mango_servo_command.uf2`（SHA256 和交接包 MANIFEST 相同），要還原時用 `-Uf2` 燒回去。
 
 ## 紀錄
+
+### 2026-11-23：第一次上實機（robot v2，只讀）
+
+- `BENCH`：板上推論結果和 PC 一致，但 int8 權重 × float activation 要 **15.5 ms**（每次乘加約 8.5 個 cycle），加上讀取會超過 20 ms。
+  改成 activation 逐層動態量化成 int16（最大值對應 16383，512 項累加不會溢位 int32），用 Cortex-M33 的 `SXTB16`／`SMLAD` 一次做兩個乘加 → **6.8 ms**。
+  和 Python int8 參考（float activation）最大差 2.3e-4，和 fp32 模型的動作差 0.018（改前 0.018），所以模擬閉迴路的 int8 結果仍適用。
+  PC 測試的比對門檻改為 `POLICY_REF_TOL`（int8 1e-3、fp32 1e-4，`src/policy.h`），PC 端用 C 模擬這兩個指令，計算方式相同。
+- `BUSTEST 100`：sync read 支援，10 顆 6.35 ms、0 失敗；逐顆讀 30.8 ms。一個控制週期預估：讀取 6.35 ＋ 推論 6.8 ＋ IMU／寫入約 0.5 ≈ **13.7 ms**（< 20 ms）。
+- 新增 `SCAN` 指令與 `flash_firmware.ps1`；校正完成後重新匯出、燒錄，開機 `calib_verified=1 aligned=1`。
 
 ### 2026-11-19：離線完成（A–C）
 
@@ -64,4 +80,4 @@ bash deploy/firmware/build_firmware.sh "" -DALLOW_UNVERIFIED_CALIB=ON   # 台架
   - int8 推論和 Python 參考實作最大差 1.2e-6；和 float32 模型的動作差最大 0.018。
   - 狀態機、封包、多圈對齊、姿態濾波的測試也全部通過。
 - 韌體編譯 0 個警告；int8 權重 281 KB 在 SRAM（`.data.policy`），推論迴圈在 SRAM（`.time_critical.policy`）；RAM 共用約 300 KB／512 KB。
-- **還沒在實機上執行過**。待做（需要實機）：①板上 `BENCH`（推論時間、結果一致）②`BUSTEST`（確認 sync read 是否支援、讀取時間）③ IMU 軸向與偏置 ④ v2 組裝後的零點與方向校正 ⑤懸空閉迴路。
+- 當時還沒上實機；①–④（BENCH、BUSTEST、IMU 軸向、零點與方向）已在 2026-11-23 完成，⑤懸空閉迴路待做。

@@ -124,6 +124,18 @@ run：`outputs/robot_v2/control/sim2real/eval_<場景>_v2s1_int8_20261119_*`。i
 | int8 推論 vs Python 參考 | 最大差 1.2e-6 |
 | 韌體 | 編譯 0 警告；SRAM 使用約 300 KB／512 KB（權重 281 KB） |
 
+**芒果磚實測（2026-11-23，robot v2，扭矩關閉）**：
+
+| 項目 | 結果 |
+|---|---|
+| 板上推論（int8 權重 × float activation） | 15.5 ms（太慢） |
+| 板上推論（int8 × int16 activation，DSP `SMLAD`） | **6.8 ms**；和 Python int8 參考差 2.3e-4，和 fp32 動作差 0.018 |
+| 讀 10 顆馬達 | sync read **6.35 ms**（100 次 0 失敗）；逐顆 30.8 ms |
+| 一個控制週期（預估） | 約 13.7 ms（上限 20 ms） |
+| 匯流排 | 10 顆（ID 1–10），7.8–8.0 V，26–31 °C |
+
+模擬閉迴路的 int8 結果（上表）用的是 float activation；改成 int16 後的差距（2.3e-4）比 int8 權重本身的量化誤差小約 80 倍。
+
 # robot v1
 
 機器人：`custom_biped` v1（tag `robot-v1`，0.696 kg，每腿 4 DOF ＋ 2 DOF 尾巴）。平地、直線、0.05–0.15 m/s、1.2–2.0 Hz、20 秒 episode。

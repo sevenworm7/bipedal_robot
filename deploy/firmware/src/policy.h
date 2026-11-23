@@ -17,3 +17,11 @@ bool policy_forward(const float *obs, float *act);
 const float *policy_test_obs(void);
 const float *policy_test_act(void);
 const char *policy_kind(void);
+
+/* Tolerance against the export's reference outputs (host test and BENCH). int8: the reference uses float activations,
+ * the firmware int16 activations (measured 2.3e-4 on 256 golden vectors, 2026-11-23). */
+#ifdef POLICY_INT8
+#define POLICY_REF_TOL 1e-3f
+#else
+#define POLICY_REF_TOL 1e-4f
+#endif
