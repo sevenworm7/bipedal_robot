@@ -116,4 +116,4 @@ student v5 在訓練範圍外仍有相當大的餘裕（各項 ≥ 95% 成功、
   ```
   tools\isaacpy.cmd evaluation\generalization\stress_test.py --suite v4 --out outputs\robot_v2\evaluation\generalization\stress_v4_20261123 --stage stats --agent student:<student.pt>
   ```
-- 結果見 [`docs/results.md`](../../docs/results.md)「v2 慢步態評估」：平地幾乎不跌倒，`dr_v1` 0.8 Hz 跌倒 12%；關節速度不隨步頻下降（見 `load_analysis` 的 `CASES_V2`）。
+- 結果見 [`docs/results.md`](../../docs/results.md)「v2 慢步態評估」：全部不跌倒，`dr_v1` 0.8 Hz 成功 66%（走太慢）；記得先設 `CUSTOM_BIPED_VERSION=2`（第一次漏設，結果無效）；關節速度不隨步頻下降（見 `load_analysis` 的 `CASES_V2`）。

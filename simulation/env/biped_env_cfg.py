@@ -104,6 +104,10 @@ class DomainRandCfg:
     action_drop_prob: float | None = None
     """Probability per control step that the servos miss the new targets and keep the previous ones (bus write
     failure). The policy still sees its new action as ``last_action`` (stress_v3)."""
+    actuator_velocity_limit: float | None = None
+    """Constant (not random) override of every actuator's ``velocity_limit`` [rad/s]: the DC-motor torque-speed curve
+    reaches zero torque at this speed (robot v2 params: 9.6). Models a servo slowed by a sagging supply voltage
+    (slow-gait training, 2026-11-23); applied to the articulation config by ``scenarios.apply_scenario``."""
     rough_terrain: dict | None = None
     """Uneven ground with a curriculum (``simulation/env/terrain.py``). Keys: ``amplitude`` (max bump height [m] at the
     hardest level), ``levels``, ``cols``, ``tile_size`` ((x, y) [m]), ``robots_per_tile``, ``horizontal_scale`` [m],

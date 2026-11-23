@@ -68,6 +68,7 @@
 |---|---|---|
 | robot v1 | [`log_robot_v1.md`](log_robot_v1.md) | 階段一～四、第三～五輪訓練（2026-10-06 ～ 10-07）、產出清理 |
 | robot v2 | [`log_robot_v2.md`](log_robot_v2.md) | 接續 v1 模型：零樣本 → teacher 微調 → student 蒸餾 → 評估（2026-11-18 ～ 11-19），最終 student v2ft |
+| robot v2 慢步態 | [`log_robot_v2.md`](log_robot_v2.md)「慢步態模型 slow」 | 步頻 0.8–1.2 Hz、0.03–0.08 m/s、伺服速度上限 5.2 rad/s，從 teacher v2ft 接續（2026-11-23），student v2slow：成功率較好但擺腿沒有變慢；比較用，部署仍以 v2ft 為主。整串流程 `run_slow_gait_chain.sh` |
 
 ## 結論（2026-10-07，使用者決定模擬測試告一段落）
 

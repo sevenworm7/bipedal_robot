@@ -35,4 +35,11 @@ CASES_V2: dict[str, dict] = {
     **{f"22_dr_f{int(f * 10):02d}": {"title": f"中等隨機化 0.05 m/s、{f} Hz", "scenario": "dr_v1", "vx": 0.05, "freq": f}
        for f in (1.6, 1.0, 0.8)},
 }
-CASE_SETS = {"v1": CASES_V1, "v2": CASES_V2}
+# Cases v3 (2026-11-23): slow-gait scenarios (servo velocity limit 5.2 rad/s), to compare student v2slow with v2ft.
+CASES_V3: dict[str, dict] = {
+    **{f"31_flat_slow_f{int(f * 10):02d}": {"title": f"慢場景平地 0.05 m/s、{f} Hz", "scenario": "flat_slow_v1", "vx": 0.05,
+                                            "freq": f} for f in (1.2, 1.0, 0.8)},
+    **{f"32_dr_slow_f{int(f * 10):02d}": {"title": f"慢場景中等隨機化 0.05 m/s、{f} Hz", "scenario": "dr_slow_v1", "vx": 0.05,
+                                          "freq": f} for f in (1.0, 0.8)},
+}
+CASE_SETS = {"v1": CASES_V1, "v2": CASES_V2, "v3": CASES_V3}

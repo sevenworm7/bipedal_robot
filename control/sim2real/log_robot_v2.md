@@ -59,3 +59,40 @@ tools\isaacpy.cmd control\sim2real\student_distill.py --teacher outputs/robot_v2
 - 自發停頓：`dr_rough_eval_v1` 0%；`gait_eval_v1` 1.0%（0.28–0.32 s，站立後重新起步，和 v1 同級）。
 - 影片：`videos_<場景>_student_v2ft_*`（slow／medium／fast，組合場景另有失敗例）；medium 與失敗例 6 段已壓縮放進 `docs/videos/robot_v2/control/`。
 - v2 原地抬腳上限較低（24 mm，v1 56 mm），原本擔心不規則地形會變差，結果反而更好（94 → 99%）。
+
+## 慢步態模型 slow（2026-11-23，實驗卡；使用者 2026-11-23 要求訓練，作為和 v2ft 的比較）
+
+**動機**：實機懸空 `WALK 0.05 1.6` 要求膝 p95 270–400°/s，供電壓降時跟不上（`deploy/test_log.md` 2026-11-23）；只降 v2ft 的步頻指令不會讓擺腿變慢（`docs/results.md`「v2 慢步態評估」）。
+
+**設定（使用者 2026-11-23 決定，`docs/decisions.md` #30）**
+- 步頻 0.8–1.2 Hz、速度 0.03–0.08 m/s（0.8 Hz 時每步 ≤ 50 mm；v2 單步上限 67 mm）。
+- 模擬伺服速度上限 9.6 → **5.2 rad/s**（約 300°/s，DC 馬達扭矩–速度曲線在此歸零；新增 `DomainRandCfg.actuator_velocity_limit`，預設關閉）；擺動騰空時間目標 0.15 → 0.25 s。
+- 其餘和 v2ft 相同：中等隨機化＋凹凸地形 curriculum＋步態變化、`obs_lateral`、鏡像對稱、1500 iterations，從 teacher v2ft 接續。
+- 場景（新增，不改舊場景）：訓練 `dr_rough_gait_slow_train_v1`；評估 `flat_slow_v1`、`dr_slow_v1`、`rough_eval_slow_v1`、`dr_rough_eval_slow_v1`、`gait_eval_slow_v1`（全部用相同的慢指令與 5.2 rad/s 伺服）。
+
+**指令**（先 `set CUSTOM_BIPED_VERSION=2`；整串用 `bash control/sim2real/run_slow_gait_chain.sh` 依序執行，log 在 `outputs/robot_v2/control/sim2real/slow_chain_logs_<時間>/`）
+```
+tools\isaacpy.cmd control\sim2real\teacher_ppo.py --tag v2slow --symmetry --reward_preset obs_lateral --scenario dr_rough_gait_slow_train_v1 --init outputs/robot_v2/control/sim2real/teacher_v2ft_20261118_221706/model_1499.pt --max_iterations 1500
+tools\isaacpy.cmd control\sim2real\student_distill.py --teacher outputs/robot_v2/control/sim2real/teacher_v2slow_<時間>/model_1499.pt --tag v2slow --symmetry --reward_preset obs_lateral --scenario dr_rough_gait_slow_train_v1
+tools\isaacpy.cmd control\sim2real\evaluate.py --scenario <評估場景> --agent student:<student.pt> --tag v2slow   （v2ft 同場景 --tag v2ft_on_slow 作對照）
+tools\isaacpy.cmd control\sim2real\rescore.py <eval 資料夾…>
+```
+
+**輸出**：`outputs/robot_v2/control/sim2real/{teacher_v2slow_*, student_v2slow_*, eval_<場景>_v2slow_*, eval_<場景>_v2ft_on_slow_*}`；關節速度與電流用負載分析（新增慢步態案例）。
+
+**預估**：teacher 約 50 分鐘、student 約 15 分鐘、評估約 15 分鐘。
+
+**驗證目標**
+1. 部署門檻（sim-to-real 判定）：`flat_slow_v1`、`dr_slow_v1` ≥ 95%，凹凸 ≥ 85%，跌倒 ≤ 5%。
+2. **擺腿真的變慢**：膝、髖 pitch 速度 p95 明顯低於 v2ft（模擬 v2ft 落地約 135–190°/s），騰空時間 p50 ≥ 0.2 s（v2ft 低步頻時 0.06–0.10 s）。
+3. 和 v2ft 在相同慢場景下比較成功率、跌倒率、關節速度、電流。
+
+**跑完後**：rescore → 負載分析 → 寫入 `docs/results.md`、本檔、`docs/progress.md`；通過的話再決定是否匯出 int8 上實機（另外問使用者）。
+
+### 結果（2026-11-23 晚）
+
+- 開跑前：`flat_v1` 回歸檢查 IDENTICAL（`eval_flat_v1_regress_slowopt_20261123_165356` vs `eval_flat_v1_v2s1_20261118_232049`）；試跑 `teacher_v2slow_smoke_20261123_165517`（512 環境 × 10 iterations，只確認能跑、速度上限生效，不使用）。
+- teacher `teacher_v2slow_20261123_165730`（79 分鐘）：起點跌倒率 1.5%，結束 8.0%（訓練場景含推擠與組合隨機化；v2ft 結束時 1.7%）；`feet_air_time` 獎勵結束時 −0.006（騰空時間仍短於 0.25 s 目標）。
+- student `student_v2slow_20261123_181749`（22 分鐘）：val_mse 0.0023。
+- 評估（`eval_<慢場景>_v2slow_*`，對照 `eval_<慢場景>_v2ft_on_slow_*`，已 rescore）與負載分析（`outputs/robot_v2/evaluation/load_analysis/load_v3_{v2slow,v2ft}_20261123`）：數字見 `docs/results.md`「v2 慢步態模型 student v2slow」。
+- **結論**：成功率與側向偏移比 v2ft 好，但膝速度不變（p95 約 135–148°/s）、電流相同；騰空時間 0.04 → 0.10–0.12 s。模擬中關節速度原本就只有約 2.4 rad/s，5.2 rad/s 的上限幾乎沒有約束力（v2ft 在 5.2 與 9.6 rad/s 下的負載數字完全相同）。要再慢需要關節速度懲罰或更低的上限（`docs/backlog.md` #25）。

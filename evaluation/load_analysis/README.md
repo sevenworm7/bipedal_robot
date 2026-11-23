@@ -78,3 +78,4 @@ tools\isaacpy.cmd evaluation\load_analysis\stand_handover.py --agent student:<st
   tools\isaacpy.cmd evaluation\load_analysis\run_load.py --cases v2 --out outputs\robot_v2\evaluation\load_analysis\load_v2_20261123 --stage stats --agent student:<student.pt>
   ```
 - 結果：膝、髖 pitch 速度 p95 與整機電流幾乎不隨步頻改變，見 [`docs/results.md`](../../docs/results.md)「v2 慢步態評估」。
+- `CASES_V3`（2026-11-23）：慢場景（`flat_slow_v1`、`dr_slow_v1`，伺服速度上限 5.2 rad/s），比較 student v2slow 與 v2ft：`--cases v3`，輸出 `load_v3_{v2slow,v2ft}_20261123`。

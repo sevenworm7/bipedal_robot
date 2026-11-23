@@ -85,6 +85,22 @@ SCENARIOS: dict[str, dict] = {
 """Scenario name -> overrides. ``dr`` / ``gait_var`` entries go to ``BipedWalkEnvCfg.dr`` / ``.gait_var``, every other
 key to the env config."""
 
+# Slow gait (user decision 2026-11-23, robot v2): the 1.6 Hz gait asks the real servos for ~300-400 deg/s, more than
+# they deliver on the current supply. Gait frequency 0.8-1.2 Hz, speed 0.03-0.08 m/s (<= 50 mm per step at 0.8 Hz; v2
+# max step 67 mm), servo velocity limit 9.6 -> 5.2 rad/s (~300 deg/s, torque falls to 0 there), swing air-time target
+# 0.15 -> 0.25 s. Training and evaluation scenarios share the same command range and slowed servos.
+_SLOW_CMD = {"gait_freq_range": (0.8, 1.2), "cmd_vx_range": (0.03, 0.08), "target_air_time": 0.25}
+_SLOW_SERVO = {"actuator_velocity_limit": 5.2}
+SCENARIOS.update({
+    "flat_slow_v1": {**_SLOW_CMD, "dr": _SLOW_SERVO},
+    "dr_slow_v1": {**_SLOW_CMD, "dr": {**_MODERATE_DR, **_SLOW_SERVO}},
+    "rough_eval_slow_v1": {**_SLOW_CMD, "dr": {"rough_terrain": _ROUGH_EVAL, **_SLOW_SERVO}},
+    "dr_rough_eval_slow_v1": {**_SLOW_CMD, "dr": {**_MODERATE_DR, "rough_terrain": _ROUGH_EVAL, **_SLOW_SERVO}},
+    "gait_eval_slow_v1": {**_SLOW_CMD, "dr": _SLOW_SERVO, "gait_var": _GAIT_VAR},
+    "dr_rough_gait_slow_train_v1": {**_SLOW_CMD, "dr": {**_MODERATE_DR, "rough_terrain": _ROUGH_TRAIN_V2, **_SLOW_SERVO},
+                                    "gait_var": _GAIT_VAR},
+})
+
 SINGLE_ITEM_PROBES: dict[str, dict] = {k: {"dr": {k: v}} for k, v in _MODERATE_DR.items()}
 """One moderate-range item at a time (diagnostic only, not a training scenario): which item hurts a policy most."""
 
@@ -116,6 +132,9 @@ def apply_scenario(env_cfg, name: str) -> None:
             if not hasattr(env_cfg, k):
                 raise KeyError(f"unknown env field {k!r}")
             setattr(env_cfg, k, v)
+    if env_cfg.dr.actuator_velocity_limit is not None:  # off (None) in every scenario before the slow gait
+        for act in env_cfg.robot.actuators.values():
+            act.velocity_limit = env_cfg.dr.actuator_velocity_limit
     env_cfg.scenario = name
 
 
