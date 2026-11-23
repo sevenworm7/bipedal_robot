@@ -151,6 +151,7 @@ run：`outputs/robot_v2/control/sim2real/{teacher_v2slow_20261123_165730, studen
 - **成功率和側向偏移比 v2ft 好**（中等隨機化 99 vs 94%、組合 88 vs 83%、側向偏移約減半），跌倒在凹凸地形略高（3% vs 1%）。
 - **但擺腿沒有真的變慢**：膝速度 p95 仍約 135–148°/s，和 v2ft 相同；hip pitch 降 10–20°/s，ankle 反而快一點；電流相同（約 3 A）。騰空時間從 0.04 拉長到 0.10–0.12 s，但仍遠低於目標 0.25 s。
 - 原因：**模擬中的關節速度本來就只有約 2.4 rad/s（135°/s），5.2 rad/s 的上限幾乎沒有作用**（v2ft 在 5.2 與 9.6 rad/s 下的負載數字完全相同）。實機懸空要求的 270–400°/s 在模擬中沒有出現，問題可能出在懸空條件或實機伺服的響應，而不是模型本身要求太快。
+- 影片（平地慢場景 0.8 Hz、0.05 m/s）：[v2slow](videos/robot_v2/control/exp2_sim2real_student_v2slow_f08_flat_slow_v1_medium_eval_20261123.mp4)（10 秒約 50 步，碎步）、[v2ft 對照](videos/robot_v2/control/exp2_sim2real_student_v2ft_f08_flat_slow_v1_medium_eval_20261123.mp4)（約 28 步）；兩者都沒有照 0.8 Hz 時鐘（約 16 步）。
 - 若還要再慢：需要明確的關節速度懲罰，或把上限降到接近目前速度（例如 2 rad/s）；或先在實機落地（換供電後）量真實的速度需求再決定（`backlog.md` #25）。
 
 ## v2 板上部署準備（deploy，2026-11-19，尚未上實機）

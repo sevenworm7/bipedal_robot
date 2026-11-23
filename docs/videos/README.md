@@ -44,6 +44,8 @@
 | [`control/exp2_sim2real_student_v2ft_dr_rough_eval_v1_medium_eval_20261118.mp4`](robot_v2/control/exp2_sim2real_student_v2ft_dr_rough_eval_v1_medium_eval_20261118.mp4) | v2 student v2ft 隨機化＋地形 93%／1% |
 | [`control/exp2_sim2real_student_v2ft_dr_rough_eval_v1_failure_eval_20261118.mp4`](robot_v2/control/exp2_sim2real_student_v2ft_dr_rough_eval_v1_failure_eval_20261118.mp4) | v2 student v2ft 隨機化＋地形的失敗例（不跌倒，方向誤差超過 10°） |
 | [`control/exp2_sim2real_student_v2ft_gait_eval_v1_medium_eval_20261119.mp4`](robot_v2/control/exp2_sim2real_student_v2ft_gait_eval_v1_medium_eval_20261119.mp4) | v2 student v2ft 步態多樣性（站立／原地／變速）100%／0% |
+| [`control/exp2_sim2real_student_v2slow_f08_flat_slow_v1_medium_eval_20261123.mp4`](robot_v2/control/exp2_sim2real_student_v2slow_f08_flat_slow_v1_medium_eval_20261123.mp4) | 慢步態模型 v2slow（2026-11-23）：平地慢場景 0.8 Hz、0.05 m/s，10 秒約 50 步（碎步，未照時鐘的約 16 步）；慢場景成功 100%／0% |
+| [`control/exp2_sim2real_student_v2ft_f08_flat_slow_v1_medium_eval_20261123.mp4`](robot_v2/control/exp2_sim2real_student_v2ft_f08_flat_slow_v1_medium_eval_20261123.mp4) | 對照：v2ft 在同一慢場景，10 秒約 28 步 |
 
 ## robot v2 評估（4 段，共 4.8 MB）
 
