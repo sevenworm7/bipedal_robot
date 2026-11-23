@@ -35,3 +35,13 @@ tools\isaacpy.cmd control\sim2real\evaluate.py --scenario flat_v1 --agent studen
 - int8 和 float32 的動作差：最大 0.025、平均 0.0038（標準化動作單位），換算成關節目標最多 0.36°。
 - 標準答案：4 台機器人站 1 秒、以 0.10 m/s、1.6 Hz 走 4 秒，都走了 0.44–0.45 m，無跌倒。
 - int8 模擬閉迴路結果見 [`docs/results.md`](../../docs/results.md)。
+
+## `make_playback.py`（2026-11-23）
+
+從匯出資料夾的 `golden_rollout.bin` 取一台的走路關節軌跡（去掉前 1 秒站立），寫成 `playback.h` 給韌體的 `PLAY` 指令慢速回放：
+
+```powershell
+.venv_fw\Scripts\python.exe deploy\export\make_playback.py [export 資料夾] [--env 0]
+```
+
+重新匯出（`export_policy.py`）後，新的匯出資料夾要先放 `golden_rollout.bin`（和校正無關，可從前一個匯出複製）再執行一次。

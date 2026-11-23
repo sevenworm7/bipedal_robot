@@ -41,7 +41,8 @@ def find_port() -> str:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--port")
-    ap.add_argument("--run", nargs="*", default=[], help="commands sent one per second at start")
+    ap.add_argument("--run", nargs="*", default=[],
+                    help="commands sent one per second at start; 'WAIT <s>' pauses on the host side")
     ap.add_argument("--exit-after", type=float, default=None, help="seconds after the --run commands, then exit")
     a = ap.parse_args()
     port = a.port or find_port()
@@ -76,6 +77,9 @@ def main() -> None:
 
     try:
         for cmd in a.run:
+            if cmd.upper().startswith("WAIT "):  # host-side pause, e.g. "WAIT 12" until INIT reached the stance
+                time.sleep(float(cmd.split()[1]))
+                continue
             send(cmd)
             time.sleep(1.0)
         if a.exit_after is not None:

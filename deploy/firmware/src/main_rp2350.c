@@ -11,6 +11,7 @@
  *   BENCH (policy self-test + timing, OFF only) | BUSTEST <rounds> (read timing, OFF only) | IMUCAL (gyro bias, OFF / STAND)
  *   SCAN [max_id] (read-only bus scan of IDs 0..max_id, default 253, OFF only)
  *   ALIGN (redo the turn alignment, OFF only)
+ *   PLAY <rate> [loops] (slow open-loop preview of the simulated gait, STAND only)
  *   JOG <joint_name> <delta_deg> [speed_deg_s] (one servo, +-15 deg, <= 20 deg/s, out-hold-back-hold, OFF only)
  * Torque is switched off on STOP, any fault and USB disconnect: the robot is then NOT held. */
 #include <math.h>
@@ -435,6 +436,96 @@ static void jog(const char *name, float delta_deg, float speed_deg_s) {
     printf("JOG done %s fails=%d torque_off=%s\n", aborted ? "ABORTED" : "OK", fails, off_ok ? "VERIFIED" : "UNCONFIRMED");
 }
 
+/* Slow open-loop preview of the simulated walking gait (2026-11-23): STAND only (torque on). Ramps the stance to the
+ * first frame (1.5 s), plays PLAYBACK (deploy/export/make_playback.py) at `rate` x real time `loops` times, ramps back
+ * to the stance (1.5 s) and stays in STAND. Aborts with torque off on any host byte, 3 bus failures, voltage below the
+ * controller limit, servo temperature limit or tracking error > track limit for 3 ticks.
+ * Prints "PL t_ms frame v_min max_err_deg worst_joint" at 10 Hz and the per-joint max tracking error at the end. */
+#if defined(__has_include)
+#if __has_include("playback.h")
+#include "playback.h"
+#define HAVE_PLAYBACK 1
+#endif
+#endif
+static void play(float rate, int loops) {
+#ifndef HAVE_PLAYBACK
+    (void)rate;
+    (void)loops;
+    puts("ERROR PLAY no playback.h in this build (deploy/export/make_playback.py)");
+#else
+    if (ctl.state != ST_STAND || !torque_on) { puts("ERROR PLAY only in STAND (INIT first)"); return; }
+    if (!(rate >= 0.05f && rate <= 1.0f) || loops < 1 || loops > 5) { puts("ERROR PLAY rate 0.05..1, loops 1..5"); return; }
+    const float ramp_s = 1.5f, play_s = (float)PLAYBACK_FRAMES / 50.0f / rate * (float)loops;
+    const float total_s = 2.0f * ramp_s + play_s;
+    printf("PLAY start rate=%.2f loops=%d frames=%d duration=%.1fs\n", rate, loops, PLAYBACK_FRAMES, total_s);
+    float max_err[NUM_JOINTS] = {0};
+    float v_low = 99.0f;
+    int fails = 0, track_bad = 0, tick = 0;
+    const char *why = NULL;
+    const uint64_t t0 = time_us_64();
+    for (;;) {
+        const uint64_t now = time_us_64();
+        const float t = (float)(now - t0) * 1e-6f;
+        if (t >= total_s) break;
+        if (getchar_timeout_us(0) >= 0) { why = "host"; break; }
+        float target[NUM_JOINTS];
+        int frame = 0;
+        if (t < ramp_s || t >= ramp_s + play_s) {
+            const bool in = t < ramp_s;
+            const float a = in ? t / ramp_s : (t - ramp_s - play_s) / ramp_s;
+            const float x = a * a * (3.0f - 2.0f * a);
+            const float *edge = in ? PLAYBACK[0] : PLAYBACK[PLAYBACK_FRAMES - 1];
+            for (int j = 0; j < NUM_JOINTS; ++j)
+                target[j] = in ? DEFAULT_POS[j] + x * (edge[j] - DEFAULT_POS[j]) : edge[j] + x * (DEFAULT_POS[j] - edge[j]);
+            frame = in ? 0 : PLAYBACK_FRAMES - 1;
+        } else {
+            const float f = fmodf((t - ramp_s) * rate * 50.0f, (float)PLAYBACK_FRAMES);
+            const int k = (int)f;
+            const int k1 = k + 1 < PLAYBACK_FRAMES ? k + 1 : k;
+            const float w = f - (float)k;
+            for (int j = 0; j < NUM_JOINTS; ++j) target[j] = PLAYBACK[k][j] + w * (PLAYBACK[k1][j] - PLAYBACK[k][j]);
+            frame = k;
+        }
+        int32_t goals[NUM_JOINTS];
+        for (int j = 0; j < NUM_JOINTS; ++j) goals[j] = joints_rad_to_count(&jmap, j, target[j]);
+        write_goals(goals);
+        if (!read_feedback()) {
+            if (++fails >= 3) { why = "bus"; break; }
+        } else {
+            fails = 0;
+            float worst = 0.0f, vmin = 99.0f;
+            int wj = 0, tmax = 0;
+            for (int j = 0; j < NUM_JOINTS; ++j) {
+                const float e = fabsf(joints_count_to_rad(&jmap, j, fb[j].position) - target[j]) * 57.2958f;
+                if (e > max_err[j]) max_err[j] = e;
+                if (e > worst) { worst = e; wj = j; }
+                const float v = fb[j].voltage_raw * 0.1f;
+                if (v < vmin) vmin = v;
+                if (fb[j].temp_c > tmax) tmax = fb[j].temp_c;
+            }
+            if (vmin < v_low) v_low = vmin;
+            track_bad = worst > ctl.p.track_limit_deg ? track_bad + 1 : 0;
+            if (vmin < ctl.p.v_min_stop) { why = "voltage"; break; }
+            if (tmax >= ctl.p.temp_stop) { why = "temperature"; break; }
+            if (track_bad >= 3) { why = "tracking"; break; }
+            if (tick % 5 == 0)
+                printf("PL %lu %d %.1f %.2f %s\n", (unsigned long)((now - t0) / 1000), frame, vmin, worst, JOINT_NAMES[wj]);
+        }
+        ++tick;
+        sleep_until(from_us_since_boot(now + PERIOD_US));
+    }
+    if (why) {
+        ctl_cmd_stop(&ctl);
+        const bool off = torque_all(0);
+        torque_on = !off;
+        printf("PLAY ABORTED reason=%s torque_off=%s\n", why, off ? "VERIFIED" : "UNCONFIRMED");
+    }
+    printf("PLAY done v_min=%.1f max_err_deg", v_low);
+    for (int j = 0; j < NUM_JOINTS; ++j) printf(" %s=%.2f", JOINT_NAMES[j], max_err[j]);
+    printf("\n");
+#endif
+}
+
 /* read-only bus scan: every responding ID with identity, mode, torque flag and feedback (no writes) */
 static void scan(int max_id) {
     int found = 0;
@@ -476,6 +567,10 @@ static void dispatch(char *line, const ctl_sensors *s) {
         const float clr = argc == 4 ? strtof(argv[3], NULL) : 0.0f;
         printf(ctl_cmd_walk(&ctl, strtof(argv[1], NULL), strtof(argv[2], NULL), clr, &why) ? "ACK WALK\n" : "ERROR WALK %s\n",
                why);
+        return;
+    }
+    if (!strcmp(c, "PLAY") && (argc == 2 || argc == 3)) {
+        play(strtof(argv[1], NULL), argc == 3 ? atoi(argv[2]) : 1);
         return;
     }
     if (ctl.state != ST_OFF && strcmp(c, "IMUCAL")) { puts("ERROR BUSY (STOP first)"); return; }
@@ -552,7 +647,10 @@ int main(void) {
     for (;;) {
         sleep_until(from_us_since_boot(next));
         const uint64_t t0 = time_us_64();
-        const float dt = (float)(t0 - last) * 1e-6f;
+        /* a blocking command (PLAY, JOG, BENCH ...) leaves a long gap: integrate it as one normal period, otherwise the
+         * attitude filter multiplies the gyro by the whole gap (2026-11-23: TILT fault right after a 19 s PLAY) */
+        float dt = (float)(t0 - last) * 1e-6f;
+        if (dt > 0.1f) dt = (float)PERIOD_US * 1e-6f;
         last = t0;
         next += PERIOD_US;
 

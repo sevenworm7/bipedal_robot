@@ -63,6 +63,12 @@ powershell -ExecutionPolicy Bypass -File deploy\firmware\flash_firmware.ps1 [-Uf
 
 ## 紀錄
 
+### 2026-11-23（傍晚）：PLAY 與第一次 WALK
+
+- 新增 `PLAY <倍速> [次數]`：站姿下開迴路播放模擬步態（`playback.h`，由 `deploy/export/make_playback.py` 產生；沒有這個檔案時指令回報錯誤），中止條件和控制器相同。
+- 主迴圈的 dt 超過 0.1 s（阻塞指令之後）改用一個週期，避免姿態濾波器誤判傾斜。
+- 閉迴路 `WALK` 控制週期 13.9 ms；0.34 秒後因供電壓降停機（`deploy/test_log.md`）。
+
 ### 2026-11-23（下午）：第一次開扭矩
 
 - `JOG` 單顆延遲 25–35 ms、靜止誤差 ≤ 0.26°；懸空與桌上的固定站姿誤差 ≤ 0.5°，電壓 7.6–7.8 V（細節見 `deploy/test_log.md`）。
