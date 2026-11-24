@@ -308,7 +308,9 @@ static void print_status(const ctl_sensors *s) {
            bus_fail_total, s->v_min, s->temp_max, policy_kind());
     printf("POSE");
     for (int j = 0; j < NUM_JOINTS; ++j) printf(" %s=%d/%.1fdeg", JOINT_NAMES[j], (int)fb[j].position, s->q[j] * 57.2958f);
-    printf("\nIMU gravity=%.3f %.3f %.3f heading_deg=%.1f\n", s->gravity[0], s->gravity[1], s->gravity[2],
+    printf("\nMODEL %s vx=0..%.3f freq=%.2f..%.2f clearance<=%.3f\n", POLICY_NAME, ctl.p.cmd_vx_max, ctl.p.freq_min,
+           ctl.p.freq_max, CLEARANCE_MAX);
+    printf("IMU gravity=%.3f %.3f %.3f heading_deg=%.1f\n", s->gravity[0], s->gravity[1], s->gravity[2],
            s->heading * 57.2958f);
 }
 
@@ -665,8 +667,8 @@ int main(void) {
         const bool usb = stdio_usb_connected();
         if (usb && !connected) {
             sleep_ms(50);
-            printf("READY %s robot_v%d policy=%s calib_verified=%d imu=%d sync_read=%d aligned=%d\n", FW_VERSION,
-                   ROBOT_VERSION, policy_kind(), CALIB_VERIFIED, imu_ready, use_sync_read, jmap.aligned);
+            printf("READY %s robot_v%d model=%s policy=%s calib_verified=%d imu=%d sync_read=%d aligned=%d\n", FW_VERSION,
+                   ROBOT_VERSION, POLICY_NAME, policy_kind(), CALIB_VERIFIED, imu_ready, use_sync_read, jmap.aligned);
         }
         if (!usb && connected) ctl_host_fault(&ctl, FAULT_HOST);
         connected = usb;

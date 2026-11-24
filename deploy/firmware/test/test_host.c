@@ -270,19 +270,23 @@ static void test_controller(void) {
     printf("  INIT took %.2f s (planned %.2f s)\n", k * 0.02f, c.init_T);
     for (int j = 0; j < NUM_JOINTS; ++j) CHECK(fabsf(out.target[j] - DEFAULT_POS[j]) < 1e-5f, "stand target %d", j);
     CHECK(!out.policy_ran, "policy ran while standing");
-    CHECK(!ctl_cmd_walk(&c, 0.3f, 1.6f, 0.0f, &why), "vx 0.3 accepted");
-    CHECK(!ctl_cmd_walk(&c, 0.1f, 3.0f, 0.0f, &why), "freq 3.0 accepted");
-    CHECK(ctl_cmd_walk(&c, 0.1f, 1.6f, 0.0f, &why), "WALK rejected: %s", why);
+    /* command inside the exported model's training range (robot_config.h) */
+    const float TVX = 0.5f * (CMD_VX_MIN + CMD_VX_MAX), TF = 0.5f * (GAIT_FREQ_MIN + GAIT_FREQ_MAX);
+    CHECK(!ctl_cmd_walk(&c, CMD_VX_MAX + 0.05f, TF, 0.0f, &why), "vx above range accepted");
+    CHECK(!ctl_cmd_walk(&c, TVX, GAIT_FREQ_MAX + 0.5f, 0.0f, &why), "freq above range accepted");
+    CHECK(!ctl_cmd_walk(&c, TVX, GAIT_FREQ_MIN - 0.1f, 0.0f, &why), "freq below range accepted");
+    CHECK(!ctl_cmd_walk(&c, TVX, TF, CLEARANCE_MAX + 0.01f, &why), "clearance above range accepted");
+    CHECK(ctl_cmd_walk(&c, TVX, TF, 0.0f, &why), "WALK rejected: %s", why);
     sensors_at(&s, DEFAULT_POS);
     ctl_step(&c, &s, 0.02f, &out);
     CHECK(c.state == ST_WALK && out.policy_ran && out.torque, "WALK not entered");
     /* history: the newest frame carries the walk command, the older ones the stand frames (cmd 0) */
-    CHECK(c.obs[6] == 0.1f && c.obs[7] == 1.6f && c.obs[OBS_FRAME_DIM + 6] == 0.0f, "history at the hand-over");
+    CHECK(c.obs[6] == TVX && c.obs[7] == TF && c.obs[OBS_FRAME_DIM + 6] == 0.0f, "history at the hand-over");
     for (k = 0; k < 10; ++k) {
         for (int j = 0; j < NUM_JOINTS; ++j) s.q[j] = out.target[j];
         ctl_step(&c, &s, 0.02f, &out);
     }
-    CHECK(fabsf(c.phase - fmodf(11 * 0.02f * 1.6f, 1.0f)) < 1e-4f, "gait clock %.4f", c.phase);
+    CHECK(fabsf(c.phase - fmodf(11 * 0.02f * TF, 1.0f)) < 1e-4f, "gait clock %.4f", c.phase);
     /* tilt > 40 deg -> FAULT, torque off */
     s.gravity[0] = sinf(0.8f);
     s.gravity[2] = -cosf(0.8f);
@@ -323,7 +327,7 @@ static void test_controller(void) {
     ctl_step(&c, &s, 0.02f, &out);
     ctl_cmd_init(&c, &why);
     for (k = 0; k < 200 && c.state != ST_STAND; ++k) ctl_step(&c, &s, 0.02f, &out);
-    ctl_cmd_walk(&c, 0.1f, 1.6f, 0.0f, &why);
+    CHECK(ctl_cmd_walk(&c, TVX, TF, 0.0f, &why), "WALK rejected: %s", why);
     for (k = 0; k < 5; ++k) {
         ctl_step(&c, &s, 0.02f, &out);
         for (int j = 0; j < NUM_JOINTS; ++j) s.q[j] = out.target[j];

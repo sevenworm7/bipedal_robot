@@ -9,6 +9,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
 TOOLS="$ROOT/references/mango_x4_handoff_20261117/MANGO_X4_HANDOFF/mango_feetech/.tools"
 EXPORT="${1:-$(ls -d "$ROOT"/outputs/robot_v2/deploy/export_* | sort | tail -1)}"
+EXPORT="$(cd "$EXPORT" && pwd)"  # cmake resolves relative paths against the build folder
 shift || true
 OUT="$ROOT/outputs/robot_v2/deploy/firmware_build/$(date +%Y%m%d_%H%M%S)"
 BUILD="$OUT/build"

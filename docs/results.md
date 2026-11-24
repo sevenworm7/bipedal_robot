@@ -153,6 +153,7 @@ run：`outputs/robot_v2/control/sim2real/{teacher_v2slow_20261123_165730, studen
 - 原因：**模擬中的關節速度本來就只有約 2.4 rad/s（135°/s），5.2 rad/s 的上限幾乎沒有作用**（v2ft 在 5.2 與 9.6 rad/s 下的負載數字完全相同）。實機懸空要求的 270–400°/s 在模擬中沒有出現，問題可能出在懸空條件或實機伺服的響應，而不是模型本身要求太快。
 - 影片（平地慢場景 0.8 Hz、0.05 m/s）：[v2slow](videos/robot_v2/control/exp2_sim2real_student_v2slow_f08_flat_slow_v1_medium_eval_20261123.mp4)（10 秒約 50 步，碎步）、[v2ft 對照](videos/robot_v2/control/exp2_sim2real_student_v2ft_f08_flat_slow_v1_medium_eval_20261123.mp4)（約 28 步）；兩者都沒有照 0.8 Hz 時鐘（約 16 步）。
 - 若還要再慢：需要明確的關節速度懲罰，或把上限降到接近目前速度（例如 2 rad/s）；或先在實機落地（換供電後）量真實的速度需求再決定（`backlog.md` #25）。
+- **int8 匯出（2026-11-24，`deploy/export`）**：模擬閉迴路 `flat_slow_v1` 100%／0%、`dr_slow_v1` 99%／0%、`rough_eval_slow_v1` 93%／5%、`dr_rough_eval_slow_v1` 86%／2%（`eval_<場景>_v2slow_int8_20261124_*`），和 float32 相當。實機懸空 WALK 被供電欠壓擋下（v2ft 也一樣），尚無實機比較（`deploy/test_log.md` 2026-11-24）。
 
 ## v2 板上部署準備（deploy，2026-11-19，尚未上實機）
 

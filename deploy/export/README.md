@@ -15,6 +15,8 @@
 | `student_int8.pt` | 權重換成 int8 還原值的模型，用來在模擬中確認量化後步態不變 |
 | `meta.json` | 來源檔案與 SHA256、維度、量化誤差 |
 
+`robot_config.h` 也包含模型訓練時的指令範圍（`CMD_VX_MAX`、`GAIT_FREQ_MIN/MAX`、`CLEARANCE_MAX`，從 `student.pt` 旁的 `config.yaml` 讀出）和 `POLICY_NAME`；韌體依此拒絕範圍外的 `WALK`／`SET`，`STATUS` 的 `MODEL` 行會顯示（2026-11-24 起；較早的匯出沒有，韌體沿用 v2ft 的範圍）。
+
 **為什麼用 int8**：RP2350 只有 520 KB SRAM。float32 權重 1.09 MB 只能放 flash，每 20 ms 從 QSPI flash 讀一遍約需 30 ms，超過控制週期；int8 權重 276 KB 可以整個放進 SRAM。
 
 ## 執行
@@ -45,3 +47,13 @@ tools\isaacpy.cmd control\sim2real\evaluate.py --scenario flat_v1 --agent studen
 ```
 
 重新匯出（`export_policy.py`）後，新的匯出資料夾要先放 `golden_rollout.bin`（和校正無關，可從前一個匯出複製）再執行一次。
+
+## 紀錄（2026-11-24）：student v2slow
+
+```powershell
+tools\isaacpy.cmd deploy\export\export_policy.py --student outputs/robot_v2/control/sim2real/student_v2slow_20261123_181749/student.pt
+tools\isaacpy.cmd deploy\export\record_golden.py --export <匯出資料夾> --student <同上> --vx 0.05 --freq 1.0
+```
+
+- 匯出 `export_student_v2slow_20261123_181749_20261124_193736`：int8 與 fp32 動作差最大 0.019（關節目標 0.27°）；標準答案 4 台以 0.05 m/s、1.0 Hz 走 4 秒，0.24–0.25 m、無跌倒。
+- int8 模擬閉迴路（`eval_<慢場景>_v2slow_int8_20261124_*`）：見 [`docs/results.md`](../../docs/results.md)「v2 慢步態模型 student v2slow」。

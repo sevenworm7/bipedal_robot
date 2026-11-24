@@ -19,9 +19,9 @@ void ctl_default_params(ctl_params *p) {
     p->track_ticks = 3;
     p->range_tol_deg = 10.0f;
     p->sensor_fail_ticks = 3;
-    p->cmd_vx_max = 0.15f;  /* training range 0.05 - 0.15 m/s */
-    p->freq_min = 1.2f;     /* training range 1.2 - 2.0 Hz */
-    p->freq_max = 2.0f;
+    p->cmd_vx_max = CMD_VX_MAX;  /* training range of the exported model (robot_config.h) */
+    p->freq_min = GAIT_FREQ_MIN;
+    p->freq_max = GAIT_FREQ_MAX;
 }
 
 void ctl_init(controller *c) {
@@ -56,15 +56,15 @@ bool ctl_cmd_init(controller *c, const char **why) {
 }
 
 static bool check_cmd(const controller *c, float vx, float freq, const char **why) {
-    if (!(vx >= 0.0f && vx <= c->p.cmd_vx_max)) { *why = "vx outside 0..0.15 m/s"; return false; }
-    if (!(freq >= c->p.freq_min && freq <= c->p.freq_max)) { *why = "freq outside 1.2..2.0 Hz"; return false; }
+    if (!(vx >= 0.0f && vx <= c->p.cmd_vx_max)) { *why = "vx outside 0..CMD_VX_MAX of this model (STATUS shows it)"; return false; }
+    if (!(freq >= c->p.freq_min && freq <= c->p.freq_max)) { *why = "freq outside GAIT_FREQ_MIN..MAX of this model (STATUS shows it)"; return false; }
     return true;
 }
 
 bool ctl_cmd_walk(controller *c, float vx, float freq, float clearance, const char **why) {
     if (c->state != ST_STAND) { *why = "WALK only from STAND"; return false; }
     if (!check_cmd(c, vx, freq, why)) return false;
-    if (!(clearance >= 0.0f && clearance <= 0.035f)) { *why = "clearance outside 0..0.035 m"; return false; }
+    if (!(clearance >= 0.0f && clearance <= CLEARANCE_MAX)) { *why = "clearance outside 0..CLEARANCE_MAX"; return false; }
     c->pend_vx = vx; c->pend_freq = freq; c->pend_clr = clearance;
     c->pending_walk = true;
     return true;

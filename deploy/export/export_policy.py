@@ -34,6 +34,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(ROOT), str(ROOT / "control")]
 
 import torch  # noqa: E402
+import yaml  # noqa: E402
 
 from core import interface as itf  # noqa: E402
 from core import interface_v2 as itf2  # noqa: E402
@@ -106,6 +107,12 @@ def main() -> None:
     default = [rb.DEFAULT_JOINT_POS[n] for n in names]
     imu = calib["imu"]["sensor_to_body"]
     vel_src = {"finite_difference": 0, "servo_speed": 1}[calib["joint_velocity_source"]]
+    # command ranges the student was trained on (config.yaml next to student.pt); the firmware rejects WALK / SET
+    # outside them. vx may also be 0 (training samples zero-speed commands).
+    tcfg = yaml.safe_load((student.parent / "config.yaml").read_text(encoding="utf-8"))
+    vx_rng = [float(x) for x in tcfg["env"]["cmd_vx_range"]]
+    fq_rng = [float(x) for x in tcfg["env"]["gait_freq_range"]]
+    clr_rng = [float(x) for x in tcfg["gait_var"]["clearance_range"]]
 
     def arr(vals, fmt):
         return "{" + ", ".join(fmt(v) for v in vals) + "}"
@@ -124,6 +131,12 @@ def main() -> None:
         f"#define CALIB_VERIFIED {1 if calib['verified'] else 0}",
         f"#define IMU_MAP_VERIFIED {1 if calib['imu']['verified'] else 0}",
         f"#define JOINT_VEL_SOURCE {vel_src} /* 0 finite difference, 1 servo speed register */",
+        f"#define POLICY_NAME \"{run}\"",
+        f"#define CMD_VX_MIN {vx_rng[0]:.4f}f /* training range; 0 is also accepted */",
+        f"#define CMD_VX_MAX {vx_rng[1]:.4f}f",
+        f"#define GAIT_FREQ_MIN {fq_rng[0]:.4f}f",
+        f"#define GAIT_FREQ_MAX {fq_rng[1]:.4f}f",
+        f"#define CLEARANCE_MAX {clr_rng[1]:.4f}f /* 0 = default clearance */",
         "static const char *const JOINT_NAMES[NUM_JOINTS] = " + arr(names, lambda s: f'"{s}"') + ";",
         "static const uint8_t SERVO_ID[NUM_JOINTS] = " + arr(ids, str) + ";",
         "static const int8_t SERVO_SIGN[NUM_JOINTS] = " + arr([int(by_joint[n]["sign"]) for n in names], str) + ";",
@@ -210,6 +223,7 @@ def main() -> None:
         "student": student.relative_to(ROOT).as_posix(), "student_sha256": sha256(student),
         "calibration": calib_path.relative_to(ROOT).as_posix(), "calibration_sha256": sha256(calib_path),
         "calibration_verified": bool(calib["verified"]), "robot_version": rb.ROBOT_VERSION,
+        "cmd_vx_range": vx_rng, "gait_freq_range": fq_rng, "clearance_range": clr_rng,
         "dims": dims, "activation": "elu", "normaliser": f"(x - mean) / (std + {NORM_EPS})",
         "joint_order": names, "servo_ids": ids, "default_pos_rad": default,
         "weights_fp32_bytes": params * 4, "weights_int8_bytes": params + 4 * sum(dims[1:]),

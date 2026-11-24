@@ -6,6 +6,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
 EXPORT="${1:-$(ls -d "$ROOT"/outputs/robot_v2/deploy/export_* | sort | tail -1)}"
+EXPORT="$(cd "$EXPORT" && pwd)"  # cmake resolves relative paths against the build folder
 OUT="$ROOT/outputs/robot_v2/deploy/host_tests"
 mkdir -p "$OUT"
 echo "export: $EXPORT"

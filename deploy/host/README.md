@@ -32,7 +32,7 @@ powershell -ExecutionPolicy Bypass -File deploy\host\demo_hanging.ps1 -Mode walk
 ```
 
 - 開始前會問一次「機器人是否懸空、有人扶住」，要輸入 `yes`（`-Yes` 可略過）。
-- 參數範圍：`-Rate` 0.05–1、`-Vx` 0–0.15、`-Freq` 1.2–2.0（模型訓練範圍）、`-Seconds` 1–30、`-VStop` 5.5–7.0（預設 6.5；低於 6.5 只限懸空）。
+- 參數範圍：`-Rate` 0.05–1、`-Vx` 0–0.15、`-Freq` 0.8–2.0（實際範圍由韌體依燒錄的模型檢查）、`-Seconds` 1–30、`-VStop` 5.5–7.0（預設 6.5；低於 6.5 只限懸空）。 INIT 後等 15 秒再 WALK（尾巴下垂 −75° 時 INIT 需要 11.3 秒，2026-11-24）。
 - 結束時 `STOP` 會關扭矩，腿和尾巴會垂下。紀錄在 `outputs/robot_v2/deploy/sessions/<時間>/`。
 - 需要燒錄 2026-11-23 之後的韌體（有 `PLAY`、`VSTOP`）。
 

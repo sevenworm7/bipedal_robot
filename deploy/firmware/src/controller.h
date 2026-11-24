@@ -18,6 +18,19 @@
 #include "obs.h"
 #include "robot_config.h"
 
+/* Command ranges of the exported model (robot_config.h, from its training config.yaml). Exports made before
+   2026-11-24 do not define them: fall back to the student v2ft range. */
+#ifndef POLICY_NAME
+#define POLICY_NAME "unknown"
+#endif
+#ifndef CMD_VX_MAX
+#define CMD_VX_MIN 0.05f
+#define CMD_VX_MAX 0.15f
+#define GAIT_FREQ_MIN 1.2f
+#define GAIT_FREQ_MAX 2.0f
+#define CLEARANCE_MAX 0.035f
+#endif
+
 typedef enum { ST_OFF = 0, ST_INIT, ST_STAND, ST_WALK, ST_FAULT } ctl_state;
 
 typedef enum {
