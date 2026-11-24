@@ -14,6 +14,8 @@
  *   PLAY <rate> [loops] (slow open-loop preview of the simulated gait, STAND only)
  *   VSTOP <volts> (voltage stop threshold 5.5..7.0 V, default 6.5, OFF only, not saved)
  *   JOG <joint_name> <delta_deg> [speed_deg_s] (one servo, +-15 deg, <= 20 deg/s, out-hold-back-hold, OFF only)
+ *   REGDUMP <id> | STEP <joint> <delta_deg> [hold_ms] [start_deg] | SWEEP <joint> <amp_deg> <f0> <f1> <dur_s> [start_deg]
+ *     (actuator bench, one servo, OFF only; deploy/actuator_bench)
  * Torque is switched off on STOP, any fault and USB disconnect: the robot is then NOT held. */
 #include <math.h>
 #include <stdio.h>
@@ -439,6 +441,181 @@ static void jog(const char *name, float delta_deg, float speed_deg_s) {
     printf("JOG done %s fails=%d torque_off=%s\n", aborted ? "ABORTED" : "OK", fails, off_ok ? "VERIFIED" : "UNCONFIRMED");
 }
 
+/* ------------------------------------------------------------------ actuator bench (2026-11-24, deploy/actuator_bench)
+ * REGDUMP <id>: read-only dump of registers 0..86 of one servo (E0: gains, limits, protection settings).
+ * STEP <joint> <delta_deg> [hold_ms] [start_deg]: one servo, goal jumps start -> start + delta -> back (E1 step response).
+ * SWEEP <joint> <amp_deg> <f0_hz> <f1_hz> <dur_s> [start_deg]: one servo, goal = start + amp * fade * sin(chirp), log-frequency
+ *   chirp f0 -> f1 (E2 frequency response).
+ * start_deg defaults to the stance angle (DEFAULT_POS); the servo first moves there at 20 deg/s and holds 0.5 s.
+ * Both: OFF state only, calibration aligned, targets inside RANGE_LOWER/UPPER, goal = present position before
+ * torque-on, any byte from the host aborts, 5 failed reads or |error| > 35 deg for 0.2 s abort; torque off at the end.
+ * Output "BS t_us goal_count pos_count speed_raw load_raw current_raw volt_raw temp" per sample (as fast as the bus
+ * allows for STEP, every 2 ms for SWEEP). */
+#define BENCH_STEP_MAX_DEG 20.0f
+#define BENCH_SWEEP_MAX_DEG 10.0f
+#define BENCH_SWEEP_MAX_HZ 8.0f
+#define BENCH_SWEEP_MAX_DEG_S 400.0f /* peak goal speed 2 pi amp f1 */
+#define BENCH_ERR_ABORT_DEG 35.0f
+
+static void regdump(int id) {
+    if (id < 0 || id > 253) { puts("ERROR REGDUMP id 0..253"); return; }
+    uint8_t r[87];
+    if (!read_reg((uint8_t)id, 0, 44, r) || !read_reg((uint8_t)id, 44, 43, r + 44)) { puts("ERROR REGDUMP no reply"); return; }
+    printf("REGDUMP id=%d", id);
+    for (int a = 0; a < 87; ++a) printf(" %d", r[a]);
+    putchar('\n');
+}
+
+typedef struct {
+    int j;
+    uint8_t id;
+    int32_t c0;
+    float q0;
+    uint64_t t0;
+    int fails, err_ms;
+    bool aborted;
+} bench_run;
+
+/* Torque on one servo, then move it at <= 20 deg/s to the start angle (stance DEFAULT_POS when start_deg is NAN) and
+ * hold 0.5 s there; the test runs around that angle (b->c0 / b->q0 = start goal). [lo_deg, hi_deg] = test excursion. */
+static bool bench_begin(bench_run *b, const char *tag, const char *name, float lo_deg, float hi_deg, float start_deg) {
+    b->j = -1;
+    for (int k = 0; k < NUM_JOINTS; ++k)
+        if (!strcmp(name, JOINT_NAMES[k])) b->j = k;
+    if (b->j < 0) { printf("ERROR %s unknown joint\n", tag); return false; }
+    if (!jmap.aligned) { printf("ERROR %s calibration not aligned\n", tag); return false; }
+    b->id = SERVO_ID[b->j];
+    uint8_t d[FT_FEEDBACK_LEN], torque = 1;
+    if (!read_reg(b->id, FT_REG_TORQUE, 1, &torque) || torque) { printf("ERROR %s torque already on / no reply\n", tag); return false; }
+    if (!read_reg(b->id, FT_REG_FEEDBACK, FT_FEEDBACK_LEN, d)) { printf("ERROR %s feedback\n", tag); return false; }
+    ft_feedback f;
+    ft_decode_feedback(d, &f);
+    const int32_t c_now = f.position;
+    const float q_now = joints_count_to_rad(&jmap, b->j, c_now);
+    b->q0 = isnan(start_deg) ? DEFAULT_POS[b->j] : start_deg * 0.0174533f;
+    const float lo = b->q0 + lo_deg * 0.0174533f, hi = b->q0 + hi_deg * 0.0174533f;
+    if (lo < RANGE_LOWER[b->j] || hi > RANGE_UPPER[b->j]) {
+        printf("ERROR %s targets [%.1f, %.1f] deg outside [%.1f, %.1f]\n", tag, lo * 57.2958f, hi * 57.2958f,
+               RANGE_LOWER[b->j] * 57.2958f, RANGE_UPPER[b->j] * 57.2958f);
+        return false;
+    }
+    if (fabsf(b->q0 - q_now) > 120.0f * 0.0174533f) { printf("ERROR %s start more than 120 deg away\n", tag); return false; }
+    b->c0 = joints_rad_to_count(&jmap, b->j, b->q0);
+    write_goal_one(b->id, c_now);
+    const uint8_t on = 1, off = 0;
+    if (!write_verify(b->id, FT_REG_TORQUE, &on, 1)) {
+        (void)write_verify(b->id, FT_REG_TORQUE, &off, 1);
+        printf("ERROR %s torque on\n", tag);
+        return false;
+    }
+    b->fails = b->err_ms = 0;
+    b->aborted = false;
+    /* move to the start angle at 20 deg/s, then hold 0.5 s (not logged) */
+    const float move_s = fabsf(b->q0 - q_now) * 57.2958f / 20.0f;
+    const uint64_t tm = time_us_64();
+    for (;;) {
+        const uint64_t tick = time_us_64();
+        const float t = (float)(tick - tm) * 1e-6f;
+        if (t >= move_s + 0.5f) break;
+        if (getchar_timeout_us(0) >= 0) { b->aborted = true; break; }
+        const float a = move_s > 0.0f ? fminf(1.0f, t / move_s) : 1.0f;
+        write_goal_one(b->id, c_now + (int32_t)lrintf((float)(b->c0 - c_now) * a));
+        if (!read_reg(b->id, FT_REG_FEEDBACK, FT_FEEDBACK_LEN, d) && ++b->fails >= 5) { b->aborted = true; break; }
+        sleep_until(from_us_since_boot(tick + 10000));
+    }
+    if (b->aborted) {
+        (void)write_verify(b->id, FT_REG_TORQUE, &off, 1);
+        printf("ERROR %s aborted while moving to the start angle\n", tag);
+        return false;
+    }
+    b->t0 = time_us_64();
+    return true;
+}
+
+static int32_t bench_count(const bench_run *b, float dq_deg) {
+    return joints_rad_to_count(&jmap, b->j, b->q0 + dq_deg * 0.0174533f);
+}
+
+/* one feedback sample; returns false when the run must stop */
+static bool bench_sample(bench_run *b, int32_t goal, int dt_ms) {
+    if (getchar_timeout_us(0) >= 0) { b->aborted = true; return false; }
+    uint8_t d[FT_FEEDBACK_LEN];
+    const uint64_t t = time_us_64();
+    if (!read_reg(b->id, FT_REG_FEEDBACK, FT_FEEDBACK_LEN, d)) {
+        if (++b->fails >= 5) { b->aborted = true; return false; }
+        return true;
+    }
+    ft_feedback f;
+    ft_decode_feedback(d, &f);
+    printf("BS %llu %ld %ld %ld %ld %ld %u %u\n", (unsigned long long)(t - b->t0), (long)goal, (long)f.position,
+           (long)f.speed_raw, (long)f.load_raw, (long)f.current_raw, f.voltage_raw, f.temp_c);
+    const float err = fabsf((float)(f.position - goal)) * (360.0f / 4096.0f);
+    b->err_ms = err > BENCH_ERR_ABORT_DEG ? b->err_ms + dt_ms : 0;
+    if (b->err_ms > 200) { b->aborted = true; return false; }
+    return true;
+}
+
+static void bench_end(bench_run *b, const char *tag) {
+    const uint8_t off = 0;
+    const bool off_ok = write_verify(b->id, FT_REG_TORQUE, &off, 1);
+    printf("%s done %s fails=%d torque_off=%s\n", tag, b->aborted ? "ABORTED" : "OK", b->fails,
+           off_ok ? "VERIFIED" : "UNCONFIRMED");
+}
+
+static void bench_step(const char *name, float delta_deg, int hold_ms, float start_deg) {
+    if (fabsf(delta_deg) > BENCH_STEP_MAX_DEG || fabsf(delta_deg) < 0.5f) { puts("ERROR STEP |delta| must be 0.5..20 deg"); return; }
+    if (hold_ms < 200 || hold_ms > 3000) { puts("ERROR STEP hold_ms 200..3000"); return; }
+    bench_run b;
+    if (!bench_begin(&b, "STEP", name, fminf(0.0f, delta_deg), fmaxf(0.0f, delta_deg), start_deg)) return;
+    const int32_t c1 = bench_count(&b, delta_deg);
+    printf("STEP start joint=%s id=%u q0=%.2fdeg delta=%.2fdeg c0=%ld c1=%ld hold_ms=%d\n", name, b.id, b.q0 * 57.2958f,
+           delta_deg, (long)b.c0, (long)c1, hold_ms);
+    /* 200 ms at the start pose, hold at the target, hold back at the start pose */
+    const uint32_t edge[3] = {200000u, 200000u + 1000u * (uint32_t)hold_ms, 200000u + 2000u * (uint32_t)hold_ms};
+    int32_t goal = b.c0;
+    for (;;) {
+        const uint32_t t = (uint32_t)(time_us_64() - b.t0);
+        if (t >= edge[2]) break;
+        const int32_t want = (t >= edge[0] && t < edge[1]) ? c1 : b.c0;
+        if (want != goal) { goal = want; write_goal_one(b.id, goal); }
+        if (!bench_sample(&b, goal, 1)) break;
+    }
+    bench_end(&b, "STEP");
+}
+
+static void bench_sweep(const char *name, float amp_deg, float f0, float f1, float dur_s, float start_deg) {
+    if (!(amp_deg >= 0.5f && amp_deg <= BENCH_SWEEP_MAX_DEG)) { puts("ERROR SWEEP amp 0.5..10 deg"); return; }
+    if (!(f0 >= 0.1f && f1 >= f0 && f1 <= BENCH_SWEEP_MAX_HZ)) { puts("ERROR SWEEP need 0.1 <= f0 <= f1 <= 8 Hz"); return; }
+    if (2.0f * 3.14159265f * amp_deg * f1 > BENCH_SWEEP_MAX_DEG_S) { puts("ERROR SWEEP 2 pi amp f1 > 400 deg/s"); return; }
+    if (!(dur_s >= 2.0f && dur_s <= 60.0f)) { puts("ERROR SWEEP dur 2..60 s"); return; }
+    bench_run b;
+    if (!bench_begin(&b, "SWEEP", name, -amp_deg, amp_deg, start_deg)) return;
+    printf("SWEEP start joint=%s id=%u q0=%.2fdeg amp=%.2fdeg f0=%.3f f1=%.3f dur=%.2fs c0=%ld\n", name, b.id,
+           b.q0 * 57.2958f, amp_deg, f0, f1, dur_s, (long)b.c0);
+    /* log chirp f(t) = f0 k^(t/T), k = f1/f0; phase = 2 pi f0 T (k^(t/T) - 1) / ln k; 0.5 s fade in/out, 0.3 s rest */
+    const float rest = 0.3f, fade = 0.5f, k = f1 / f0, lnk = logf(k);
+    const float total = dur_s + 2.0f * rest;
+    for (;;) {
+        const uint64_t tick = time_us_64();
+        const float t = (float)(tick - b.t0) * 1e-6f;
+        if (t >= total) break;
+        float dq = 0.0f;
+        const float ts = t - rest;
+        if (ts > 0.0f && ts < dur_s) {
+            const float ph = lnk > 1e-6f ? 2.0f * 3.14159265f * f0 * dur_s * (powf(k, ts / dur_s) - 1.0f) / lnk
+                                         : 2.0f * 3.14159265f * f0 * ts;
+            const float w = fminf(1.0f, fminf(ts / fade, (dur_s - ts) / fade));
+            dq = amp_deg * w * sinf(ph);
+        }
+        const int32_t goal = bench_count(&b, dq);
+        write_goal_one(b.id, goal);
+        if (!bench_sample(&b, goal, 2)) break;
+        sleep_until(from_us_since_boot(tick + 2000));
+    }
+    write_goal_one(b.id, b.c0);
+    bench_end(&b, "SWEEP");
+}
+
 /* Slow open-loop preview of the simulated walking gait (2026-11-23): STAND only (torque on). Ramps the stance to the
  * first frame (1.5 s), plays PLAYBACK (deploy/export/make_playback.py) at `rate` x real time `loops` times, ramps back
  * to the stance (1.5 s) and stays in STAND. Aborts with torque off on any host byte, 3 bus failures, voltage below the
@@ -551,9 +728,9 @@ static void scan(int max_id) {
 }
 
 static void dispatch(char *line, const ctl_sensors *s) {
-    char *argv[6];
+    char *argv[8];
     int argc = 0;
-    for (char *p = strtok(line, " \t"); p && argc < 6; p = strtok(NULL, " \t")) argv[argc++] = p;
+    for (char *p = strtok(line, " \t"); p && argc < 8; p = strtok(NULL, " \t")) argv[argc++] = p;
     if (!argc) return;
     const char *why = "";
     const char *c = argv[0];
@@ -588,6 +765,16 @@ static void dispatch(char *line, const ctl_sensors *s) {
         if (!(v >= 5.5f && v <= 7.0f)) { puts("ERROR VSTOP 5.5..7.0 V"); return; }
         ctl.p.v_min_stop = v;
         printf("ACK VSTOP %.2f\n", v);
+        return;
+    }
+    if (!strcmp(c, "REGDUMP") && argc == 2) { regdump(atoi(argv[1])); return; }
+    if (!strcmp(c, "STEP") && argc >= 3 && argc <= 5) {
+        bench_step(argv[1], strtof(argv[2], NULL), argc >= 4 ? atoi(argv[3]) : 1000, argc == 5 ? strtof(argv[4], NULL) : NAN);
+        return;
+    }
+    if (!strcmp(c, "SWEEP") && (argc == 6 || argc == 7)) {
+        bench_sweep(argv[1], strtof(argv[2], NULL), strtof(argv[3], NULL), strtof(argv[4], NULL), strtof(argv[5], NULL),
+                    argc == 7 ? strtof(argv[6], NULL) : NAN);
         return;
     }
     if (!strcmp(c, "BUSTEST")) { bustest(argc == 2 ? atoi(argv[1]) : 100); return; }

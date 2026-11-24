@@ -17,13 +17,14 @@
 | [`firmware/`](firmware/README.md) | 芒果磚上的 50 Hz 閉迴路程式（C，Pico SDK）與 PC 單元測試 |
 | [`host/`](host/README.md) | PC 端 USB 指令與遙測記錄工具 |
 | [`calibration/`](calibration/README.md) | 實機校正檔（伺服 ID、方向、零點、IMU 軸向）；目前是暫定值 |
+| [`actuator_bench/`](actuator_bench/README.md) | 單顆馬達台架測試：暫存器、步階響應、正弦掃頻（E0–E2），和模擬馬達模型比對 |
 
 ## 步驟
 
 | 步驟 | 子資料夾 | 內容 | 通過條件 |
 |---|---|---|---|
 | 1. 採購與試印 | — | 依 `hardware/robot_v1/reports/parts_bom.md` 備料、試印關鍵件、秤重、確認孔位與馬達轉向（`docs/backlog.md` #3、#4） | 實測密度回填 |
-| 2. 單顆馬達台架測試 | `actuator_bench/`（預定） | 量測反應延遲（要求 ≤ 40 ms，`docs/decisions.md` #25）、追隨能力、受力偏移、回讀電流，和模擬的馬達模型（kp、kd、延遲範圍 0–40 ms）比對 | 落在訓練的隨機化範圍內；否則回到 `control/sim2real` 微調 |
+| 2. 單顆馬達台架測試 | [`actuator_bench/`](actuator_bench/README.md) | 量測反應延遲（要求 ≤ 40 ms，`docs/decisions.md` #25）、追隨能力、受力偏移、回讀電流，和模擬的馬達模型（kp、kd、延遲範圍 0–40 ms）比對 | 落在訓練的隨機化範圍內；否則回到 `control/sim2real` 微調 |
 | 3. 組裝與校正 | `calibration/` | 零點、轉向、IMU 軸向；量總重與重心；站姿和模擬比對 | 校正檔 `verified: true` |
 | 4. 控制程式 | `export/`、`firmware/`、`host/` | 在板上執行 student v2ft（int8）、50 Hz 控制迴圈、**站立用固定站姿、行走才交給模型**（`docs/decisions.md` #24）、安全停止 | 板上推論和 PC 一致；讀取＋推論＋寫入 < 20 ms |
 | 5. 懸吊測試 | `field_tests/`（預定） | 吊起來、腳不著地，確認方向與步態；再加安全繩放到地上 | 方向正確、不抖動 |
