@@ -14,7 +14,7 @@
 | 開動前檢查：型號 10/31、ID、模式 4、扭矩關閉 | `stance_setup/servo_command.c` |
 | BMI270 SPI0 初始化（CS21、TFT CS33 拉高）、Bosch 官方驅動 | `stance_setup/imu_reference.h`、`stance_setup/vendor/bmi270/`（原樣複製到 `vendor/bmi270/`，含授權與 SHA256） |
 | 板子定義 | `boards/mango_x4.h`（原樣複製，SHA256 開頭 `0086e85e`） |
-| 伺服 ID（TOPDOWN_V1）、方向、零點 | 寫進 `deploy/calibration/robot_v2.json`（暫定值） |
+| 伺服 ID（TOPDOWN_V1）、方向、零點 | 起點；2026-11-23 在 robot v2 上實測後寫進 `deploy/calibration/robot_v2.json`（`verified: true`） |
 
 ## 程式結構
 
@@ -38,8 +38,9 @@
 
 ### USB 指令
 
-`PING`、`STATUS`、`TELEM 0|1`、`BENCH`（板上推論自我測試＋計時）、`BUSTEST <次數>`（只讀，比較 sync read 和逐顆讀取的時間）、`IMUCAL`（陀螺儀偏置，需靜止）、`SCAN [max_id]`（只讀掃描匯流排：每個有回應的 ID 的型號、模式、扭矩、位置、電壓、溫度；2026-11-23 新增）、`ALIGN`（重新對準多圈零點，關節移回範圍內後使用）、`PLAY <倍速> [次數]`（站姿下慢速播放模擬步態）、`VSTOP <V>`（暫時調整電壓停機門檻，懸空測試用）、`JOG <關節名稱> <角度> [速度]`（只開一顆的扭矩：±15° 內、≤ 20°/s，出去 → 停 1 s → 回來 → 停 1 s，100 Hz 回報目標與實際位置；PC 送任何字元就關扭矩）、`REGDUMP <id>`、`STEP <關節> <角度> [hold_ms]`、`SWEEP <關節> <振幅> <f0> <f1> <秒>`（單顆馬達台架測試，2026-11-24，見 [`deploy/actuator_bench`](../actuator_bench/README.md)）、`INIT`、`WALK <vx> <freq> [clearance]`、`SET <vx> <freq>`、`STAND`、`STOP`。
-PC 端用 [`deploy/host/robot_cli.py`](../host/README.md) 送指令並記錄遙測。
+`PING`、`STATUS`、`TELEM 0|1`、`BENCH`（板上推論自我測試＋計時）、`BUSTEST <次數>`（只讀，比較 sync read 和逐顆讀取的時間）、`IMUCAL`（陀螺儀偏置，需靜止）、`SCAN [max_id]`（只讀掃描匯流排：每個有回應的 ID 的型號、模式、扭矩、位置、電壓、溫度；2026-11-23 新增）、`ALIGN`（重新對準多圈零點，關節移回範圍內後使用）、`PLAY <倍速> [次數]`（站姿下慢速播放模擬步態；`TELEM 1` 時每週期輸出 `PLT` 行：10 顆的位置、目標、電壓、溫度、負載、電流）、`VSTOP <V>`（暫時調整電壓停機門檻，懸空測試用）、`JOG <關節名稱> <角度> [速度]`（只開一顆的扭矩：±15° 內、≤ 20°/s，出去 → 停 1 s → 回來 → 停 1 s，100 Hz 回報目標與實際位置；PC 送任何字元就關扭矩）、`REGDUMP <id>`、`STEP <關節> <角度> [hold_ms]`、`SWEEP <關節> <振幅> <f0> <f1> <秒>`（單顆馬達台架測試，2026-11-24，見 [`deploy/actuator_bench`](../actuator_bench/README.md)）、`INIT`、`WALK <vx> <freq> [clearance]`、`SET <vx> <freq>`、`STAND`、`STOP`。
+PC 端用 [`deploy/host/robot_cli.py`](../host/README.md) 送指令並記錄遙測（`T` 行 85 欄，表頭見程式開頭的 `HEADER`）；懸空測試用 [`deploy/field_tests/hanging_test`](../field_tests/README.md)。
+`STATUS` 的 `MODEL` 行顯示模型名稱、指令範圍、`build=`（建置資料夾名稱）與 `playback=`（是否含 `playback.h`）。
 
 ## 建置
 
@@ -62,6 +63,13 @@ powershell -ExecutionPolicy Bypass -File deploy\firmware\flash_firmware.ps1 [-Uf
 燒錄不會寫馬達 EEPROM，也不會開扭矩。組員韌體的備份：`outputs/robot_v2/deploy/teammate_fw_backup_20261123/mango_servo_command.uf2`（SHA256 和交接包 MANIFEST 相同），要還原時用 `-Uf2` 燒回去。
 
 ## 紀錄
+
+### 2026-11-25：0.2 版（馬達數據遙測）
+
+- `PLAY` 在 `TELEM 1` 時每週期輸出 `PLT` 行（10 顆 × 位置、目標、電壓、溫度、負載、電流）。
+- `T` 行末端加上每顆的電壓與溫度（65 → 85 欄，前 65 欄位置不變，舊的 `telemetry.csv` 仍可用原表頭讀）。
+- `build_firmware.sh` 把建置資料夾名稱傳給 CMake（`FW_BUILD_ID`），`STATUS` 的 `MODEL` 行顯示 `build=`、`playback=`，讓 `field_tests/hanging_test.py` 判斷需不需要燒錄。
+- 建置：v2ft `firmware_build/20261125_155757`（匯出 `20261123_103850`）、v2slow `20261125_155809`（匯出 `20261124_193736`），0 個警告；**尚未上實機**。
 
 ### 2026-11-23（傍晚）：PLAY 與第一次 WALK
 

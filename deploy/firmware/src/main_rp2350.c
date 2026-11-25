@@ -36,7 +36,22 @@
 #include "policy.h"
 #include "robot_config.h"
 
-#define FW_VERSION "BIPED_V2_RUNTIME 0.1"
+#define FW_VERSION "BIPED_V2_RUNTIME 0.2" /* 0.2 (2026-11-25): PLT per-servo telemetry in PLAY, build id in MODEL */
+#ifndef FW_BUILD_ID
+#define FW_BUILD_ID "unknown" /* build_firmware.sh passes the firmware_build/<timestamp> folder name */
+#endif
+/* gait playback for PLAY (deploy/export/make_playback.py), optional per export */
+#if defined(__has_include)
+#if __has_include("playback.h")
+#include "playback.h"
+#define HAVE_PLAYBACK 1
+#endif
+#endif
+#ifdef HAVE_PLAYBACK
+#define HAVE_PLAYBACK_FLAG 1
+#else
+#define HAVE_PLAYBACK_FLAG 0
+#endif
 #define BUS uart1
 #define PERIOD_US 20000u
 #define READ_TIMEOUT_US 3000u
@@ -310,8 +325,8 @@ static void print_status(const ctl_sensors *s) {
            bus_fail_total, s->v_min, s->temp_max, policy_kind());
     printf("POSE");
     for (int j = 0; j < NUM_JOINTS; ++j) printf(" %s=%d/%.1fdeg", JOINT_NAMES[j], (int)fb[j].position, s->q[j] * 57.2958f);
-    printf("\nMODEL %s vx=0..%.3f freq=%.2f..%.2f clearance<=%.3f\n", POLICY_NAME, ctl.p.cmd_vx_max, ctl.p.freq_min,
-           ctl.p.freq_max, CLEARANCE_MAX);
+    printf("\nMODEL %s vx=0..%.3f freq=%.2f..%.2f clearance<=%.3f build=%s playback=%d\n", POLICY_NAME, ctl.p.cmd_vx_max,
+           ctl.p.freq_min, ctl.p.freq_max, CLEARANCE_MAX, FW_BUILD_ID, HAVE_PLAYBACK_FLAG);
     printf("IMU gravity=%.3f %.3f %.3f heading_deg=%.1f\n", s->gravity[0], s->gravity[1], s->gravity[2],
            s->heading * 57.2958f);
 }
@@ -329,6 +344,9 @@ static void telemetry_line(const ctl_sensors *s, const ctl_output *o) {
     /* 2026-11-23: per-servo load (60-61) and current (69-70) registers, raw (units not verified) */
     for (int j = 0; j < NUM_JOINTS; ++j) printf(" %ld", (long)fb[j].load_raw);
     for (int j = 0; j < NUM_JOINTS; ++j) printf(" %ld", (long)fb[j].current_raw);
+    /* 2026-11-25 (0.2): per-servo voltage (0.1 V) and temperature, appended so older columns keep their index */
+    for (int j = 0; j < NUM_JOINTS; ++j) printf(" %u", fb[j].voltage_raw);
+    for (int j = 0; j < NUM_JOINTS; ++j) printf(" %u", fb[j].temp_c);
     printf("\n");
 }
 
@@ -620,13 +638,9 @@ static void bench_sweep(const char *name, float amp_deg, float f0, float f1, flo
  * first frame (1.5 s), plays PLAYBACK (deploy/export/make_playback.py) at `rate` x real time `loops` times, ramps back
  * to the stance (1.5 s) and stays in STAND. Aborts with torque off on any host byte, 3 bus failures, voltage below the
  * controller limit, servo temperature limit or tracking error > track limit for 3 ticks.
- * Prints "PL t_ms frame v_min max_err_deg worst_joint" at 10 Hz and the per-joint max tracking error at the end. */
-#if defined(__has_include)
-#if __has_include("playback.h")
-#include "playback.h"
-#define HAVE_PLAYBACK 1
-#endif
-#endif
+ * Prints "PL t_ms frame v_min max_err_deg worst_joint" at 10 Hz and the per-joint max tracking error at the end.
+ * With TELEM 1 (2026-11-25) also one "PLT" line per tick: t_ms frame, then per joint (firmware order) q_rad,
+ * target_rad, volt_raw (0.1 V), temp_c, load_raw, current_raw (deploy/host/play_test.py writes play_telemetry.csv). */
 static void play(float rate, int loops) {
 #ifndef HAVE_PLAYBACK
     (void)rate;
@@ -688,6 +702,13 @@ static void play(float rate, int loops) {
             if (vmin < ctl.p.v_min_stop) { why = "voltage"; break; }
             if (tmax >= ctl.p.temp_stop) { why = "temperature"; break; }
             if (track_bad >= 3) { why = "tracking"; break; }
+            if (telemetry) {
+                printf("PLT %lu %d", (unsigned long)((now - t0) / 1000), frame);
+                for (int j = 0; j < NUM_JOINTS; ++j)
+                    printf(" %.4f %.4f %u %u %ld %ld", joints_count_to_rad(&jmap, j, fb[j].position), target[j],
+                           fb[j].voltage_raw, fb[j].temp_c, (long)fb[j].load_raw, (long)fb[j].current_raw);
+                printf("\n");
+            }
             if (tick % 5 == 0)
                 printf("PL %lu %d %.1f %.2f %s\n", (unsigned long)((now - t0) / 1000), frame, vmin, worst, JOINT_NAMES[wj]);
         }

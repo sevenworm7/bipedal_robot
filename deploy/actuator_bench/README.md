@@ -21,7 +21,7 @@
 | E2 | 正弦掃頻：5° 0.5–8 Hz、10° 0.5–6 Hz，對數 chirp 20 s，每 2 ms 取樣（中心＝站姿角度） | `SWEEP <joint> <amp> <f0> <f1> <dur> [start_deg]` | 左膝 5° 完成（10° 中途匯流排斷線） |
 | E3 | 剛性：已知力臂掛重物 → 等效 kp | — | 需要砝碼／彈簧秤 |
 | E4 | 堵轉扭矩、電流（三用電表串在電源正極校正電流暫存器）、扭矩–速度 | — | 需要設備 |
-| E5 | tail_pitch JOG、1.0 倍全速開迴路回放 | `JOG`、`PLAY 1.0` | 全速回放等換供電 |
+| E5 | tail_pitch JOG、1.0 倍全速開迴路回放 | `JOG`、`PLAY 1.0` | 未做；2026-11-25 已換降壓模組（8 V、約 10 A），可以排入 |
 
 E1、E2 的安全限制（`main_rp2350.c`）：只在 OFF 狀態、校正已對齊、目標在關節範圍內（超出時韌體回 ERROR，不動作）；開扭矩前把目標設成目前位置；收到 PC 任何字元就停；連續 5 次讀取失敗或誤差 > 35° 超過 0.2 s 就停；結束一定關扭矩並確認。步階 ≤ 20°、掃頻振幅 ≤ 10°、≤ 8 Hz、目標峰值速度 ≤ 400°/s。
 
@@ -38,9 +38,22 @@ tools\isaacpy.cmd deploy\actuator_bench\analyze.py [session 資料夾]
 `run_bench.py` 把指令交給 `deploy/host/robot_cli.py`，每個指令後面等它做完（測試中送任何字元都會中止）；取樣行 `BS ...` 只寫進 `console.log`，不印在畫面上。
 `analyze.py` 用 Isaac Lab 的 Python（只用 numpy、matplotlib，不載入 Isaac），輸出到 `<session>/bench_analysis/`：`regdump.csv`、`step_metrics.csv`（死區時間、t50、上升時間、超越量、安定時間、穩態誤差、最大速度）、`sweep_bode.csv`（增益、相位落後、等效延遲）、`step_<joint>.png`、`bode.png`。
 
+## `jog_analyze.py`：單顆 JOG 分析（2026-11-25 從 `deploy/host/` 移來）
+
+```powershell
+.venv_fw\Scripts\python.exe deploy\actuator_bench\jog_analyze.py [session 資料夾]   # 預設最新的 session
+```
+
+從 `console.log` 讀韌體 `JOG` 指令的 100 Hz 紀錄，算方向、靜止誤差、最大追隨誤差、延遲（最小平方擬合 0–200 ms）、速度暫存器和差分速度的比值。2026-11-23 的單顆 JOG（延遲 25–35 ms，`deploy/test_log.md`）用它分析。
+
 尚未完成：模擬端對照（同樣的目標軌跡在 Isaac 中讓單一關節跑一次，放在 `simulation/`，因為 `deploy/` 不可依賴 Isaac），疊圖並擬合 kp、kd、延遲。順序見 [`docs/progress.md`](../../docs/progress.md)。
 
 ## 紀錄
+
+### 2026-11-25：整理
+
+- `jog_analyze.py` 從 `deploy/host/` 移到這裡（JOG 屬於單顆馬達測試）。
+- 未完成項目：其餘 9 顆的 E1／E2、左膝 10° 掃頻重跑（#23 斷線）、E3、E4、E5、模擬端擬合 kp／kd／延遲（`docs/backlog.md` #10、#27）。
 
 ### 2026-11-24：E0 暫存器（`sessions/20261124_200301`）
 

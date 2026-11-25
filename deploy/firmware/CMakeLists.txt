@@ -22,6 +22,7 @@ if(NOT EXPORT_DIR OR NOT EXISTS "${EXPORT_DIR}/robot_config.h")
 endif()
 option(POLICY_FP32 "float32 weights in flash instead of int8 in SRAM (slow, for comparison)" OFF)
 option(ALLOW_UNVERIFIED_CALIB "allow INIT with an unverified calibration (bench only)" OFF)
+set(FW_BUILD_ID "unknown" CACHE STRING "firmware_build folder name, shown by STATUS (build_firmware.sh)")
 
 add_executable(biped_runtime
     src/main_rp2350.c src/policy.c src/obs.c src/attitude.c src/joints.c src/feetech.c src/controller.c
@@ -30,7 +31,7 @@ target_include_directories(biped_runtime PRIVATE src vendor/bmi270 "${EXPORT_DIR
 target_compile_options(biped_runtime PRIVATE -Wall -Wextra -O2)
 target_compile_definitions(biped_runtime PRIVATE PICO_BUILD=1
     PICO_STDIO_USB_DEFAULT_CRLF=0 PICO_STDIO_USB_ENABLE_RESET_VIA_BAUD_RATE=1 PICO_STDIO_USB_RESET_MAGIC_BAUD_RATE=1200
-    USBD_PRODUCT="BIPED V2 RUNTIME")
+    USBD_PRODUCT="BIPED V2 RUNTIME" FW_BUILD_ID="${FW_BUILD_ID}")
 if(NOT POLICY_FP32)
     target_compile_definitions(biped_runtime PRIVATE POLICY_INT8=1)
 endif()

@@ -51,7 +51,7 @@ core/                   # interface.py、interface_v2.py、symmetry.py、robots/
 simulation/             # env/（環境、地形、場景版本）、metrics、rollout、影片；robot_assets/（URDF → USD、模擬檢查、usd/ 不進 git）
 control/                # rule_based/、flat_pipeline/、sim2real/（README ＋ log_robot_v<N>.md）
 evaluation/             # generalization/、load_analysis/
-deploy/                 # README（步驟）、test_log.md（實機紀錄）、export/（模型 → C 標頭）、firmware/（芒果磚 RP2350 韌體）、host/（PC 指令工具）、calibration/（校正檔）；預定 actuator_bench/、field_tests/
+deploy/                 # README（步驟）、test_log.md（實機紀錄）、export/（模型 → C 標頭）、firmware/（芒果磚 RP2350 韌體）、host/（PC 通用指令工具 robot_cli）、calibration/（校正檔）、actuator_bench/（單顆馬達測試）、field_tests/（整機懸空／平地測試）
 archive/exp1_reference/ # 實驗一：shared/、scripts/、rule_based/、training_pipeline/、outputs/（不進 git）
 references/             # 唯讀
 tools/                  # isaacpy.cmd、urdf_inspect.py、bin/uv.exe（不進 git）

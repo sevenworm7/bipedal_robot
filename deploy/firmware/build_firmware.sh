@@ -19,7 +19,7 @@ export PICO_TOOLCHAIN_PATH="$TOOLS/bin"
 win() { cygpath -m "$1"; }
 cmake -S "$(win "$HERE")" -B "$(win "$BUILD")" -G Ninja \
   -DPICO_SDK_PATH="$(win "$TOOLS/pico-sdk")" -DEXPORT_DIR="$(win "$EXPORT")" \
-  -DCMAKE_POLICY_VERSION_MINIMUM=3.5 "$@" > "$OUT/cmake_configure.log" 2>&1 || { tail -30 "$OUT/cmake_configure.log"; exit 1; }
+  -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DFW_BUILD_ID="$(basename "$OUT")" "$@" > "$OUT/cmake_configure.log" 2>&1 || { tail -30 "$OUT/cmake_configure.log"; exit 1; }
 cmake --build "$(win "$BUILD")" --parallel 8 > "$OUT/cmake_build.log" 2>&1 || { grep -E "error|warning" "$OUT/cmake_build.log" | head -40; exit 1; }
 echo "compiler warnings: $(grep -c "warning" "$OUT/cmake_build.log" || true)"
 "$TOOLS/picotool-build/Release/picotool.exe" uf2 convert "$(win "$BUILD/biped_runtime.elf")" "$(win "$OUT/biped_runtime.uf2")" \

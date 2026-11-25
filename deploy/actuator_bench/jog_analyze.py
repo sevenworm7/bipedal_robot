@@ -1,6 +1,6 @@
 """Analyse a JOG run (single-servo bench move) from a robot_cli session log.
 
-  .venv_fw\\Scripts\\python.exe deploy\\host\\jog_analyze.py [session_dir_or_console.log] [--all]
+  .venv_fw\\Scripts\\python.exe deploy\\actuator_bench\\jog_analyze.py [session_dir_or_console.log] [--all]
 
 Reads the "JOG start" header and the 100 Hz "JOG t_ms goal pos speed load volt" lines and reports:
   - direction: does the count move the same way as the goal (sign check of the calibration)
