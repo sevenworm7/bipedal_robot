@@ -5,7 +5,7 @@
 
 ## 目前狀態（2026-11-25）
 
-- **2026-11-25 換了新的伺服降壓模組**（約 8 V、粗估約 10 A；舊的約 3 A；型號待確認，`backlog.md` #21），還沒實測走路。新的懸空測試工具 `deploy/field_tests/hanging_test`（韌體 0.2，每顆馬達的電壓、電流、溫度、追隨誤差表）已完成，報表用假資料驗證過、**尚未上實機**；`deploy/` 已整理（`field_tests/` 新增、`jog_analyze.py` 移到 `actuator_bench/`、文件同步）。
+- **2026-11-25 換了新的伺服降壓模組 SD026**（8 V，持續 15 A／最大 20 A；舊的 HW-133A 3 A 已停用；規格見 `deploy/power_supply.md`，`decisions.md` #31），還沒實測走路。上機前要確認 12 V 電源的電流（約需 7.5 A）、限流調到 ≥ 15 A。新的懸空測試工具 `deploy/field_tests/hanging_test`（韌體 0.2，每顆馬達的電壓、電流、溫度、追隨誤差表）已完成，報表用假資料驗證過、**尚未上實機**；`deploy/` 已整理（`field_tests/` 新增、`jog_analyze.py` 移到 `actuator_bench/`、文件同步）。
 - 分支 `robot-v2`（已 push 到 GitHub `origin`；合併回 `master` 等使用者決定）；robot v2 已凍結（tag `robot-v2`：大腿 70、小腿 55 mm、膝 0–110°，接線方案 B）。
 - **robot v2 訓練完成（2026-11-19）**：最終模型 **student v2ft**（`outputs/robot_v2/control/sim2real/student_v2ft_20261118_230657/student.pt`），通過全部部署門檻，詳見下方與 [`results.md`](results.md)「robot v2」。
 - **v2 壓力測試與負載分析完成（2026-11-19）**：多數條件比 v1 好；兩個實機要求：**站立時改用固定站姿**（模型站立時兩腳互頂，`decisions.md` #24）、**伺服延遲 ≤ 40 ms**（#25）。詳見 [`results.md`](results.md)「v2 泛化、壓力測試與馬達負載」。
@@ -82,7 +82,7 @@ v2 的觀測、動作、控制頻率都和 v1 相同（10 DOF、student 210 維�
 
 ## Archive
 
-- 2026-11-25：換新伺服降壓模組（約 8 V／10 A，待驗證）；新增 `deploy/field_tests/hanging_test`（取代 `demo_hanging.ps1`）與韌體 0.2（每顆馬達電壓、電流遙測）；`deploy/` 文件與資料夾整理。
+- 2026-11-25：換新伺服降壓模組 SD026（8 V，持續 15 A，待驗證；HW-133A 停用）；新增 `deploy/field_tests/hanging_test`（取代 `demo_hanging.ps1`）與韌體 0.2（每顆馬達電壓、電流遙測）；`deploy/` 文件與資料夾整理。
 - 2026-11-24：v2slow 0.5 倍開迴路回放順利（7.5 V、誤差 ≤ 3.5°），閉迴路 WALK 1.0 Hz 重試 0.27 秒仍欠壓失聯；A 開始：`deploy/actuator_bench/`（韌體 REGDUMP/STEP/SWEEP、run_bench、analyze），E0 暫存器、E1 左膝步階、E2 左膝掃頻。
 - 2026-11-24：v2slow 實機測試準備（int8 匯出與模擬確認、韌體指令範圍依匯出設定、`STATUS` 顯示模型）；懸空 WALK v2slow 0.41 秒、v2ft 0.37 秒都因供電欠壓讓伺服失聯 → 等換供電。
 - 2026-11-23（晚）：整理現有馬達數據（report 已寫基礎確認，步階響應、頻寬、扭矩、電流校正尚未測）；使用者標記下一步順序：細部馬達測試 → v2slow 實機測試。

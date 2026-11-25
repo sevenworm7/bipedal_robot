@@ -6,7 +6,7 @@
 
 - **實機測試紀錄**：[`test_log.md`](test_log.md)。
 - **各步驟的狀態**：[`docs/progress.md`](../docs/progress.md)「實機部署的子步驟」；待辦問題在 [`docs/backlog.md`](../docs/backlog.md)。
-- **伺服供電**：2026-11-25 換成新的降壓模組（輸出約 8 V、使用者粗估約 10 A；型號與持續／峰值電流待確認）。舊的 HW-133A（標示 3 A）在懸空走路時壓降到 5.1–6.1 V，伺服欠壓失聯（`docs/backlog.md` #21、`test_log.md` 2026-11-23、11-24）。
+- **伺服供電**：見 [`power_supply.md`](power_supply.md)（唯一的規格來源）。**目前使用 SD026**（2026-11-25 起；12 V → 8 V，持續 15 A／最大 20 A，限流要調到 ≥ 15 A）；舊的 HW-133A（3 A）**已停用**，2026-11-24 以前的實機壓降數據都是舊模組量到的。
 - **馬達資料**：通訊協定、暫存器表、上機前檢查表在 [`hardware/design_refs/hd1910/docs/`](../hardware/design_refs/hd1910/README.md)。
 - **組員的 v1 交接包**（懸空回放韌體、實測的 ID／方向／零點、IMU 與供電紀錄）：`references/mango_x4_handoff_20261117/`，唯讀、不進 git（4.1 GB）。要用其中的程式或資料時複製到這裡，並註明來源路徑與 SHA256（`docs/decisions.md` #26）。
 
